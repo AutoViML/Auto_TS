@@ -1,5 +1,5 @@
 ####################################################################################
-####                     Auto Time Series Final  0.0.11                         ####
+####                     Auto Time Series Final  0.0.12                         ####
 ####                           Python 3 Version                                 ####
 ####                      Developed by Ram Seshadri                             ####
 ####                        All Rights Reserved                                 ####
@@ -900,7 +900,6 @@ def build_pyflux_model(df,target,ar=12,ma=12,integ=1,forecast_period=2,fitmethod
     mu, actuals = bestmodel._model(bestmodel.latent_variables.get_z_values())
     predicted = bestmodel.link(mu)
     print('Dynamic %d-period Forecasts:' %forecast_period)
-    pdb.set_trace()
     if bestpdq[1] == 1:
         mod_target = 'Differenced '+target
         res = restore_differenced_predictions(ts_test[target].values,forecast_df[mod_target],
@@ -1217,7 +1216,10 @@ def build_prophet_model(ts_df, time_col, target, forecast_period,
     ###  There can't be anything simpler than this to make Forecasts!
     #model.plot(forecast);  # make sure to add semi-colon in the end to avoid plotting twice
     # Also their Trend, Seasonality Charts are Spot On!
-    model.plot_components(forecast);
+    try:
+        model.plot_components(forecast);
+    except:
+        print('Error in FB Prophet components forecast. Continuing...') 
     rmse, norm_rmse = print_dynamic_rmse(dfa['y'],dfa['yhat'],dfa['y'])
     #submit = dfplot[-forecast_period:]
     #submit.drop('Actuals',axis=1,inplace=True)
@@ -1608,7 +1610,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 #Defining AUTO_TIMESERIES here
 ##########################################################
 if	__name__	== "__main__":
-    version_number = '0.0.11'
+    version_number = '0.0.12'
     print("""Running Auto Timeseries version: %s...Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
@@ -1616,7 +1618,7 @@ if	__name__	== "__main__":
                             verbose=0)
     To get detailed charts of actuals and forecasts, set verbose = 1""" %version_number)
 else:
-    version_number = '0.0.11'
+    version_number = '0.0.12'
     print("""Imported Auto_Timeseries version: %s. Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
