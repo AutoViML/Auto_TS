@@ -1,5 +1,5 @@
 ####################################################################################
-####                     Auto Time Series Final  0.0.1                          ####
+####                     Auto Time Series Final  0.0.11                         ####
 ####                           Python 3 Version                                 ####
 ####                      Developed by Ram Seshadri                             ####
 ####                        All Rights Reserved                                 ####
@@ -1176,6 +1176,9 @@ def build_prophet_model(ts_df, time_col, target, forecast_period,
     """
     Build a Time Series Model using Facebook Prophet which is a powerful model.
     """
+    ##### if you are going to use matplotlib with prophet data, it gives an error unless you do this.
+    pd.plotting.register_matplotlib_converters()    
+    #### You have to import Prophet if you are going to build a Prophet model #############
     from fbprophet import Prophet
     df = ts_df[:]
     try:
@@ -1605,7 +1608,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 #Defining AUTO_TIMESERIES here
 ##########################################################
 if	__name__	== "__main__":
-    version_number = '0.0.10'
+    version_number = '0.0.11'
     print("""Running Auto Timeseries version: %s...Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
@@ -1613,7 +1616,7 @@ if	__name__	== "__main__":
                             verbose=0)
     To get detailed charts of actuals and forecasts, set verbose = 1""" %version_number)
 else:
-    version_number = '0.0.10'
+    version_number = '0.0.11'
     print("""Imported Auto_Timeseries version: %s. Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
