@@ -1,5 +1,5 @@
 ####################################################################################
-####                     Auto Time Series Final  1.1                            ####
+####                     Auto Time Series Final  0.0.1                          ####
 ####                           Python 3 Version                                 ####
 ####                      Developed by Ram Seshadri                             ####
 ####                        All Rights Reserved                                 ####
@@ -106,11 +106,12 @@ def top_correlation_to_name(stocks, column_name, searchstring, top=5):
     [ax.legend(loc=1) for ax in plt.gcf().axes]
     plt.tight_layout()
     plt.show()
-#######################
+###################################################################################
 import matplotlib.dates as mdates
 import numpy as np
 def using_where(x):
     return np.where(x == 1,'g','r')
+from itertools import cycle, combinations
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
                                             chart_time='years'):
     """
@@ -120,6 +121,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     to be Pandas datetime. It assumes that you want to see default lags of 31.
     But you can modify it to suit.
     """
+    colors = cycle('byrcmgkbyrcmgkbyrcmgkbyrcmgkbyr')
     fig = plt.figure(figsize=(20, 20))
     grid = plt.GridSpec(3, 2, wspace=0.5, hspace=0.5)
     fig.subplots_adjust(hspace=1)
@@ -131,7 +133,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     pacf_ax = plt.subplot(grid [2,1])
     ### Draw multiple kinds of graphs here to each subplot axis ###
     if chart_type == 'line':
-        y.plot(ax=ts_ax)
+        y.plot(ax=ts_ax,color=next(colors))
     else:
         if chart_time == 'years':
             majors = mdates.YearLocator() # every year
@@ -167,23 +169,23 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
         ts_ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
         ts_ax.grid(True)
     ts_ax.set_title(title)
-    y.diff(1).plot(ax=diff_ax)
+    y.diff(1).plot(ax=diff_ax, color=next(colors))
     diff_ax.set_title('After Differencing = 1')
-    y.plot(ax=hist_ax, kind='hist', bins=25)
+    y.plot(ax=hist_ax, kind='hist', bins=25,color=next(colors))
     hist_ax.set_title('Histogram for Original Series')
     try:
         smt.graphics.plot_acf(y, lags=lags, ax=acf_ax)
         acf_ax.set_title('ACF for Original Series')
     except:
         acf_ax.set_title('Data Error: Could not draw ACF for Original Series')
-        try:
-            smt.graphics.plot_pacf(y, lags=lags, ax=pacf_ax)
-            pacf_ax.set_title('PACF for Original Series')
-        except:
-            pacf_ax.set_title('Data Error: Could not draw PACF for Original Series')
-        [ax.set_xlim(0) for ax in [acf_ax, pacf_ax]]
-        plt.show()
-########
+    try:
+        smt.graphics.plot_pacf(y, lags=lags, ax=pacf_ax)
+        pacf_ax.set_title('PACF for Original Series')
+    except:
+        pacf_ax.set_title('Data Error: Could not draw PACF for Original Series')
+    [ax.set_xlim(0) for ax in [acf_ax, pacf_ax]]
+    plt.show()
+##################################################################
 def test_stationarity(timeseries,maxlag=2, regression='c', autolag=None, window=None, plot=False, verbose=False):
     """
     Check unit root stationarity of a time series array or an entire dataframe.
@@ -656,19 +658,22 @@ def build_ARIMA_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
     concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
     if best_d ==0:
         #### Do this for ARIMA only ######
+        ###  If there is no differencing DO NOT use predict_type since it will give an error = do not use "linear".
         print('Static Forecasts:' )
         print_static_rmse(concatenated['original'].values, concatenated ['predicted'].values, best_d)
+        startdate = ts_df.index[-forecast_period]
+        enddate = ts_df.index[-1]
+        pred_dynamic = results.predict( start=startdate, end=enddate, dynamic=True)
         if verbose == 1:
             ax = concatenated[['original','predicted']][best_d:].plot()
-            startdate = ts_df.index[-forecast_period]
-            enddate = ts_df.index[-1]
-            pred_dynamic = results.predict(typ=pred_type, start=startdate, end=enddate, dynamic=True)
             pred_dynamic.plot(label='Dynamic Forecast', ax=ax, figsize=(15,5))
             print('Dynamic %d-period Forecasts:' %(forecast_period,))
             plt.legend()
             plt.show()
     else:
         #### Do this for ARIMA only ######
+        ####  If there is differencing, you must use "levels" as the predict type to get original levels as actuals
+        pred_type = 'levels'
         print('Static Forecasts:')
         print_static_rmse(y_truth[best_d:], y_forecasted)
         ########### Dynamic One Step Ahead Forecast ###########################
@@ -691,6 +696,7 @@ def build_ARIMA_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
             ax.set_ylabel('Values')
             plt.legend()
             plt.show()
+    #### Don't know if we need to fit again! ############
     results = bestmodel.fit()
     if verbose == 1:
         results.plot_diagnostics(figsize=(16,12))
@@ -860,9 +866,10 @@ def build_pyflux_model(df,target,ar=12,ma=12,integ=1,forecast_period=2,fitmethod
     #### Generate all different combinations of p,d,q triplets ######
     pdq = list(itertools.product(p,d,q))
     eval_metrics = {}
+    print('Cycling through various (p,d,q) parameters')
     for param in pdq:
         if verbose == 1:
-            print('    Params: %s' %(param,))
+            print('.', end="")
         model = pf.ARIMA(data=ts_train, ar=param[0], integ=param[1], ma=param[2], target=target)
         try:
             if fitmethod == 'MLE':
@@ -893,6 +900,7 @@ def build_pyflux_model(df,target,ar=12,ma=12,integ=1,forecast_period=2,fitmethod
     mu, actuals = bestmodel._model(bestmodel.latent_variables.get_z_values())
     predicted = bestmodel.link(mu)
     print('Dynamic %d-period Forecasts:' %forecast_period)
+    pdb.set_trace()
     if bestpdq[1] == 1:
         mod_target = 'Differenced '+target
         res = restore_differenced_predictions(ts_test[target].values,forecast_df[mod_target],
@@ -903,16 +911,21 @@ def build_pyflux_model(df,target,ar=12,ma=12,integ=1,forecast_period=2,fitmethod
     return bestmodel, forecast_df, rmse, norm_rmse
 ######################################################
 def restore_differenced_predictions(actuals, predicted,start_value,func=None,periods=1,diff_yes=True):
-    restored = pd.Series(index=start_value.index)
-    restored.ix[start_value.ix[:periods].index] =  start_value.values[:periods]
-    rest = restored.ix[predicted.index]
-    restored = pd.Series(np.r_[restored,rest],index=np.r_[start_value.index,rest.index])
-    restored.ix[predicted.index] = predicted.values
-    restored = restored[(periods-1):].cumsum()
-    if func:
-        restored = eval('np.'+func+'(restored)')
-    return restored[periods:]
-
+    try:
+        restored = pd.Series(index=start_value.index)
+        restored.ix[start_value.ix[:periods].index] =  start_value.values[:periods]
+        rest = restored.ix[predicted.index]
+        restored = pd.Series(np.r_[restored,rest],index=np.r_[start_value.index,rest.index])
+        restored.ix[predicted.index] = predicted.values
+        restored = restored[(periods-1):].cumsum()
+        if func:
+            restored = eval('np.'+func+'(restored)')
+        return restored[periods:]
+    except:
+        restored = start_value.values+predicted
+        if func:
+            restored = eval('np.'+func+'(restored)')
+        return restored
 #########################################################
 from sklearn.model_selection import TimeSeriesSplit
 def cross_validation_time_series(model, df, preds, target,n_times=10,verbose=0):
@@ -1153,7 +1166,6 @@ def time_series_split(ts_df):
     print(ts_train.shape, ts_test.shape)
     return ts_train, ts_test
 ############################################
-from Generic_Functions import remove_comma_in_columns,run_ensemble_model, find_top_features
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.model_selection import GridSearchCV
@@ -1164,6 +1176,7 @@ def build_prophet_model(ts_df, time_col, target, forecast_period,
     """
     Build a Time Series Model using Facebook Prophet which is a powerful model.
     """
+    from fbprophet import Prophet
     df = ts_df[:]
     try:
         df[time_col].head()
@@ -1190,32 +1203,55 @@ def build_prophet_model(ts_df, time_col, target, forecast_period,
     ##    of future (total: 3270) rows of data.
     ### This is where we take the first steps to make a forecast using Prophet:
     ##   1. Create a dataframe with datetime index of past and future dates
-    timeperiods = forecast_period + len(dft)
     print('Building Forecast dataframe. Forecast Period = %d' %forecast_period)
     # Next we ask Prophet to make predictions for those dates in the dataframe along with predn intervals
-    forecast = model.predict(timeperiods)
-    act_n = len(dft)
-    forecast['Actuals'] = np.nan
-    forecast.loc[:act_n-1,'Actuals'] = df['y'].values.tolist()
-    dfplot = forecast[['ds','Actuals','yhat']]
-    dfplot.plot(figsize=(20,10))
+    future = model.make_future_dataframe(periods=forecast_period)
+    forecast = model.predict(future)
+    act_n = len(dft)    
+    ####  We are going to plot Prophet's forecasts differently since it is better
+    dfa = plot_prophet(dft, forecast)
     # Prophet makes Incredible Predictions Charts!
     ###  There can't be anything simpler than this to make Forecasts!
-    model.plot(forecast);  # make sure to add semi-colon in the end to avoid plotting twice
+    #model.plot(forecast);  # make sure to add semi-colon in the end to avoid plotting twice
     # Also their Trend, Seasonality Charts are Spot On!
     model.plot_components(forecast);
-    dfa = dfplot.dropna()
-    rmse, norm_rmse = print_dynamic_rmse(dfa['Actuals'],dfa['yhat'],dfa['Actuals'])
-    submit = dfplot[-forecast_period:]
-    submit.drop('Actuals',axis=1,inplace=True)
-    submit.rename(columns={'yhat':target},inplace=True)
-    print('Forecast Data frame size %s ready to submit' %(submit.shape,))
-    return model, forecast['yhat'].values, rmse, norm_rmse
-
+    rmse, norm_rmse = print_dynamic_rmse(dfa['y'],dfa['yhat'],dfa['y'])
+    #submit = dfplot[-forecast_period:]
+    #submit.drop('Actuals',axis=1,inplace=True)
+    #submit.rename(columns={'yhat':target},inplace=True)
+    #print('Forecast Data frame size %s ready to submit' %(submit.shape,))
+    return model, forecast, rmse, norm_rmse
+###########################################################################################
+def plot_prophet(dft,forecastdf):
+    """
+    This is a different way of plotting Prophet charts as described in the following article:
+    Source: https://nextjournal.com/viebel/forecasting-time-series-data-with-prophet
+    Reproduced with gratitude to the author.
+    """
+    dft = copy.deepcopy(dft)
+    forecastdf = copy.deepcopy(forecastdf)
+    dft.set_index('ds',inplace=True)
+    forecastdf.set_index('ds',inplace=True)
+    dft.index = pd.to_datetime(dft.index)
+    connect_date = dft.index[-2]
+    mask = (forecastdf.index > connect_date)
+    predict_df = forecastdf.loc[mask]
+    viz_df = dft.join(predict_df[['yhat','yhat_lower','yhat_upper']],
+                     how='outer')
+    fig,ax1 = plt.subplots(figsize=(20,10))
+    ax1.plot(viz_df['y'],color='red')
+    ax1.plot(viz_df['yhat'],color='green')
+    ax1.fill_between(viz_df.index, viz_df['yhat_lower'],viz_df['yhat_upper'],
+                    alpha=0.2,color="darkgreen")
+    ax1.set_title('Actuals (Red) vs Forecast (Green)')
+    ax1.set_ylabel('Values')
+    ax1.set_xlabel('Date Time')
+    plt.show();
+    return viz_df
 ###########################################################
 def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse', forecast_period=2,
                         timeinterval='', non_seasonal_pdq=None, seasonality=False,
-                        seasonal_period=12, seasonal_PDQ=None, conf_int=0.95, max_rows = 1000,
+                        seasonal_period=12, seasonal_PDQ=None, conf_int=0.95, model_type = "stats",
                         verbose=0):
     """
     ##################################################################################################
@@ -1233,6 +1269,12 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     score_type: 'rmse' is the default. You can choose among "mae", "mse" and "rmse". 
     forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer
     timeinterval: default is "Month". What is the time period in your data set. Options are: "days",
+    model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "All" will build all.
+        - stats will build statsmodels based ARIMA< SARIMAX and VAR models
+        - ml will build a machine learning model using Random Forests provided explanatory vars are given
+        - prophet will build a model using FB Prophet -> this means you must have FB Prophet installed
+        - all will build all the above models which may take a long time for large data sets. 
+    We recommend that you choose a small sample from your data set bedfore attempting to run entire data.
     #####################################################################################################
     and the evaluation metric so it can select the best model. Currently only 2 are supported: RMSE and
     Normalized RMSE (ratio of RMSE to the standard deviation of actuals). Other eval metrics will be soon.
@@ -1256,7 +1298,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
     stats_scoring = 'aic'
     seed = 99
-    ### If dataset exceeds max_rows, then only 1 model will be run and that is FB Prophet ##
+    ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
     lag = copy.deepcopy(forecast_period)-1
     if type(non_seasonal_pdq) == tuple:
         p_max = non_seasonal_pdq[0]
@@ -1396,13 +1438,16 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ### When the time interval given does not match the tested_timeinterval, then use FB.
     #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
     #########                 FB Prophet              ###################################
-    if ts_df.shape[0] > max_rows:
+    if model_type.lower() == 'prophet' or model_type.lower() == 'all':
         name = 'FB_Prophet'
         print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
         try:
-            ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = build_prophet_model(
+            #### If FB prophet needs to run, it needs to be installed. Check it here ###
+            model, forecast_df, rmse, norm_rmse = build_prophet_model(
                                         ts_df, ts_column, target, forecast_period,
                                         score_type, verbose, conf_int)
+            ml_dict[name]['model'] = model
+            ml_dict[name]['forecast'] = forecast_df['yhat'].values
             ##### Make sure that RMSE works, if not set it to np.inf  #########
             if score_type == 'rmse':
                 score_val = rmse
@@ -1412,7 +1457,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             print('    FB Prophet may not be installed or Model is not running...')
             score_val = np.inf
         ml_dict[name][score_type] = score_val
-    else:
+    elif model_type.lower() == 'stats' or model_type.lower() == 'all':
         ##### First let's try the following models in sequence #########################################
         nsims = 100  ### this is needed only for M-H models in PyFlux
         name = 'PyFlux'
@@ -1494,6 +1539,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         ########################################################################
         ml_dict[name][score_type] = score_val
         ########## Let's build a Machine Learning Model now with Time Series Data ################
+    elif model_type.lower() == 'ml' or model_type.lower() == 'all':
         name = 'ML'
         if len(preds) == 0:
             print('No ML model since number of predictors is zero')
@@ -1539,8 +1585,11 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             norm_rmse = np.inf
         ########################################################################
         ml_dict[name][score_type] = score_val
-    ############ Draw a plot of the Time Series data given so you can select p,d,q ######
-    time_series_plot(ts_df[target],chart_time=timeinterval)
+        ############ Draw a plot of the Time Series data given so you can select p,d,q ######
+        time_series_plot(ts_df[target],chart_time=timeinterval)
+    else:
+        print('No model_type given or it is unknown type. Please look at input and run again')
+        return ml_dict
     ######## Selecting the best model based on the lowest rmse score ######
     f1_stats = {}
     for key, val in ml_dict.items():
@@ -1556,14 +1605,18 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 #Defining AUTO_TIMESERIES here
 ##########################################################
 if	__name__	== "__main__":
-    print("""Running Auto Timeseries...Call by using Auto_Timeseries(trainfile, ts_column,
+    version_number = '0.0.10'
+    print("""Running Auto Timeseries version: %s...Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
                             seasonal_period=12, seasonal_PDQ=None,
-                            verbose=0)""")
+                            verbose=0)
+    To get detailed charts of actuals and forecasts, set verbose = 1""" %version_number)
 else:
-    print("""Imported Auto_Timeseries. Call by using Auto_Timeseries(trainfile, ts_column,
+    version_number = '0.0.10'
+    print("""Imported Auto_Timeseries version: %s. Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
                             seasonal_period=12, seasonal_PDQ=None,
-                            verbose=0)""")
+                            verbose=0)
+    To get detailed charts of actuals and forecasts, set verbose = 1""" %version_number)
