@@ -1,5 +1,5 @@
 ####################################################################################
-####                     Auto Time Series Final  0.0.12                         ####
+####                     Auto Time Series Final  0.0.13                         ####
 ####                           Python 3 Version                                 ####
 ####                      Developed by Ram Seshadri                             ####
 ####                        All Rights Reserved                                 ####
@@ -1553,7 +1553,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         else:
             try:
                 if df_orig.shape[1] > 1:
-                    preds = [x for x in list(df_orig) if x not in [target]]
+                    preds = [x for x in list(ts_df) if x not in [target]]
                     print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
                     print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
                                 %(len(preds),lag))
@@ -1561,17 +1561,20 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
                                             preds+[target],target,n_in=lag,n_out=0,dropT=False)
                     train = dfxs[:-forecast_period]
                     test = dfxs[-forecast_period:]
-                    best = quick_ML_model(train[preds],train[target])
-                    ml_dict[name]['model'] = best
-                    best.set_params(random_state=0)
-                    ml_dict[name]['forecast'] = best.fit(train[preds],train[target]).predict(test[preds])
+                    best = run_ensemble_model(train[preds],train[target],'TimeSeries',
+                                score_type,verbose)
+                    bestmodel = best[0]
+                    ml_dict[name]['model'] = bestmodel
+                    ### Certain models dont have random state => so dont do this for all since it will error
+                    #best.set_params(random_state=0)
+                    ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
                     rmse, norm_rmse = print_dynamic_rmse(test[target].values,
-                                                best.predict(test[preds]),
+                                                bestmodel.predict(test[preds]),
                                                 train[target].values)
                     #### Plotting actual vs predicted for RF Model #################
                     plt.figure(figsize=(5,5))
                     plt.scatter(train.append(test)[target].values,
-                                np.r_[best.predict(train[preds]),best.predict(test[preds])])
+                                np.r_[bestmodel.predict(train[preds]),bestmodel.predict(test[preds])])
                     plt.xlabel('Actual')
                     plt.ylabel('Predicted')
                     plt.show()
@@ -1580,6 +1583,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
                     score_val = np.inf
             except:
                 print('    For ML model, evaluation score is not available.')
+                dfxs = copy.deepcopy(ts_df)
                 score_val = np.inf
         ################################################################
         if score_type == 'rmse':
@@ -1591,7 +1595,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         ########################################################################
         ml_dict[name][score_type] = score_val
         ############ Draw a plot of the Time Series data given so you can select p,d,q ######
-        time_series_plot(ts_df[target],chart_time=timeinterval)
+        time_series_plot(dfxs[target],chart_time=timeinterval)
     else:
         print('No model_type given or it is unknown type. Please look at input and run again')
         return ml_dict
@@ -1606,11 +1610,126 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     #print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
     print('    Best Model Score: %0.2f' %ml_dict[best_model_name][score_type])
     return ml_dict
+########################################################
+from sklearn.model_selection import cross_val_score, StratifiedShuffleSplit, TimeSeriesSplit
+from sklearn.model_selection import ShuffleSplit
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import BaggingRegressor, RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier,ExtraTreesRegressor
+from sklearn.linear_model import LogisticRegressionCV, LinearRegression, Ridge
+from sklearn.svm import LinearSVC, SVR, LinearSVR
+from sklearn.ensemble import AdaBoostClassifier, AdaBoostRegressor
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+def run_ensemble_model(X, Y, modeltype='Regression',scoring='',verbose=0):
+    """
+    Quickly builds and runs multiple models for a clean data set(only numerics).
+    """
+    seed = 99
+    if len(X) <= 100000 or X.shape[1] < 50:
+        NUMS = 50
+        FOLDS = 3
+    else:
+        NUMS = 20
+        FOLDS = 5
+    ## create Voting models
+    estimators = []
+    if modeltype == 'Regression':
+        if scoring == '':
+            scoring = 'neg_mean_squared_error'
+        scv = ShuffleSplit(n_splits=FOLDS,random_state=seed)
+        model5 = LinearRegression()
+        results1 = cross_val_score(model5,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Linear Model',model5,np.sqrt(abs(results1.mean()))))
+        model6 = AdaBoostRegressor(base_estimator=DecisionTreeRegressor(
+                    min_samples_leaf=2, max_depth=1, random_state=seed),
+                    n_estimators=NUMS, random_state=seed)
+        results2 = cross_val_score(model6,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Boosting',model6,np.sqrt(abs(results2.mean()))))
+        model7 = RidgeCV(alphas=np.logspace(-10,-1,50), cv=scv)
+        results3 = cross_val_score(model7,X, Y, cv=scv,scoring=scoring)
+        estimators.append(('Linear Regularization',model7,np.sqrt(abs(results3.mean()))))
+        ## Create an ensemble model ####
+        estimators_list = [(tuples[0],tuples[1]) for tuples in estimators]
+        ensemble = BaggingRegressor(DecisionTreeRegressor(random_state=seed),
+                                    n_estimators=NUMS,random_state=seed)
+        results4 = cross_val_score(ensemble,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Bagging',ensemble, np.sqrt(abs(results4.mean()))))
+        if verbose == 1:
+            print('\nLinear Model = %0.4f \nBoosting = %0.4f\nRegularization = %0.4f \nBagging = %0.4f' %(
+            np.sqrt(abs(results1.mean()))/Y.std(),np.sqrt(abs(results2.mean()))/Y.std(),
+            np.sqrt(abs(results3.mean()))/Y.std(),np.sqrt(abs(results4.mean()))/Y.std()))
+        besttype = sorted(estimators,key=lambda x: x[2], reverse=False)[0][0]
+        bestmodel = sorted(estimators,key=lambda x: x[2], reverse=False)[0][1]
+        bestscore = sorted(estimators,key=lambda x: x[2], reverse=False)[0][2]/Y.std()
+        if verbose == 1:
+            print('    Best Model = %s with %0.2f Normalized RMSE score\n' %(besttype,bestscore))
+    elif modeltype=='TimeSeries' or modeltype=='Time Series' or modeltype=='Time_Series':
+        #### This section is for Time Series Models only ####
+        if scoring == '':
+            scoring = 'neg_mean_squared_error'
+        tscv = TimeSeriesSplit(n_splits=FOLDS)
+        scoring = 'neg_mean_squared_error'
+        model5 = SVR(C=0.1, kernel='rbf', degree=2)
+        results1 = cross_val_score(model5,X,Y,cv=tscv,scoring=scoring)
+        estimators.append(('SVR',model5,np.sqrt(abs(results1.mean()))))
+        model6 = AdaBoostRegressor(base_estimator=DecisionTreeRegressor(
+                    min_samples_leaf=2, max_depth=1, random_state=seed),
+                    n_estimators=NUMS, random_state=seed)
+        results2 = cross_val_score(model6,X,Y,cv=tscv,scoring=scoring)
+        estimators.append(('Extra Trees',model6,np.sqrt(abs(results2.mean()))))
+        model7 = LinearSVR(random_state=seed)
+        results3 = cross_val_score(model7,X, Y, cv=tscv,scoring=scoring)
+        estimators.append(('LinearSVR',model7,np.sqrt(abs(results3.mean()))))
+        ## Create an ensemble model ####
+        estimators_list = [(tuples[0],tuples[1]) for tuples in estimators]
+        ensemble = BaggingRegressor(DecisionTreeRegressor(random_state=seed),
+                                    n_estimators=NUMS,random_state=seed)
+        results4 = cross_val_score(ensemble,X,Y,cv=tscv,scoring=scoring)
+        estimators.append(('Bagging',ensemble, np.sqrt(abs(results4.mean()))))
+        if verbose == 1:
+            print('\nInstance Based = %0.4f \nBoosting = %0.4f\nLinear Model = %0.4f \nBagging = %0.4f' %(
+            np.sqrt(abs(results1.mean()))/Y.std(),np.sqrt(abs(results2.mean()))/Y.std(),
+            np.sqrt(abs(results3.mean()))/Y.std(),np.sqrt(abs(results4.mean()))/Y.std()))
+        besttype = sorted(estimators,key=lambda x: x[2], reverse=False)[0][0]
+        bestmodel = sorted(estimators,key=lambda x: x[2], reverse=False)[0][1]
+        bestscore = sorted(estimators,key=lambda x: x[2], reverse=False)[0][2]/Y.std()
+        if verbose == 1:
+            print('    Best Model = %s with %0.2f Normalized RMSE score\n' %(besttype,bestscore))
+    else:
+        if scoring == '':
+            scoring = 'f1'
+        scv = StratifiedShuffleSplit(n_splits=FOLDS,random_state=seed)
+        model5 = LogisticRegression(random_state=seed)
+        results1 = cross_val_score(model5,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Logistic Regression',model5,abs(results1.mean())))
+        model6 = LinearDiscriminantAnalysis()
+        results2 = cross_val_score(model6,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Linear Discriminant',model6,abs(results2.mean())))
+        model7 = ExtraTreesClassifier(n_estimators=NUMS,min_samples_leaf=2,random_state=seed)
+        results3 = cross_val_score(model7,X, Y, cv=scv,scoring=scoring)
+        estimators.append(('Bagging',model7,abs(results3.mean())))
+        ## Create an ensemble model ####
+        estimators_list = [(tuples[0],tuples[1]) for tuples in estimators]
+        ensemble = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(
+                                random_state=seed, max_depth=1, min_samples_leaf=2
+        ), n_estimators=NUMS, random_state=seed)
+        results4 = cross_val_score(ensemble,X,Y,cv=scv,scoring=scoring)
+        estimators.append(('Boosting',ensemble, abs(results4.mean())))
+        if verbose == 1:
+            print('\nLogistic Regression = %0.4f \nLinear Discriminant = %0.4f \nBagging = %0.4f \nBoosting = %0.4f' %(
+                abs(results1.mean()), abs(results2.mean()),abs(results3.mean()), abs(results4.mean())))
+        besttype = sorted(estimators,key=lambda x: x[2], reverse=True)[0][0]
+        bestmodel = sorted(estimators,key=lambda x: x[2], reverse=True)[0][1]
+        bestscore = sorted(estimators,key=lambda x: x[2], reverse=True)[0][2]
+        if verbose == 1:
+            print('    Best Model = %s with %0.2f %s score\n' %(besttype,bestscore,scoring))
+    return bestmodel, bestscore, besttype
+########################################################
 ##########################################################
 #Defining AUTO_TIMESERIES here
 ##########################################################
 if	__name__	== "__main__":
-    version_number = '0.0.12'
+    version_number = '0.0.13'
     print("""Running Auto Timeseries version: %s...Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
@@ -1618,7 +1737,7 @@ if	__name__	== "__main__":
                             verbose=0)
     To get detailed charts of actuals and forecasts, set verbose = 1""" %version_number)
 else:
-    version_number = '0.0.12'
+    version_number = '0.0.13'
     print("""Imported Auto_Timeseries version: %s. Call by using Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
