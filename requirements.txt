@@ -1,0 +1,43 @@
+# Library dependencies for the python code.  You need to install these with
+
+# conda create -n <env_name> python=3.6 (or 3.7)
+# source activate <env_name>
+# run requirements
+# python -m ipykernel install --user --name <env_name> --display-name "<Display Name>"
+
+# `pip install -U -r requirements.txt` before you can run this.
+
+# Base libraries
+numpy
+pandas
+scipy
+# ipkernel
+# cython
+# setuptools
+
+# Viz libs
+matplotlib
+plotly
+seaborn
+
+# Stat libraries
+scikit-learn
+statsmodels
+# scikit-garden
+
+# Time-Series
+# pyramid-arima
+
+# PyFlux
+pyflux
+
+# Facebook Prophet
+fbprophet
+
+# Tensorflow 2.0 (which includes Keras)
+tensorflow
+
+# Gradient Boosting
+xgboost
+# lightgbm
+# catboost
