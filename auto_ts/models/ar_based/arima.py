@@ -10,8 +10,8 @@ sns.set(style="white", color_codes=True)
 # imported ARIMA from statsmodels pkg
 from statsmodels.tsa.arima_model import ARIMA
 # helper functions
-from utils import print_static_rmse, print_dynamic_rmse
-from models.ar_based.param_finder import find_lowest_pq
+from ...utils import print_static_rmse, print_dynamic_rmse
+from ...models.ar_based.param_finder import find_lowest_pq
 
 
 def build_arima_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,

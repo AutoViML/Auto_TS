@@ -13,7 +13,7 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 # imported specialized tree models from scikit-garden
 # from skgarden import RandomForestQuantileRegressor
 # helper functions
-from utils import print_static_rmse, print_dynamic_rmse
+from ..utils import print_static_rmse, print_dynamic_rmse
 
 
 def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):

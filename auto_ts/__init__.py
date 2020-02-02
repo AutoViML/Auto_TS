@@ -21,11 +21,11 @@ import operator
 import time
 #######################################
 # Models
-from models import build_arima_model, build_sarimax_model, build_var_model, \
-                   build_pyflux_model, build_prophet_model, run_ensemble_model
+from .models import build_arima_model, build_sarimax_model, build_var_model, \
+                    build_pyflux_model, build_prophet_model, run_ensemble_model
 # Utils
-from utils import colorful, load_ts_data, convert_timeseries_dataframe_to_supervised, \
-                  time_series_plot, print_static_rmse, print_dynamic_rmse
+from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_supervised, \
+                   time_series_plot, print_static_rmse, print_dynamic_rmse
 
 
 def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse',
@@ -395,9 +395,13 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     #print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
     print('    Best Model Score: %0.2f' % ml_dict[best_model_name][score_type])
     return ml_dict
+
+
 ##########################################################
 #Defining AUTO_TIMESERIES here
 ##########################################################
+
+
 if	__name__	== "__main__":
     version_number = '0.0.14'
     print("""Running Auto Timeseries version: %s...Call by using:

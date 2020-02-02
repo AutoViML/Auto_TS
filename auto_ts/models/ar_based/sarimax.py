@@ -6,8 +6,8 @@ get_ipython().magic('matplotlib inline')
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 # helper functions
-from utils import colorful, print_static_rmse, print_dynamic_rmse
-from models.ar_based.param_finder import find_best_pdq_or_PDQ
+from ...utils import colorful, print_static_rmse, print_dynamic_rmse
+from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 
 
 def build_sarimax_model(ts_df, metric, seasonality=False, seasonal_period=None,
