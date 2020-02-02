@@ -400,7 +400,8 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 ##########################################################
 if	__name__	== "__main__":
     version_number = '0.0.14'
-    print("""Running Auto Timeseries version: %s...Call by using Auto_Timeseries(trainfile, ts_column,
+    print("""Running Auto Timeseries version: %s...Call by using:
+        auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
                             seasonal_period=12, seasonal_PDQ=None,
@@ -408,7 +409,8 @@ if	__name__	== "__main__":
     To get detailed charts of actuals and forecasts, set verbose = 1""" % version_number)
 else:
     version_number = '0.0.14'
-    print("""Imported Auto_Timeseries version: %s. Call by using Auto_Timeseries(trainfile, ts_column,
+    print("""Imported Auto_Timeseries version: %s. Call by using:
+        auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
                             timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
                             seasonal_period=12, seasonal_PDQ=None,
