@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 # imported Prophet from fbprophet pkg
 from fbprophet import Prophet
 # helper functions
-from utils import print_dynamic_rmse
+from ..utils import print_dynamic_rmse
 
 
 def build_prophet_model(ts_df, time_col, target, forecast_period, score_type,

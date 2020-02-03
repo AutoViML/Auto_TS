@@ -10,8 +10,8 @@ sns.set(style="white", color_codes=True)
 # imported VARMAX from statsmodels pkg
 from statsmodels.tsa.statespace.varmax import VARMAX
 # helper functions
-from utils import print_dynamic_rmse
-from models.ar_based.param_finder import find_lowest_pq
+from ...utils import print_dynamic_rmse
+from ...models.ar_based.param_finder import find_lowest_pq
 
 
 def build_var_model(df, criteria, forecast_period=2, p_max=3, q_max=3, verbose=0):

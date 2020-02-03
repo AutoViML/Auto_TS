@@ -5,7 +5,7 @@ import operator
 # imported pyflux pkg
 import pyflux as pf
 # helper functions
-from utils import print_static_rmse, print_dynamic_rmse
+from ..utils import print_static_rmse, print_dynamic_rmse
 
 
 #########################################################
