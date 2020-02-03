@@ -14,7 +14,7 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 # from skgarden import RandomForestQuantileRegressor
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse
-
+import pdb
 
 def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):
     """
@@ -82,15 +82,17 @@ def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):
                                     n_estimators=NUMS, random_state=seed)
         results4 = cross_val_score(ensemble, X, Y, cv=tscv, scoring=scoring)
         estimators.append(('Bagging', ensemble, np.sqrt(abs(results4.mean()))))
+        print('Running multiple models...')
         if verbose == 1:
-            print('\nInstance Based = %0.4f \nBoosting = %0.4f\nLinear Model = %0.4f \nBagging = %0.4f' %(
+            print('    Instance Based = %0.4f \n    Boosting = %0.4f\n    Linear Model = %0.4f \n    Bagging = %0.4f' %(
             np.sqrt(abs(results1.mean()))/Y.std(), np.sqrt(abs(results2.mean()))/Y.std(),
             np.sqrt(abs(results3.mean()))/Y.std(), np.sqrt(abs(results4.mean()))/Y.std()))
         besttype = sorted(estimators, key=lambda x: x[2], reverse=False)[0][0]
         bestmodel = sorted(estimators, key=lambda x: x[2], reverse=False)[0][1]
         bestscore = sorted(estimators, key=lambda x: x[2], reverse=False)[0][2]/Y.std()
         if verbose == 1:
-            print('    Best Model = %s with %0.2f Normalized RMSE score\n' % (besttype, bestscore))
+            print('Best Model = %s with %0.2f Normalized RMSE score\n' % (besttype, bestscore))
+        print('Model Results:')
     else:
         if scoring == '':
             scoring = 'f1'

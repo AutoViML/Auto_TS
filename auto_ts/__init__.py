@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 import copy
-import ipdb
+import pdb
 from collections import defaultdict
 import operator
 import time
@@ -105,15 +105,12 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             except:
                 print('File could not be loaded. Check the path or filename and try again')
                 return
-        elif isinstance(trainfile, pd.DataFrame):
-            print('Input is data frame. Performing Time Series Analysis')
-            ts_df = load_ts_data(trainfile, ts_column, sep, target)
-        else:
-            print('File name is an empty string. Please check your input and try again')
-            return
+    elif isinstance(trainfile, pd.DataFrame):
+        print('Input is data frame. Performing Time Series Analysis')
+        ts_df = load_ts_data(trainfile, ts_column, sep, target)
     else:
-        print('Dataframe given as input. Analyzing Time Series data...')
-        ts_df = copy.deepcopy(trainfile)
+        print('File name is an empty string. Please check your input and try again')
+        return
     df_orig = copy.deepcopy(ts_df)
     if ts_df.shape[1] == 1:
         ### If there is only one column, you assume that to be the target column ####
@@ -336,7 +333,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             rmse = np.inf
             norm_rmse = np.inf
         else:
-            # try:
+            try:
                 if df_orig.shape[1] > 1:
                     preds = [x for x in list(ts_df) if x not in [target]]
                     print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
@@ -367,9 +364,9 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
                 else:
                     print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
                     score_val = np.inf
-            # except:
-            #     print('    For ML model, evaluation score is not available.')
-            #     score_val = np.inf
+            except:
+                print('    For ML model, evaluation score is not available.')
+                score_val = np.inf
         ################################################################
         if score_type == 'rmse':
             score_val = rmse
@@ -395,7 +392,6 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     #print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
     print('    Best Model Score: %0.2f' % ml_dict[best_model_name][score_type])
     return ml_dict
-
 
 ##########################################################
 #Defining AUTO_TIMESERIES here

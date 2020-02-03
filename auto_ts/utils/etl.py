@@ -1,6 +1,6 @@
 import pandas as pd
 import copy
-
+import pdb
 
 ##### This function loads a time series data and sets the index as a time series
 def load_ts_data(filename, ts_column, sep, target):
@@ -23,8 +23,13 @@ def load_ts_data(filename, ts_column, sep, target):
     else:
         ### If filename is not a string, it must be a dataframe and can be loaded
         dft = copy.deepcopy(filename)
-        preds = [x for x in list(dft) if x not in [target]]
-        df = dft[[ts_column]+[target]+preds]
+        try:
+            dft.index = pd.to_datetime(dft.pop(ts_column))
+            preds = [x for x in list(dft) if x not in [target]]
+            df = dft[[target]+preds]
+        except:
+            print('Error: Could not convert Time Series column to an index. Please check your input and try again')
+            return dft
     return df
 
 
