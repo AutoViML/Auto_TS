@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import itertools
 import operator
-# imported pyflux pkg
-import pyflux as pf
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse
 
@@ -17,6 +15,12 @@ def build_pyflux_model(df, target, ar=12, ma=12,integ=1, forecast_period=2,
     PyFlux is a fiendishly complicated program with very poor documentation.
     I had to dig deep into the API to figure these things out especially the
     """
+    try:
+        # imported pyflux pkg
+        import pyflux as pf
+    except:
+        print('Pyflux is not installed - hence not running PyFlux model')
+        return 'error','error','error','error'
     ts_df = df[:]
     ##############################################################################
     ts_train = ts_df[:-forecast_period]

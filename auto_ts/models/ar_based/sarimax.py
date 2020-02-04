@@ -129,7 +129,7 @@ def build_sarimax_model(ts_df, metric, seasonality=False, seasonal_period=None,
         print(results.summary())
     print('Dynamic %d-Period Forecast:' % (forecast_period,))
     rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
-    return results, results.get_forecast(forecast_period, full_results=False).summary_frame(), rmse, norm_rmse
+    return bestmodel, results.get_forecast(forecast_period, full_results=False).summary_frame(), rmse, norm_rmse
 
 
 # def predicted_diffs_restored_SARIMAX(original, predicted, periods=1):

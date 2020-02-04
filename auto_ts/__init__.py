@@ -1,7 +1,7 @@
 ####################################################################################
-####                     Auto Time Series Final  0.0.14                         ####
+####                     Auto Time Series Final  0.0.15                         ####
 ####                           Python 3 Version                                 ####
-####                      Developed by Ram Seshadri                             ####
+####                    Conceived and Developed by Ram Seshadri                 ####
 ####                        All Rights Reserved                                 ####
 ####################################################################################
 
@@ -36,7 +36,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ####################################################################################
     ####                          Auto Time Series                                  ####
     ####                           Python 3 Version                                 ####
-    ####                      Developed by Ram Seshadri                             ####
+    ####                    Conceived and Developed by Ram Seshadri                 ####
     ####                        All Rights Reserved                                 ####
     ####################################################################################
     ##################################################################################################
@@ -226,12 +226,16 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ########################### This is where we store all models in a nested dictionary ##########
     mldict = lambda: defaultdict(mldict)
     ml_dict = mldict()
-
+    try:
+        if model_type.lower() == 'all':
+            print('Running all model types. This will take a long time. Be Patient...')
+    except:
+        print('Check if your model type is a string or one of the available types of models')
     ######### This is when you need to use FB Prophet ###################################
     ### When the time interval given does not match the tested_timeinterval, then use FB.
     #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
     #########                 FB Prophet              ###################################
-    if model_type.lower() == 'prophet':
+    if model_type.lower() in ['prophet','all']:
         name = 'FB_Prophet'
         print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
         # try:
@@ -250,7 +254,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         #     print('    FB Prophet may not be installed or Model is not running...')
         #     score_val = np.inf
         ml_dict[name][score_type] = score_val
-    elif model_type.lower() == 'stats':
+    elif model_type.lower() in ['stats','all']:
         ##### First let's try the following models in sequence #########################################
         nsims = 100   ### this is needed only for M-H models in PyFlux
         name = 'PyFlux'
@@ -259,6 +263,11 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = \
                 build_pyflux_model(ts_df, target, p_max, q_max, d_max, forecast_period,
                                    'MLE', nsims, score_type, verbose)
+            if isinstance(rmse,str):
+                print('    PyFlux not installed. Install PyFlux and run it again')
+                score_val = np.inf
+                rmse = np.inf
+                norm_rmse = np.inf
         except:
             print('    PyFlux model error: predictions not available.')
             score_val = np.inf
@@ -331,7 +340,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             score_val = norm_rmse
         ########################################################################
         ml_dict[name][score_type] = score_val
-    elif model_type.lower() == 'ml':
+    elif model_type.lower() in ['ml','all']:
         ########## Let's build a Machine Learning Model now with Time Series Data ################
         name = 'ML'
         if len(preds) == 0:
@@ -384,160 +393,6 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             norm_rmse = np.inf
         ########################################################################
         ml_dict[name][score_type] = score_val
-    elif model_type.lower() == 'all':
-        print('Running all model types. This will take a long time. Be Patient...')
-        ########################################################################
-        name = 'FB_Prophet'
-        print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
-        # try:
-        #### If FB prophet needs to run, it needs to be installed. Check it here ###
-        model, forecast_df, rmse, norm_rmse = build_prophet_model(
-                                    ts_df, ts_column, target, forecast_period,
-                                    score_type, verbose, conf_int)
-        ml_dict[name]['model'] = model
-        ml_dict[name]['forecast'] = forecast_df['yhat'].values
-        ##### Make sure that RMSE works, if not set it to np.inf  #########
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-        # except:
-        #     print('    FB Prophet may not be installed or Model is not running...')
-        #     score_val = np.inf
-        ml_dict[name][score_type] = score_val
-        ########################################################################
-        ##### First let's try the following models in sequence ####################
-        nsims = 100   ### this is needed only for M-H models in PyFlux
-        name = 'PyFlux'
-        print(colorful.BOLD + '\nRunning PyFlux Model...' + colorful.END)
-        try:
-            ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = \
-                build_pyflux_model(ts_df, target, p_max, q_max, d_max, forecast_period,
-                                   'MLE', nsims, score_type, verbose)
-        except:
-            print('    PyFlux model error: predictions not available.')
-            score_val = np.inf
-            rmse = np.inf
-            norm_rmse = np.inf
-        ##### Make sure that RMSE works, if not set it to np.inf  #########
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-        ml_dict[name][score_type] = score_val
-        ################### Let's build an ARIMA Model and add results #################
-        name = 'ARIMA'
-        print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
-        try:
-            ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = build_arima_model(ts_df[target],
-                                                    stats_scoring,p_max,d_max,q_max,
-                                    forecast_period=forecast_period,method='mle',verbose=verbose)
-        except:
-            print('    ARIMA model error: predictions not available.')
-            score_val = np.inf
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-        ml_dict[name][score_type] = score_val
-        ############# Let's build a SARIMAX Model and get results ########################
-        name = 'SARIMAX'
-        print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
-        # try:
-        ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = build_sarimax_model(ts_df[target], stats_scoring, seasonality,
-                                                seasonal_period, p_max, d_max, q_max,
-                                                forecast_period,verbose)
-        # except:
-        #     print('    SARIMAX model error: predictions not available.')
-        #     score_val = np.inf
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-        ml_dict[name][score_type] = score_val
-        ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
-        name = 'VAR'
-        if len(preds) == 0:
-            print('No VAR model since number of predictors is zero')
-            rmse = np.inf
-            norm_rmse = np.inf
-        else:
-            try:
-                if df_orig.shape[1] > 1:
-                    preds = [x for x in list(df_orig) if x not in [target]]
-                    print(colorful.BOLD + '\nRunning VAR Model...' + colorful.END)
-                    print('    Shifting %d predictors by 1 to align prior predictor values with current target values...'
-                                            %len(preds))
-                    ts_df[preds] = ts_df[preds].shift(1)
-                    ts_df.dropna(axis=0,inplace=True)
-                    ml_dict[name]['model'], ml_dict[name]['forecast'], rmse, norm_rmse = build_var_model(ts_df[[target]+preds],stats_scoring,
-                                                forecast_period, p_max, q_max)
-                else:
-                    print(colorful.BOLD + '\nNo predictors available. Skipping VAR model...' + colorful.END)
-                    score_val = np.inf
-            except:
-                print('    VAR model error: predictions not available.')
-                rmse = np.inf
-                norm_rmse = np.inf
-        ################################################################
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-        ########################################################################
-        ml_dict[name][score_type] = score_val
-        ########################################################################
-        ########## Let's build a Machine Learning Model now with Time Series Data #####
-        name = 'ML'
-        if len(preds) == 0:
-            print('No ML model since number of predictors is zero')
-            rmse = np.inf
-            norm_rmse = np.inf
-        else:
-            try:
-                if df_orig.shape[1] > 1:
-                    preds = [x for x in list(ts_df) if x not in [target]]
-                    print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
-                    print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
-                                % (len(preds), lag))
-                    # ipdb.set_trace()
-                    dfxs, target, preds = convert_timeseries_dataframe_to_supervised(ts_df[preds+[target]],
-                                            preds+[target], target, n_in=lag, n_out=0, dropT=False)
-                    train = dfxs[:-forecast_period]
-                    test = dfxs[-forecast_period:]
-                    best = run_ensemble_model(train[preds], train[target], 'TimeSeries',
-                                              score_type, verbose)
-                    bestmodel = best[0]
-                    ml_dict[name]['model'] = bestmodel
-                    ### Certain models dont have random state => so dont do this for all since it will error
-                    #best.set_params(random_state=0)
-                    ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
-                    rmse, norm_rmse = print_dynamic_rmse(test[target].values,
-                                                bestmodel.predict(test[preds]),
-                                                train[target].values)
-                    #### Plotting actual vs predicted for RF Model #################
-                    plt.figure(figsize=(5, 5))
-                    plt.scatter(train.append(test)[target].values,
-                                np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
-                    plt.xlabel('Actual')
-                    plt.ylabel('Predicted')
-                    plt.show()
-                    time_series_plot(dfxs[target], chart_time=timeinterval)
-                else:
-                    print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
-                    score_val = np.inf
-            except:
-                print('    For ML model, evaluation score is not available.')
-                score_val = np.inf
-        ################################################################
-        if score_type == 'rmse':
-            score_val = rmse
-        else:
-            score_val = norm_rmse
-            rmse = np.inf
-            norm_rmse = np.inf
-        ########################################################################
-        ml_dict[name][score_type] = score_val
     else:
         print('The model_type should be either stats, prophet, ml or all. Your input is not available.')
         return ml_dict
@@ -559,7 +414,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 
 
 if	__name__	== "__main__":
-    version_number = '0.0.14'
+    version_number = '0.0.15'
     print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
@@ -568,7 +423,7 @@ if	__name__	== "__main__":
                             verbose=0)
     To get detailed charts of actuals and forecasts, set verbose = 1""" % version_number)
 else:
-    version_number = '0.0.14'
+    version_number = '0.0.15'
     print("""Imported Auto_Timeseries version: %s. Call by using:
         auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
