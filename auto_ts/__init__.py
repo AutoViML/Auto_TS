@@ -1,10 +1,4 @@
 ####################################################################################
-####                     Auto Time Series Final  0.0.15                         ####
-####                           Python 3 Version                                 ####
-####                    Conceived and Developed by Ram Seshadri                 ####
-####                        All Rights Reserved                                 ####
-####################################################################################
-
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -35,7 +29,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     """
     ####################################################################################
     ####                          Auto Time Series                                  ####
-    ####                           Python 3 Version                                 ####
+    ####                           Version 0.0.16 Version                           ####
     ####                    Conceived and Developed by Ram Seshadri                 ####
     ####                        All Rights Reserved                                 ####
     ####################################################################################
@@ -254,7 +248,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         #     print('    FB Prophet may not be installed or Model is not running...')
         #     score_val = np.inf
         ml_dict[name][score_type] = score_val
-    elif model_type.lower() in ['stats','all']:
+    if model_type.lower() in ['stats','all']:
         ##### First let's try the following models in sequence #########################################
         nsims = 100   ### this is needed only for M-H models in PyFlux
         name = 'PyFlux'
@@ -340,7 +334,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             score_val = norm_rmse
         ########################################################################
         ml_dict[name][score_type] = score_val
-    elif model_type.lower() in ['ml','all']:
+    if model_type.lower() in ['ml','all']:
         ########## Let's build a Machine Learning Model now with Time Series Data ################
         name = 'ML'
         if len(preds) == 0:
@@ -414,7 +408,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
 
 
 if	__name__	== "__main__":
-    version_number = '0.0.15'
+    version_number = '0.0.16'
     print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
@@ -423,7 +417,7 @@ if	__name__	== "__main__":
                             verbose=0)
     To get detailed charts of actuals and forecasts, set verbose = 1""" % version_number)
 else:
-    version_number = '0.0.15'
+    version_number = '0.0.16'
     print("""Imported Auto_Timeseries version: %s. Call by using:
         auto_ts.Auto_Timeseries(trainfile, ts_column,
                             sep=',', target=None, score_type='rmse', forecast_period=2,
