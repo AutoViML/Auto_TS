@@ -89,7 +89,10 @@ def build_sarimax_model(ts_df, metric, seasonality=False, seasonal_period=None,
         print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
         return bestmodel, None, np.inf, np.inf
     if verbose == 1:
-        results.plot_diagnostics(figsize=(16, 12))
+        try:
+            results.plot_diagnostics(figsize=(16, 12))
+        except:
+            print('Error: SARIMAX plot diagnostic. Continuing...')
     ### this is needed for static forecasts ####################
     y_truth = ts_train[:]
     y_forecasted = results.predict(dynamic=False)

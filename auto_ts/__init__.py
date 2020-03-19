@@ -2,8 +2,18 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+#############################################################
 import warnings
 warnings.filterwarnings("ignore")
+from sklearn.exceptions import DataConversionWarning
+warnings.filterwarnings(action='ignore', category=DataConversionWarning)
+#### The warnings from Sklearn are so annoying that I have to shut it off ####
+import warnings
+warnings.filterwarnings("ignore")
+def warn(*args, **kwargs):
+    pass
+warnings.warn = warn
+############################################################
 import seaborn as sns
 import matplotlib.pyplot as plt
 get_ipython().magic('matplotlib inline')
@@ -222,7 +232,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ml_dict = mldict()
     try:
         if model_type.lower() == 'all':
-            print('Running all model types. This will take a long time. Be Patient...')
+            print(colorful.BOLD +'WARNING: Running all models will take a long time... Be Patient...' + colorful.END)
     except:
         print('Check if your model type is a string or one of the available types of models')
     ######### This is when you need to use FB Prophet ###################################
