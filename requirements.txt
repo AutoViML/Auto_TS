@@ -17,16 +17,11 @@ scipy
 
 # Viz libs
 matplotlib
-plotly
 seaborn
 
-# Stat libraries
+# Stats libraries
 scikit-learn
 statsmodels
-# scikit-garden
-
-# Time-Series
-# pyramid-arima
 
 # PyFlux
 pyflux
@@ -34,10 +29,3 @@ pyflux
 # Facebook Prophet
 fbprophet
 
-# Tensorflow 2.0 (which includes Keras)
-tensorflow
-
-# Gradient Boosting
-xgboost
-# lightgbm
-# catboost

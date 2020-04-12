@@ -32,14 +32,14 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
                    time_series_plot, print_static_rmse, print_dynamic_rmse
 
 
-def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse',
-                    forecast_period=2, timeinterval='', non_seasonal_pdq=None,
+def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
+                    forecast_period=5, time_interval='', non_seasonal_pdq=None,
                     seasonality=False, seasonal_period=12, seasonal_PDQ=None,
                     conf_int=0.95, model_type="stats", verbose=0):
     """
     ####################################################################################
     ####                          Auto Time Series                                  ####
-    ####                           Version 0.0.16 Version                           ####
+    ####                           Version 0.0.18 Version                           ####
     ####                    Conceived and Developed by Ram Seshadri                 ####
     ####                        All Rights Reserved                                 ####
     ####################################################################################
@@ -57,12 +57,12 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     target: name of the column you are trying to predict. Target could also be the only column in your data
     score_type: 'rmse' is the default. You can choose among "mae", "mse" and "rmse".
     forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer
-    timeinterval: default is "Month". What is the time period in your data set. Options are: "days",
+    time_interval: default is "Month". What is the time period in your data set. Options are: "days",
     model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "All" will build all.
-        - stats will build statsmodels based ARIMA< SARIMAX and VAR models
-        - ml will build a machine learning model using Random Forests provided explanatory vars are given
-        - prophet will build a model using FB Prophet -> this means you must have FB Prophet installed
-        - all will build all the above models which may take a long time for large data sets.
+        - "stats" will build statsmodels based ARIMA< SARIMAX and VAR models
+        - "ml" will build a machine learning model using Random Forests provided explanatory vars are given
+        - "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
+        - "best" will build three of the best models from above which might take some time for large data sets.
     We recommend that you choose a small sample from your data set bedfore attempting to run entire data.
     #####################################################################################################
     and the evaluation metric so it can select the best model. Currently only 2 are supported: RMSE and
@@ -72,7 +72,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     Auto_Timeseries will automatically resample your data to the given time interval and learn to make
     predictions. Notice that except for filename and ts_column which are required, all others are optional.
     Note that optionally you can give a separator for the data in your file. Default is comman (",").
-    "timeinterval" options are: 'Days', 'Weeks', 'Months', 'Qtr', 'Year', 'Minutes', 'Hours', 'Seconds'.
+    "time_interval" options are: 'Days', 'Weeks', 'Months', 'Qtr', 'Year', 'Minutes', 'Hours', 'Seconds'.
     Optionally, you can give seasonal_period as any integer that measures the seasonality in the data.
     If not, seasonal_period is assumed automatically as follows: Months = 12, Days = 30, Weeks = 52,
     Qtr = 4, Year = 1, Hours = 24, Minutes = 60 and Seconds = 60.
@@ -97,9 +97,9 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         d_max = non_seasonal_pdq[1]
         q_max = non_seasonal_pdq[2]
     else:
-        p_max = 12
+        p_max = 3
         d_max = 1
-        q_max = 12
+        q_max = 3
     ################################
     if type(seasonal_PDQ) == tuple:
         seasonal_order = copy.deepcopy(seasonal_PDQ)
@@ -107,17 +107,17 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         seasonal_order = (3, 1, 3)
 
     ########## This is where we start the loading of the data file ######################
-    if isinstance(trainfile, str):
-        if trainfile != '':
+    if isinstance(traindata, str):
+        if traindata != '':
             try:
-                ts_df = load_ts_data(trainfile, ts_column, sep, target)
+                ts_df = load_ts_data(traindata, ts_column, sep, target)
                 print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
             except:
                 print('File could not be loaded. Check the path or filename and try again')
                 return
-    elif isinstance(trainfile, pd.DataFrame):
+    elif isinstance(traindata, pd.DataFrame):
         print('Input is data frame. Performing Time Series Analysis')
-        ts_df = load_ts_data(trainfile, ts_column, sep, target)
+        ts_df = load_ts_data(traindata, ts_column, sep, target)
     else:
         print('File name is an empty string. Please check your input and try again')
         return
@@ -148,7 +148,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     ################    IF TIME INTERVAL IS NOT GIVEN DO THIS   ########################
     #######   This is where the program tries to tease out the time period in the data set ###########
     ##################################################################################################
-    if timeinterval == '':
+    if time_interval == '':
         ts_index = pd.to_datetime(ts_df.index)
         diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
         diffdays = diff.days
@@ -162,22 +162,22 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             print('Time series input in days = %s' % diff_in_days)
             if diff_in_days == 7:
                 print('it is a Weekly time series.')
-                timeinterval = 'weeks'
+                time_interval = 'weeks'
             elif diff_in_days == 1:
                 print('it is a Daily time series.')
-                timeinterval = 'days'
+                time_interval = 'days'
             elif 28 <= diff_in_days < 89:
                 print('it is a Monthly time series.')
-                timeinterval = 'months'
+                time_interval = 'months'
             elif 89 <= diff_in_days < 178:
                 print('it is a Quarterly time series.')
-                timeinterval = 'qtr'
+                time_interval = 'qtr'
             elif 178 <= diff_in_days < 360:
                 print('it is a Semi Annual time series.')
-                timeinterval = 'qtr'
+                time_interval = 'qtr'
             elif diff_in_days >= 360:
                 print('it is an Annual time series.')
-                timeinterval = 'years'
+                time_interval = 'years'
             else:
                 print('Time Series time delta is unknown')
                 return
@@ -185,67 +185,67 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             if diff_in_hours == 0:
                 print('Time series input in Minutes or Seconds = %s' % diff_in_hours)
                 print('it is a Minute time series.')
-                timeinterval = 'minutes'
+                time_interval = 'minutes'
             elif diff_in_hours >= 1:
                 print('it is an Hourly time series.')
-                timeinterval = 'hours'
+                time_interval = 'hours'
             else:
                 print('It is an Unknown Time Series delta')
                 return
     else:
-        print('Time Interval is given as %s' % timeinterval)
+        print('Time Interval is given as %s' % time_interval)
 
     ################# This is where you test the data and find the time interval #######
-    timeinterval = timeinterval.strip().lower()
-    if timeinterval in ['months', 'month', 'm']:
-        timeinterval = 'months'
+    time_interval = time_interval.strip().lower()
+    if time_interval in ['months', 'month', 'm']:
+        time_interval = 'months'
         seasonal_period = 12
-    elif timeinterval in ['days', 'daily', 'd']:
-        timeinterval = 'days'
+    elif time_interval in ['days', 'daily', 'd']:
+        time_interval = 'days'
         seasonal_period = 30
         # Commented out b/c resample only works with DatetimeIndex, not Index
         # ts_df = ts_df.resample('D').sum()
-    elif timeinterval in ['weeks', 'weekly', 'w']:
-        timeinterval = 'weeks'
+    elif time_interval in ['weeks', 'weekly', 'w']:
+        time_interval = 'weeks'
         seasonal_period = 52
-    elif timeinterval in ['qtr', 'quarter', 'q']:
-        timeinterval = 'qtr'
+    elif time_interval in ['qtr', 'quarter', 'q']:
+        time_interval = 'qtr'
         seasonal_period = 4
-    elif timeinterval in ['years', 'year', 'annual', 'y', 'a']:
-        timeinterval = 'years'
+    elif time_interval in ['years', 'year', 'annual', 'y', 'a']:
+        time_interval = 'years'
         seasonal_period = 1
-    elif timeinterval in ['hours', 'hourly', 'h']:
-        timeinterval = 'hours'
+    elif time_interval in ['hours', 'hourly', 'h']:
+        time_interval = 'hours'
         seasonal_period = 24
-    elif timeinterval in ['minutes', 'minute', 'min', 'n']:
-        timeinterval = 'minutes'
+    elif time_interval in ['minutes', 'minute', 'min', 'n']:
+        time_interval = 'minutes'
         seasonal_period = 60
-    elif timeinterval in ['seconds', 'second', 'sec', 's']:
-        timeinterval = 'seconds'
+    elif time_interval in ['seconds', 'second', 'sec', 's']:
+        time_interval = 'seconds'
         seasonal_period = 60
     else:
-        timeinterval = 'months'
+        time_interval = 'months'
         seasonal_period = 12
 
     ########################### This is where we store all models in a nested dictionary ##########
     mldict = lambda: defaultdict(mldict)
     ml_dict = mldict()
     try:
-        if model_type.lower() == 'all':
-            print(colorful.BOLD +'WARNING: Running all models will take a long time... Be Patient...' + colorful.END)
+        if model_type.lower() == 'best':
+            print(colorful.BOLD +'WARNING: Running best models will take time... Be Patient...' + colorful.END)
     except:
         print('Check if your model type is a string or one of the available types of models')
     ######### This is when you need to use FB Prophet ###################################
-    ### When the time interval given does not match the tested_timeinterval, then use FB.
+    ### When the time interval given does not match the tested_time_interval, then use FB.
     #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
     #########                 FB Prophet              ###################################
-    if model_type.lower() in ['prophet','all']:
+    if model_type.lower() in ['prophet','best']:
         name = 'FB_Prophet'
         print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
         # try:
         #### If FB prophet needs to run, it needs to be installed. Check it here ###
         model, forecast_df, rmse, norm_rmse = build_prophet_model(
-                                    ts_df, ts_column, target, forecast_period,
+                                    ts_df, ts_column, target, forecast_period, time_interval,
                                     score_type, verbose, conf_int)
         ml_dict[name]['model'] = model
         ml_dict[name]['forecast'] = forecast_df['yhat'].values
@@ -258,7 +258,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         #     print('    FB Prophet may not be installed or Model is not running...')
         #     score_val = np.inf
         ml_dict[name][score_type] = score_val
-    if model_type.lower() in ['stats','all']:
+    if model_type.lower() in ['stats','best']:
         ##### First let's try the following models in sequence #########################################
         nsims = 100   ### this is needed only for M-H models in PyFlux
         name = 'PyFlux'
@@ -316,7 +316,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
         ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
         name = 'VAR'
         if len(preds) == 0:
-            print('No VAR model since number of predictors is zero')
+            print(colorful.BOLD + '\nNo VAR model created since no explanatory variables given in data set' + colorful.END)
             rmse = np.inf
             norm_rmse = np.inf
         else:
@@ -344,7 +344,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             score_val = norm_rmse
         ########################################################################
         ml_dict[name][score_type] = score_val
-    if model_type.lower() in ['ml','all']:
+    if model_type.lower() in ['ml','best']:
         ########## Let's build a Machine Learning Model now with Time Series Data ################
         name = 'ML'
         if len(preds) == 0:
@@ -381,7 +381,7 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
                     plt.ylabel('Predicted')
                     plt.show()
                     ############ Draw a plot of the Time Series data ######
-                    time_series_plot(dfxs[target], chart_time=timeinterval)
+                    time_series_plot(dfxs[target], chart_time=time_interval)
                 else:
                     print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
                     score_val = np.inf
@@ -397,8 +397,8 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
             norm_rmse = np.inf
         ########################################################################
         ml_dict[name][score_type] = score_val
-    else:
-        print('The model_type should be either stats, prophet, ml or all. Your input is not available.')
+    if not model_type.lower() in ['stats','ml', 'prophet', 'best']:
+        print('The model_type should be either stats, prophet, ml or best. Check your input and try again...')
         return ml_dict
     ######## Selecting the best model based on the lowest rmse score ######
     f1_stats = {}
@@ -408,30 +408,21 @@ def Auto_Timeseries(trainfile, ts_column, sep=',', target=None, score_type='rmse
     print(colorful.BOLD + '\nBest Model is:' + colorful.END)
     print('    %s' % best_model_name)
     best_model = ml_dict[best_model_name]['model']
-    #print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
+    print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
     print('    Best Model Score: %0.2f' % ml_dict[best_model_name][score_type])
     return ml_dict
 
 ##########################################################
 #Defining AUTO_TIMESERIES here
 ##########################################################
-
-
-if	__name__	== "__main__":
-    version_number = '0.0.16'
-    print("""Running Auto Timeseries version: %s...Call by using:
-        auto_ts.Auto_Timeseries(trainfile, ts_column,
-                            sep=',', target=None, score_type='rmse', forecast_period=2,
-                            timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
-                            seasonal_period=12, seasonal_PDQ=None,
-                            verbose=0)
-    To get detailed charts of actuals and forecasts, set verbose = 1""" % version_number)
-else:
-    version_number = '0.0.16'
-    print("""Imported Auto_Timeseries version: %s. Call by using:
-        auto_ts.Auto_Timeseries(trainfile, ts_column,
-                            sep=',', target=None, score_type='rmse', forecast_period=2,
-                            timeinterval='Month', non_seasonal_pdq=None, seasonality=False,
-                            seasonal_period=12, seasonal_PDQ=None,
-                            verbose=0)
-    To get detailed charts of actuals and forecasts, set verbose = 1""" % version_number)
+module_type = 'Running' if  __name__ == "__main__" else 'Imported'
+version_number = '0.0.18'
+print("""Running Auto Timeseries version: %s...Call by using:
+        auto_ts.Auto_Timeseries(traindata, ts_column,
+                            target, sep,  score_type='rmse', forecast_period=5,
+                            time_interval='Month', non_seasonal_pdq=None, seasonality=False,
+                            seasonal_period=12, seasonal_PDQ=None, model_type='stats',
+                            verbose=1)
+    To run three models from Stats, ML and FB Prophet, set model_type='best'""" % version_number)
+print("To remove previous versions, perform 'pip uninstall auto_ts'")
+print('To get the latest version, perform "pip install auto_ts --no-cache-dir --ignore-installed"')

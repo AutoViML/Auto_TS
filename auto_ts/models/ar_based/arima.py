@@ -12,9 +12,9 @@ from statsmodels.tsa.arima_model import ARIMA
 # helper functions
 from ...utils import print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_lowest_pq
+import pdb
 
-
-def build_arima_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
+def build_arima_model(ts_df, metric='aic', p_max=3, d_max=1, q_max=3,
                       forecast_period=2, method='mle', verbose=0):
     """
     This builds a Non Seasonal ARIMA model given a Univariate time series dataframe with time
@@ -97,7 +97,7 @@ def build_arima_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
         results = bestmodel.fit(transparams=False, method=method)
     ### this is needed for static forecasts ####################
     y_truth = ts_train[:]
-    y_forecasted = results.predict()
+    y_forecasted = results.predict(typ='levels')
     concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
     if best_d == 0:
         #### Do this for ARIMA only ######
@@ -128,8 +128,11 @@ def build_arima_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
         start_date = ts_df.index[-forecast_period]
         end_date = ts_df.index[-1]
         pred_dynamic = results.predict(typ=pred_type, start=start_date, end=end_date, dynamic=True)
-        pred_dynamic[pd.to_datetime((pred_dynamic.index-best_d).values[0])] = \
+        try:
+            pred_dynamic[pd.to_datetime((pred_dynamic.index-best_d).values[0])] = \
                                      y_truth[pd.to_datetime((pred_dynamic.index-best_d).values[0])]
+        except:
+            print('Dynamic predictions erroring but continuing...')
         pred_dynamic.sort_index(inplace=True)
         print('\nDynamic %d-period Forecasts:' % forecast_period)
         if verbose == 1:
@@ -139,10 +142,12 @@ def build_arima_model(ts_df, metric='aic', p_max=12, d_max=1, q_max=12,
             ax.set_ylabel('Values')
             plt.legend()
             plt.show()
-    #### Don't know if we need to fit again! ############
-    results = bestmodel.fit()
     if verbose == 1:
-        results.plot_diagnostics(figsize=(16, 12))
+        try:
+            results.plot_diagnostics(figsize=(16, 12))
+        except:
+            pass
+    print(results.summary())
     res_frame = pd.DataFrame([results.forecast(forecast_period)[0], results.forecast(forecast_period)[1],
                                                results.forecast(forecast_period)[2]],
                                                index=['mean','mean_se','mean_ci'],

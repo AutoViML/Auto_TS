@@ -7,7 +7,7 @@ from ..utils import print_static_rmse, print_dynamic_rmse
 
 
 #########################################################
-def build_pyflux_model(df, target, ar=12, ma=12,integ=1, forecast_period=2,
+def build_pyflux_model(df, target, ar=3, ma=3,integ=1, forecast_period=2,
                        fitmethod='MLE', nsims=100, score_type='rmse', verbose=0):
     """
     Build a quick pyflux model with default parameters for AR, MA and I terms in ARIMA.

@@ -2,13 +2,16 @@ import numpy as np
 import pandas as pd
 import copy
 import matplotlib.pyplot as plt
-# imported Prophet from fbprophet pkg
-from fbprophet import Prophet
 # helper functions
 from ..utils import print_dynamic_rmse
+# imported Prophet from fbprophet pkg
+from fbprophet import Prophet
+#### Suppress INFO messages from FB Prophet!
+import logging
+logging.getLogger('fbprophet').setLevel(logging.WARNING)
 
-
-def build_prophet_model(ts_df, time_col, target, forecast_period, score_type,
+def build_prophet_model(ts_df, time_col, target, forecast_period, time_interval,
+                        score_type,
                         verbose, conf_int):
     """
     Build a Time Series Model using Facebook Prophet which is a powerful model.
@@ -44,7 +47,26 @@ def build_prophet_model(ts_df, time_col, target, forecast_period, score_type,
     ##   1. Create a dataframe with datetime index of past and future dates
     print('Building Forecast dataframe. Forecast Period = %d' % forecast_period)
     # Next we ask Prophet to make predictions for those dates in the dataframe along with predn intervals
-    future = model.make_future_dataframe(periods=forecast_period)
+    if time_interval in ['months', 'month', 'm']:
+        time_int = 'M'
+    elif time_interval in ['days', 'daily', 'd']:
+        time_int = 'D'
+    elif time_interval in ['weeks', 'weekly', 'w']:
+        time_int = 'W'
+        seasonal_period = 52
+    elif time_interval in ['qtr', 'quarter', 'q']:
+        time_int = 'Q'
+    elif time_interval in ['years', 'year', 'annual', 'y', 'a']:
+        time_int = 'Y'
+    elif time_interval in ['hours', 'hourly', 'h']:
+        time_int = 'H'
+    elif time_interval in ['minutes', 'minute', 'min', 'n']:
+        time_int = 'M'
+    elif time_interval in ['seconds', 'second', 'sec', 's']:
+        time_interval = 'S'
+    else:
+        time_int = 'W'
+    future = model.make_future_dataframe(periods=forecast_period, freq=time_int)
     forecast = model.predict(future)
     act_n = len(dft)
     ####  We are going to plot Prophet's forecasts differently since it is better
