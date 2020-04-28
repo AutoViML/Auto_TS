@@ -29,7 +29,7 @@ def load_ts_data(filename, ts_column, sep, target):
             df = dft[[target]+preds]
         except:
             print('Error: Could not convert Time Series column to an index. Please check your input and try again')
-            return dft
+            return ''
     return df
 
 

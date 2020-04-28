@@ -27,9 +27,12 @@ import time
 # Models
 from .models import build_arima_model, build_sarimax_model, build_var_model, \
                     build_pyflux_model, build_prophet_model, run_ensemble_model
+#from .models import build_ml, build_prophet, build_pyflux
+
 # Utils
 from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_supervised, \
                    time_series_plot, print_static_rmse, print_dynamic_rmse
+#from .utils import colors, eda, etl, metrics, val
 
 
 def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
@@ -39,7 +42,7 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
     """
     ####################################################################################
     ####                          Auto Time Series                                  ####
-    ####                           Version 0.0.18 Version                           ####
+    ####                           Version 0.0.19 Version                           ####
     ####                    Conceived and Developed by Ram Seshadri                 ####
     ####                        All Rights Reserved                                 ####
     ####################################################################################
@@ -111,13 +114,24 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
         if traindata != '':
             try:
                 ts_df = load_ts_data(traindata, ts_column, sep, target)
-                print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
+                if isinstance(ts_df, str):
+                    print("""Time Series column %s could not be converted to a Pandas date time column.
+                         Please convert your input into a date-time column  and try again""" %ts_column)
+                    return
+                else:
+                    print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
             except:
                 print('File could not be loaded. Check the path or filename and try again')
                 return
     elif isinstance(traindata, pd.DataFrame):
         print('Input is data frame. Performing Time Series Analysis')
         ts_df = load_ts_data(traindata, ts_column, sep, target)
+        if isinstance(ts_df, str):
+            print("""Time Series column %s could not be converted to a Pandas date time column.
+                 Please convert your input into a date-time column  and try again""" %ts_column)
+            return
+        else:
+            print('    Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
     else:
         print('File name is an empty string. Please check your input and try again')
         return
@@ -416,7 +430,7 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.18'
+version_number = '0.0.19'
 print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(traindata, ts_column,
                             target, sep,  score_type='rmse', forecast_period=5,
