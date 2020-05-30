@@ -22,9 +22,9 @@ TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT 
 Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
 and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
 It will return the best model and a dataframe containing predictions for forecast_period (default=2).
-####################################################################################
+####################################################################################<br>
 INPUT:
-####################################################################################
+####################################################################################><br>
 trainfile: name of the file along with its data path or a dataframe. It accepts both.
 ts_column: name of the datetime column in your dataset (it could be name or number)
 target: name of the column you are trying to predict. Target could also be the only column in your data
