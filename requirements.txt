@@ -11,9 +11,6 @@
 numpy
 pandas
 scipy
-# ipkernel
-# cython
-# setuptools
 
 # Viz libs
 matplotlib
@@ -28,4 +25,3 @@ pyflux
 
 # Facebook Prophet
 fbprophet
-
