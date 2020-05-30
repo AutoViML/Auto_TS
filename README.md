@@ -21,7 +21,7 @@ AUTO_TIMESERIES IS A COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE 
 TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
 Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
 and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
-It will return the best model and a dataframe containing predictions for forecast_period (default=2).
+It will return the best model and a dataframe containing predictions for forecast_period (default=2).<br>
 ####################################################################################<br>
 INPUT:
 ####################################################################################><br>
