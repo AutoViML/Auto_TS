@@ -17,15 +17,14 @@ Automatically build multiple Time Series models with a single line of code
 ####                    Conceived and Developed by Ram Seshadri                 ####
 ####                        All Rights Reserved                                 ####
 ####################################################################################
-##################################################################################################
 AUTO_TIMESERIES IS A COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES MANY
 TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
 Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
 and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
 It will return the best model and a dataframe containing predictions for forecast_period (default=2).
-#####################################################################################################
+####################################################################################
 INPUT:
-#####################################################################################################
+####################################################################################
 trainfile: name of the file along with its data path or a dataframe. It accepts both.
 ts_column: name of the datetime column in your dataset (it could be name or number)
 target: name of the column you are trying to predict. Target could also be the only column in your data
@@ -37,7 +36,7 @@ model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "
     - "ml" will build a machine learning model using Random Forests provided explanatory vars are given
     - "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
     - "best" will build three of the best models from above which might take some time for large data sets.
-#####################################################################################################
+####################################################################################
 We recommend that you choose a small sample from your data set before attempting to run entire data.
 and the evaluation metric so it can select the best model. Currently only 2 are supported: RMSE and
 Normalized RMSE (ratio of RMSE to the standard deviation of actuals). Other eval metrics will be soon.
@@ -55,4 +54,4 @@ as tuples. For example, seasonal_PDQ = (2,1,2) and non_seasonal_pdq = (0,0,3). I
 The defaul is None and Auto_Timeseries will automatically search for the best p,d,q (for Non Seasonal)
 and P, D, Q (for Seasonal) orders by searching for all parameters from 0 to 12 for each value of
 p,d,q and 0-3 for each P, Q and 0-1 for D.
-#####################################################################################################
+####################################################################################
