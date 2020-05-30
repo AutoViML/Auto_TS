@@ -26,17 +26,18 @@ It will return the best model and a dataframe containing predictions for forecas
 <br>
 INPUT:<br>
 ####################################################################################><br>
-trainfile: name of the file along with its data path or a dataframe. It accepts both.
-ts_column: name of the datetime column in your dataset (it could be name or number)
-target: name of the column you are trying to predict. Target could also be the only column in your data
-score_type: 'rmse' is the default. You can choose among "mae", "mse" and "rmse".
-forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer
-time_interval: default is "Month". What is the time period in your data set. Options are: "days",
-model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "All" will build all.
-    - "stats" will build statsmodels based ARIMA< SARIMAX and VAR models
-    - "ml" will build a machine learning model using Random Forests provided explanatory vars are given
-    - "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
-    - "best" will build three of the best models from above which might take some time for large data sets.
+trainfile: name of the file along with its data path or a dataframe. It accepts both.<br>
+ts_column: name of the datetime column in your dataset (it could be name or number)<br>
+target: name of the column you are trying to predict. Target could also be the only column in your data <br>
+score_type: 'rmse' is the default. You can choose among "mae", "mse" and "rmse". <br>
+forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer <br>
+time_interval: default is "Month". What is the time period in your data set. Options are: "day",<br>
+'month','week','year','quarter' etc. <br>
+model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "All" will build all. <br>
+    - "stats" will build statsmodels based ARIMA< SARIMAX and VAR models <br>
+    - "ml" will build a machine learning model using Random Forests provided explanatory vars are given <br>
+    - "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed <br>
+    - "best" will build three of the best models from above which might take some time for large data sets. <br>
 ####################################################################################
 We recommend that you choose a small sample from your data set before attempting to run entire data.
 and the evaluation metric so it can select the best model. Currently only 2 are supported: RMSE and
