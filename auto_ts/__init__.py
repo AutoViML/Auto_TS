@@ -430,7 +430,7 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.19'
+version_number = '0.0.20'
 print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(traindata, ts_column,
                             target, sep,  score_type='rmse', forecast_period=5,
