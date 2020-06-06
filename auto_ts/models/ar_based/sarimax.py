@@ -1,10 +1,10 @@
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 import copy
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 get_ipython().magic('matplotlib inline')
 # imported SARIMAX from statsmodels pkg
-from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 # helper functions
 from ...utils import colorful, print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_best_pdq_or_PDQ

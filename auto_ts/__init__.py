@@ -1,11 +1,11 @@
 ####################################################################################
-import pandas as pd
-import numpy as np
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
 from datetime import datetime
 #############################################################
 import warnings
 warnings.filterwarnings("ignore")
-from sklearn.exceptions import DataConversionWarning
+from sklearn.exceptions import DataConversionWarning # type: ignore
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 #### The warnings from Sklearn are so annoying that I have to shut it off ####
 import warnings
@@ -14,8 +14,8 @@ def warn(*args, **kwargs):
     pass
 warnings.warn = warn
 ############################################################
-import seaborn as sns
-import matplotlib.pyplot as plt
+import seaborn as sns  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
 get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 import copy
@@ -87,11 +87,11 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
     #####################################################################################################
     """
 
-    start_time = time.time()
+    # start_time = time.time()  # Unused
 
     ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
     stats_scoring = 'aic'
-    seed = 99
+    # seed = 99  # Unused
 
     ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
     lag = copy.deepcopy(forecast_period)-1
@@ -104,10 +104,11 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
         d_max = 1
         q_max = 3
     ################################
-    if type(seasonal_PDQ) == tuple:
-        seasonal_order = copy.deepcopy(seasonal_PDQ)
-    else:
-        seasonal_order = (3, 1, 3)
+    # Check: seasonal_order is not used anywhere in the code, hence commented for now.
+    # if type(seasonal_PDQ) == tuple:
+    #     seasonal_order = copy.deepcopy(seasonal_PDQ)
+    # else:
+    #     seasonal_order = (3, 1, 3)
 
     ########## This is where we start the loading of the data file ######################
     if isinstance(traindata, str):
@@ -416,12 +417,12 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
         return ml_dict
     ######## Selecting the best model based on the lowest rmse score ######
     f1_stats = {}
-    for key, val in ml_dict.items():
+    for key, _ in ml_dict.items():
         f1_stats[key] = ml_dict[key][score_type]
     best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]
     print(colorful.BOLD + '\nBest Model is:' + colorful.END)
     print('    %s' % best_model_name)
-    best_model = ml_dict[best_model_name]['model']
+    # best_model = ml_dict[best_model_name]['model']  # unused
     print('    Best Model Forecasts: %s' %ml_dict[best_model_name]['forecast'])
     print('    Best Model Score: %0.2f' % ml_dict[best_model_name][score_type])
     return ml_dict
