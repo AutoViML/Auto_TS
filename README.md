@@ -1,8 +1,3 @@
----
-
-
----
-
 <h1 id="auto-ts">Auto-TS</h1>
 <p>Automatically build multiple Time Series models using a Single Line of Code.</p>
 <h2 id="introduction">Introduction</h2>
