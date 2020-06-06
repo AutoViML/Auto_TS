@@ -159,7 +159,7 @@ def build_arima_model(ts_df, metric='aic', p_max=3, d_max=1, q_max=3,
     if verbose == 1:
         print('Model Forecast(s):\n', res_frame)
     rmse, norm_rmse = print_dynamic_rmse(ts_test, pred_dynamic, ts_train)
-    return bestmodel, res_frame, rmse, norm_rmse
+    return results, res_frame, rmse, norm_rmse
 
 
 def predicted_diffs_restored_ARIMA(actuals, predicted, periods=1):
