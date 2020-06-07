@@ -1,7 +1,7 @@
 <h1 id="auto-ts">Auto-TS</h1>
 <p>Automatically build multiple Time Series models using a Single Line of Code.</p>
 <h2 id="introduction">Introduction</h2>
-<p>auto-ts is an automated ml library for time series data.</p>
+<p>auto-ts is an Automated ML library for time series data.</p>
 <p>auto-ts enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
 <p>auto-ts,Auto_TimeSeries() is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or FB prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
 <h2 id="installation-instructions">INSTALLATION INSTRUCTIONS</h2>
@@ -57,4 +57,3 @@ data</li>
 <p>This is not an Officially supported Google project.</p>
 <h2 id="copyright">Copyright</h2>
 <p>© Google</p>
-
