@@ -1,15 +1,15 @@
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 # imported ML models from scikit-learn
-from sklearn.model_selection import ShuffleSplit, StratifiedShuffleSplit, \
-                                    TimeSeriesSplit, cross_val_score
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.ensemble import BaggingRegressor, ExtraTreesRegressor, \
-                             RandomForestClassifier, ExtraTreesClassifier, \
-                             AdaBoostRegressor, AdaBoostClassifier
-from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV
-from sklearn.svm import LinearSVC, SVR, LinearSVR
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.model_selection import (ShuffleSplit, StratifiedShuffleSplit, # type: ignore
+                                    TimeSeriesSplit, cross_val_score) # type: ignore
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis # type: ignore
+from sklearn.ensemble import (BaggingRegressor, ExtraTreesRegressor,  # type: ignore
+                             RandomForestClassifier, ExtraTreesClassifier,  # type: ignore
+                             AdaBoostRegressor, AdaBoostClassifier) # type: ignore
+from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV # type: ignore
+from sklearn.svm import LinearSVC, SVR, LinearSVR # type: ignore
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: ignore
 # imported specialized tree models from scikit-garden
 # from skgarden import RandomForestQuantileRegressor
 # helper functions
@@ -45,7 +45,7 @@ def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):
         results3 = cross_val_score(model7, X, Y, cv=scv, scoring=scoring)
         estimators.append(('Linear Regularization', model7, np.sqrt(abs(results3.mean()))))
         ## Create an ensemble model ####
-        estimators_list = [(tuples[0], tuples[1]) for tuples in estimators]
+        # estimators_list = [(tuples[0], tuples[1]) for tuples in estimators] # unused
         ensemble = BaggingRegressor(DecisionTreeRegressor(random_state=seed),
                                     n_estimators=NUMS, random_state=seed)
         results4 = cross_val_score(ensemble, X, Y, cv=scv, scoring=scoring)
@@ -77,7 +77,7 @@ def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):
         results3 = cross_val_score(model7, X, Y, cv=tscv, scoring=scoring)
         estimators.append(('LinearSVR', model7, np.sqrt(abs(results3.mean()))))
         ## Create an ensemble model ####
-        estimators_list = [(tuples[0], tuples[1]) for tuples in estimators]
+        # estimators_list = [(tuples[0], tuples[1]) for tuples in estimators] # unused
         ensemble = BaggingRegressor(DecisionTreeRegressor(random_state=seed),
                                     n_estimators=NUMS, random_state=seed)
         results4 = cross_val_score(ensemble, X, Y, cv=tscv, scoring=scoring)
@@ -107,7 +107,7 @@ def run_ensemble_model(X, Y, modeltype='Regression', scoring='', verbose=0):
         results3 = cross_val_score(model7, X, Y, cv=scv, scoring=scoring)
         estimators.append(('Bagging', model7, abs(results3.mean())))
         ## Create an ensemble model ####
-        estimators_list = [(tuples[0], tuples[1]) for tuples in estimators]
+        # estimators_list = [(tuples[0], tuples[1]) for tuples in estimators] # unused
         ensemble = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(
                                       random_state=seed, max_depth=1, min_samples_leaf=2),
                                       n_estimators=NUMS, random_state=seed)

@@ -1,7 +1,8 @@
 from typing import Tuple
-import numpy as np
-import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import matplotlib.pyplot as plt # type: ignore
+from sklearn.metrics import mean_absolute_error, mean_squared_error # type: ignore  
 
 
 def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, verbose: int=0) -> Tuple[float, float]:

@@ -1,12 +1,14 @@
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-get_ipython().magic('matplotlib inline')
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
+import matplotlib.pyplot as plt # type: ignore
+import seaborn as sns # type: ignore
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import TimeSeriesSplit # type: ignore
+from sklearn.model_selection import GridSearchCV # type: ignore
 
 #########################################################
 def cross_validation_time_series(model, df, preds, target,n_times=10,verbose=0):
@@ -36,6 +38,7 @@ def cross_validation_time_series(model, df, preds, target,n_times=10,verbose=0):
             print('    Training Index %d Observations: %s' %(len(train_index),train_index))
             print('    Testing Index %d Observations: %s' %(len(test_index),test_index))
         model.fit(X_train, y_train)
+        # TODO: Check print_rmse is not defined or loaded
         rmse = print_rmse(y_test, model.predict(X_test))
         rmse_list.append(rmse)
         norm_rmse = rmse/y_test.std()
@@ -64,12 +67,12 @@ def rolling_validation_time_series(model, df, preds, target,train_size=0,
     X = df[preds].values
     y = df[target].values
     non_df = {}
-    rmse_list = []
+    # rmse_list = []  # # TODO: Unused (check)
     if train_size == 0:
         train_size = np.int(np.ceil(len(y)/2))
     if test_size == 0:
         test_size = np.int(np.ceil(len(y)/4))
-    step_size = np.int(np.ceil(test_size/10))
+    # step_size = np.int(np.ceil(test_size/10))  # TODO: Unused (check)
     n_records = len(X)
     ### This contains the start point of test size for each K-Fold in time series
     test_list = np.floor(np.linspace(train_size,n_records-1,5)).tolist()
@@ -94,6 +97,7 @@ def rolling_validation_time_series(model, df, preds, target,train_size=0,
             if verbose:
                 print('Iteration %d: Observations:%d' %(index+1,len(X_train)+len(X_test)))
                 print('    Train Size=%d, Test Size=%d' %(len(y_train),len(y_test)))
+            # TODO: 
             rmse = print_rmse(y_test, model.predict(X_test))
             norm_rmse = rmse/y_test.std()
             non_df[i] = rmse
@@ -116,6 +120,7 @@ def rolling_validation_time_series(model, df, preds, target,train_size=0,
             if verbose:
                 print('Iteration %d: Observations:%d' %(index+1,len(X_train)+len(X_test)))
                 print('    Train Size=%d, Test Size=%d' %(len(y_train),len(y_test)))
+            # TODO: Check print_rmse is not defined or loaded
             rmse = print_rmse(y_test, model.predict(X_test))
             norm_rmse = rmse/y_test.std()
             non_df[i] = rmse
@@ -149,6 +154,8 @@ def ts_model_validation(model_results):
     # the more evidence for positive serial correlation. The closer to 4,
     # the more evidence for negative serial correlation.
     # Essentially, below 1 or above 3 is bad.
+
+    # TODO: Checdk statsmodel is not loaded as sm.
     dw = sm.stats.stattools.durbin_watson(model_results.filter_results.standardized_forecasts_error[0, model_results.loglikelihood_burn:])
 
     # check whether roots are outside the unit circle (we want them to be);

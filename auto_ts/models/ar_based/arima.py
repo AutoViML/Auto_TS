@@ -1,14 +1,17 @@
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
 import itertools
 import operator
 import copy
+import seaborn as sns  # type: ignore
 import matplotlib.pyplot as plt
-import seaborn as sns
-get_ipython().magic('matplotlib inline')
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # imported ARIMA from statsmodels pkg
-from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.arima_model import ARIMA # type: ignore
 # helper functions
 from ...utils import print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_lowest_pq
@@ -75,7 +78,7 @@ def build_arima_model(ts_df, metric='aic', p_max=3, d_max=1, q_max=3,
         interim_d = copy.deepcopy(d_val)
         interim_p, interim_q, interim_bic = find_lowest_pq(results_bic)
         if verbose == 1:
-            fig, ax = plt.subplots(figsize=(20, 10))
+            _, ax = plt.subplots(figsize=(20, 10))
             ax = sns.heatmap(results_bic,
                              mask=results_bic.isnull(),
                              ax=ax,
@@ -112,7 +115,7 @@ def build_arima_model(ts_df, metric='aic', p_max=3, d_max=1, q_max=3,
             pred_dynamic.plot(label='Dynamic Forecast', ax=ax, figsize=(15, 5))
             print('Dynamic %d-period Forecasts:' % (forecast_period,))
             plt.legend()
-            plt.show()
+            plt.show(block=False)
     else:
         #### Do this for ARIMA only ######
         ####  If there is differencing, you must use "levels" as the predict type to get original levels as actuals
@@ -141,7 +144,7 @@ def build_arima_model(ts_df, metric='aic', p_max=3, d_max=1, q_max=3,
             ax.set_xlabel('Date')
             ax.set_ylabel('Values')
             plt.legend()
-            plt.show()
+            plt.show(block=False)
     if verbose == 1:
         try:
             results.plot_diagnostics(figsize=(16, 12))

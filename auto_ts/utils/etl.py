@@ -1,6 +1,7 @@
-import pandas as pd
+import pandas as pd  # type: ignore
 import copy
 import pdb
+from sklearn.model_selection import TimeSeriesSplit  # type: ignore
 
 ##### This function loads a time series data and sets the index as a time series
 def load_ts_data(filename, ts_column, sep, target):
@@ -37,7 +38,6 @@ def time_series_split(ts_df):
     """
     This utility splits any dataframe sent as a time series split using the sklearn function.
     """
-    from sklearn.model_selection import TimeSeriesSplit
     tscv = TimeSeriesSplit(n_splits=2)
     train_index, test_index = list(tscv.split(ts_df))[1][0], list(tscv.split(ts_df))[1][1]
     ts_train, ts_test = ts_df[ts_df.index.isin(train_index)], ts_df[
@@ -46,7 +46,7 @@ def time_series_split(ts_df):
     return ts_train, ts_test
 
 
-def convert_timeseries_dataframe_to_supervised(df, namevars, target, n_in=1, n_out=0, dropT=True):
+def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, target, n_in=1, n_out=0, dropT=True):
     """
     Transform a time series in dataframe format into a supervised learning dataset while
     keeping dataframe intact.

@@ -1,14 +1,16 @@
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd # type: ignore
 import itertools
 import operator
 import copy
-import matplotlib.pyplot as plt
-import seaborn as sns
-get_ipython().magic('matplotlib inline')
+import matplotlib.pyplot as plt # type: ignore
+import seaborn as sns # type: ignore
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # imported VARMAX from statsmodels pkg
-from statsmodels.tsa.statespace.varmax import VARMAX
+from statsmodels.tsa.statespace.varmax import VARMAX # type: ignore
 # helper functions
 from ...utils import print_dynamic_rmse
 from ...models.ar_based.param_finder import find_lowest_pq

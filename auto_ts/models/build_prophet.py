@@ -1,11 +1,11 @@
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd # type: ignore
 import copy
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt # type: ignore
 # helper functions
 from ..utils import print_dynamic_rmse
 # imported Prophet from fbprophet pkg
-from fbprophet import Prophet
+from fbprophet import Prophet # type: ignore
 #### Suppress INFO messages from FB Prophet!
 import logging
 logging.getLogger('fbprophet').setLevel(logging.WARNING)
@@ -116,7 +116,7 @@ def plot_prophet(dft, forecastdf):
     ax1.set_title('Actuals (Red) vs Forecast (Green)')
     ax1.set_ylabel('Values')
     ax1.set_xlabel('Date Time')
-    plt.show();
+    plt.show(block=False)
     return viz_df
 
 

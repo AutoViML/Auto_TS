@@ -1,13 +1,15 @@
-import numpy as np
-import pandas as pd
-import matplotlib.dates as mdates
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
+import matplotlib.dates as mdates # type: ignore
 from itertools import cycle
-import matplotlib.pyplot as plt
-import seaborn as sns
-get_ipython().magic('matplotlib inline')
+import matplotlib.pyplot as plt # type: ignore
+import seaborn as sns # type: ignore
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # TSA from Statsmodels
-import statsmodels.tsa.api as smt
+import statsmodels.tsa.api as smt # type: ignore
 
 
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
@@ -82,7 +84,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     except:
         pacf_ax.set_title('Data Error: Could not draw PACF for Original Series')
     [ax.set_xlim(0) for ax in [acf_ax, pacf_ax]]
-    plt.show()
+    plt.show(block=False)
 
 
 def using_where(x):
@@ -118,6 +120,7 @@ def top_correlation_to_name(stocks, column_name, searchstring, top=5):
         return
     ### Bring that selected Row to the top of the Data Frame
     df = stocks[:]
+    # TODO: Undefined variable 'l'
     df["new"] = range(l, len(df)+l)
     df.loc[index_val,"new"] = 0
     stocks = df.sort_values("new").drop("new",axis=1)
@@ -155,7 +158,7 @@ def top_correlation_to_name(stocks, column_name, searchstring, top=5):
                            title="Top %s Correlations to %s" % (top, searchstring))
     [ax.legend(loc=1) for ax in plt.gcf().axes]
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
 
 
 def test_stationarity(timeseries, maxlag=2, regression='c', autolag=None,
