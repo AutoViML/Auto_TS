@@ -16,7 +16,10 @@ warnings.warn = warn
 ############################################################
 import seaborn as sns  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
-get_ipython().magic('matplotlib inline')
+
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+#get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 import copy
 import pdb
@@ -394,7 +397,7 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
                                 np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
                     plt.xlabel('Actual')
                     plt.ylabel('Predicted')
-                    plt.show()
+                    plt.show(block=False)
                     ############ Draw a plot of the Time Series data ######
                     time_series_plot(dfxs[target], chart_time=time_interval)
                 else:

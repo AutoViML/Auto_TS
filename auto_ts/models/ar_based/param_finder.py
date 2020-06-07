@@ -1,11 +1,13 @@
-import numpy as np
-import pandas as pd
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
 import itertools
 import operator
 import copy
-import matplotlib.pyplot as plt
-import seaborn as sns
-get_ipython().magic('matplotlib inline')
+import matplotlib.pyplot as plt # type: ignore
+import seaborn as sns # type: ignore
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # imported SARIMAX from statsmodels pkg for find_best_pdq_or_PDQ
 from statsmodels.tsa.statespace.sarimax import SARIMAX

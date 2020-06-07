@@ -2,7 +2,9 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import copy
 import matplotlib.pyplot as plt # type: ignore
-get_ipython().magic('matplotlib inline')
+# This gives an error when running from a python script. 
+# Maybe, this should be set in the jupyter notebook directly.
+# get_ipython().magic('matplotlib inline')
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 # helper functions
@@ -125,7 +127,7 @@ def build_sarimax_model(ts_df, metric, seasonality=False, seasonal_period=None,
         ax.set_xlabel('Date')
         ax.set_ylabel('Levels')
         plt.legend()
-        plt.show()
+        plt.show(block=False)
     # Extract the dynamic predicted and true values of our time series
     y_forecasted = results.forecast(forecast_period)
     if verbose == 1:
