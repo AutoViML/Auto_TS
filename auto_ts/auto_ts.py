@@ -31,7 +31,7 @@ sns.set(style="white", color_codes=True)
 # Models
 from .models import build_arima_model, build_sarimax_model, build_var_model, \
                     build_pyflux_model, build_prophet_model, run_ensemble_model
-#from .models import build_ml, build_prophet, build_pyflux
+
 
 # Utils
 from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_supervised, \
@@ -41,7 +41,7 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 
 class AutoTimeseries:
     def __init__(self, score_type: str ='rmse',
-                forecast_period: int = 5, time_interval = '', non_seasonal_pdq=None,
+                forecast_period: int = 5, time_interval: str = '', non_seasonal_pdq=None,
                 seasonality: bool = False, seasonal_period: int = 12, seasonal_PDQ=None,
                 conf_int: float = 0.95, model_type: str ="stats", verbose: int =0):
         """
@@ -131,7 +131,7 @@ class AutoTimeseries:
             d_max = 1
             q_max = 3
         ################################
-        # Check: seasonal_order is not used anywhere in the code, hence commented for now.
+        # TODO: #8 Check: seasonal_order is not used anywhere in the code, hence commented for now.
         # if type(self.seasonal_PDQ) == tuple:
         #     seasonal_order = copy.deepcopy(self.seasonal_PDQ)
         # else:
@@ -344,9 +344,11 @@ class AutoTimeseries:
             name = 'SARIMAX'
             print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
             # try:
-            self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = build_sarimax_model(ts_df[target], stats_scoring, self.seasonality,
-                                                    self.seasonal_period, p_max, d_max, q_max,
-                                                    self.forecast_period,self.verbose)
+            self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = build_sarimax_model(
+                ts_df[target], stats_scoring, self.seasonality,
+                self.seasonal_period, p_max, d_max, q_max,
+                self.forecast_period,self.verbose
+            )
             # except:
             #     print('    SARIMAX model error: predictions not available.')
             #     score_val = np.inf
