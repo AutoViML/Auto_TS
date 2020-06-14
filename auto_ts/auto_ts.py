@@ -495,3 +495,17 @@ class AutoTimeseries:
         """
         print("This function has not been implemented yet. But the idea would be that this would make the prediction using the best model or the model type passed as an argument.")
         return None
+
+    def get_leaderboard(self, ascending=True) -> pd.DataFrame:
+        """
+        Returns the leaderboard after fitting
+        """
+        names = []
+        rmses = []
+        for model_name in list(self.ml_dict.keys()):
+            names.append(model_name)
+            rmses.append(self.ml_dict.get(model_name).get(self.score_type))
+            
+        results = pd.DataFrame({"name": names, self.score_type: rmses})
+        results.sort_values(self.score_type, ascending=ascending, inplace=True)
+        return results

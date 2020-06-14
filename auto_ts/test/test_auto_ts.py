@@ -1,7 +1,12 @@
 import unittest
-
+import math
+import numpy as np # type: ignore
+import pandas as pd # type: ignore
+from pandas.testing import assert_frame_equal # type: ignore
 # from fbprophet import Prophet # type: ignore
 from fbprophet.forecaster import Prophet # type: ignore
+
+
 
 class TestAutoTS(unittest.TestCase):
 
@@ -37,6 +42,15 @@ class TestAutoTS(unittest.TestCase):
         automl_model.fit(self.train, self.ts_column, self.target, self.sep)
         automl_model.predict()
         ml_dict = automl_model.get_ml_dict()
+
+        print(automl_model.get_leaderboard())
+        leaderboard_gold = pd.DataFrame(
+            {
+                'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
+                'rmse':[27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf]
+            }
+        )
+        assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
             automl_model.get_best_model_name(), "FB_Prophet",
