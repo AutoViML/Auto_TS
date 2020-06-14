@@ -29,8 +29,11 @@ sns.set(style="white", color_codes=True)
 
 #######################################
 # Models
+# from .models import build_arima_model, build_sarimax_model, build_var_model, \
+#                     build_pyflux_model, build_prophet_model, run_ensemble_model
 from .models import build_arima_model, build_sarimax_model, build_var_model, \
-                    build_pyflux_model, build_prophet_model, run_ensemble_model
+                    build_pyflux_model, run_ensemble_model
+from .models.build_prophet import BuildProphet
 
 
 # Utils
@@ -286,9 +289,14 @@ class AutoTimeseries:
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             # try:
             #### If FB prophet needs to run, it needs to be installed. Check it here ###
-            model, forecast_df, rmse, norm_rmse = build_prophet_model(
-                                        ts_df, ts_column, target, self.forecast_period, self.time_interval,
-                                        self.score_type, self.verbose, self.conf_int)
+            # model, forecast_df, rmse, norm_rmse = build_prophet_model(
+            #                             ts_df, ts_column, target, self.forecast_period, self.time_interval,
+            #                             self.score_type, self.verbose, self.conf_int)
+            prophet_model = BuildProphet(self.forecast_period, self.time_interval,
+                                         self.score_type, self.verbose, self.conf_int)
+            model, forecast_df, rmse, norm_rmse = prophet_model.fit(
+                                         ts_df, ts_column, target)
+
             self.ml_dict[name]['model'] = model
             self.ml_dict[name]['forecast'] = forecast_df['yhat'].values
             ##### Make sure that RMSE works, if not set it to np.inf  #########
