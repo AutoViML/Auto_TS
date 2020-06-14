@@ -58,7 +58,7 @@ def build_prophet_model(ts_df, time_col, target, forecast_period, time_interval,
         time_int = 'D'
     elif time_interval in ['weeks', 'weekly', 'w']:
         time_int = 'W'
-        seasonal_period = 52
+        #seasonal_period = 52
     elif time_interval in ['qtr', 'quarter', 'q']:
         time_int = 'Q'
     elif time_interval in ['years', 'year', 'annual', 'y', 'a']:
@@ -68,7 +68,7 @@ def build_prophet_model(ts_df, time_col, target, forecast_period, time_interval,
     elif time_interval in ['minutes', 'minute', 'min', 'n']:
         time_int = 'M'
     elif time_interval in ['seconds', 'second', 'sec', 's']:
-        time_interval = 'S'
+        time_int = 'S'
     else:
         time_int = 'W'
     future = model.make_future_dataframe(periods=forecast_period, freq=time_int)

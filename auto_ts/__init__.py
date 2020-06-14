@@ -17,7 +17,7 @@ warnings.warn = warn
 import seaborn as sns  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 
-# This gives an error when running from a python script. 
+# This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 #get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
@@ -107,12 +107,6 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
         d_max = 1
         q_max = 3
     ################################
-    # Check: seasonal_order is not used anywhere in the code, hence commented for now.
-    # if type(seasonal_PDQ) == tuple:
-    #     seasonal_order = copy.deepcopy(seasonal_PDQ)
-    # else:
-    #     seasonal_order = (3, 1, 3)
-
     ########## This is where we start the loading of the data file ######################
     if isinstance(traindata, str):
         if traindata != '':
@@ -434,7 +428,7 @@ def Auto_Timeseries(traindata, ts_column, target, sep=',', score_type='rmse',
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.20'
+version_number = '0.0.21'
 print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(traindata, ts_column,
                             target, sep,  score_type='rmse', forecast_period=5,
