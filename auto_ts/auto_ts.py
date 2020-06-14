@@ -361,13 +361,14 @@ class AutoTimeseries:
             # )
             sarimax_model = BuildSarimax(
                 metric=stats_scoring,
+                seasonality=self.seasonality,
                 seasonal_period=self.seasonal_period,
                 p_max=p_max, d_max=d_max, q_max=q_max,
                 forecast_period=self.forecast_period,
                 verbose=self.verbose
             )
             # TODO: https://github.com/AutoViML/Auto_TS/issues/10
-            self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = sarimax_model.fit(ts_df[target], self.seasonality, )
+            self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = sarimax_model.fit(ts_df[target])
 
             # except:
             #     print('    SARIMAX model error: predictions not available.')

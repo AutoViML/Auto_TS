@@ -10,7 +10,7 @@ import seaborn as sns # type: ignore
 # get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # imported SARIMAX from statsmodels pkg for find_best_pdq_or_PDQ
-from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 
 
 def find_lowest_pq(df):

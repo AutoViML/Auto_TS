@@ -11,11 +11,12 @@ from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 
 
 class BuildSarimax():
-    def __init__(self, metric, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
+    def __init__(self, metric, seasonality=False, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
         """
         Dummy
         """
         self.metric = metric
+        self.seasonality = seasonality
         self.seasonal_period = seasonal_period
         self.p_max = p_max
         self.d_max = d_max
@@ -24,10 +25,7 @@ class BuildSarimax():
         self.verbose = verbose
        
 
-    # def fit(self, ts_df, metric, seasonality=False, seasonal_period=None,
-    #         p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
-    def fit(self, ts_df, seasonality=False, 
-              ):
+    def fit(self, ts_df):
         """
         Build a Time Series Model using SARIMAX from statsmodels.
         """
@@ -38,10 +36,10 @@ class BuildSarimax():
             print('Data Set split into train %s and test %s for Cross Validation Purposes'
                                 % (ts_train.shape, ts_test.shape))
         ############# Now find the best pdq and PDQ parameters for the model #################
-        if not seasonality:
+        if not self.seasonality:
             print('Building a Non Seasonal Model...')
             print('\nFinding best Non Seasonal Parameters:')
-            best_p, best_d, best_q, best_bic,seasonality = find_best_pdq_or_PDQ(ts_train, self.metric,
+            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(ts_train, self.metric,
                                     self.p_max, self.d_max, self.q_max, non_seasonal_pdq=None,
                                     seasonal_period=None, seasonality=False, verbose=self.verbose)
             print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (best_p, best_d,
@@ -74,35 +72,35 @@ class BuildSarimax():
             
             
             
-        if seasonality:
-            print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
-                                            best_p, best_d, best_q, best_P,
-                                            best_D, best_Q, seasonal_period, self.metric, best_bic))
-            #### In order to get forecasts to be in the same value ranges of the orig_endogs,
-            #### you must set the simple_differencing =False and the start_params to be
-            #### the same as ARIMA.
-            #### THat is the only way to ensure that the output of this model is
-            #### comparable to other ARIMA models
-            bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
-                                seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
-                                enforce_stationarity=False,
-                                enforce_invertibility=False,
-                                simple_differencing=False, trend='ct',
-                                start_params=[0, 0, 0, 1])
-        else:
-            print('\nBest model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
-                                                best_p, best_d, best_q))
-            #### In order to get forecasts to be in the same value ranges of the orig_endogs,
-            #### you must set the simple_differencing =False and the start_params to be
-            #### the same as ARIMA.
-            #### THat is the only way to ensure that the output of this model is
-            #### comparable to other ARIMA models
-            bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
-                                enforce_stationarity=False,
-                                enforce_invertibility=False,
-                                trend='ct',
-                                start_params=[0, 0, 0, 1],
-                                simple_differencing=False)
+            if seasonality:
+                print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
+                                                best_p, best_d, best_q, best_P,
+                                                best_D, best_Q, self.seasonal_period, self.metric, best_bic))
+                #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+                #### you must set the simple_differencing =False and the start_params to be
+                #### the same as ARIMA.
+                #### THat is the only way to ensure that the output of this model is
+                #### comparable to other ARIMA models
+                bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
+                                    seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
+                                    enforce_stationarity=False,
+                                    enforce_invertibility=False,
+                                    simple_differencing=False, trend='ct',
+                                    start_params=[0, 0, 0, 1])
+            else:
+                print('\nBest model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
+                                                    best_p, best_d, best_q))
+                #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+                #### you must set the simple_differencing =False and the start_params to be
+                #### the same as ARIMA.
+                #### THat is the only way to ensure that the output of this model is
+                #### comparable to other ARIMA models
+                bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
+                                    enforce_stationarity=False,
+                                    enforce_invertibility=False,
+                                    trend='ct',
+                                    start_params=[0, 0, 0, 1],
+                                    simple_differencing=False)
         
         print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
         try:
