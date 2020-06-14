@@ -76,7 +76,7 @@ def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq
                                     simple_differencing=False, trend='ct',
                                     start_params=[0, 0, 0,1]
                                         )
-                    results = model.fit()
+                    # results = model.fit()  # Result is not used, hence commenting
                     results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + metric)
                     if iteration % 10 == 0:
                         print('    Iteration %d completed...' % iteration)
