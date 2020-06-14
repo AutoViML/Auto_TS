@@ -1,5 +1,8 @@
 import unittest
 
+# from fbprophet import Prophet # type: ignore
+from fbprophet.forecaster import Prophet # type: ignore
+
 class TestAutoTS(unittest.TestCase):
 
     def setUp(self):
@@ -26,14 +29,26 @@ class TestAutoTS(unittest.TestCase):
         test to check functionality of the auto_ts function
         """
         import numpy as np  # type: ignore
-        import auto_ts as AT
-        ml_dict = AT.Auto_Timeseries(
-            self.train, self.ts_column,
-            self.target, self.sep,  score_type='rmse', forecast_period=8,
+        from auto_ts.auto_ts import AutoTimeseries as ATS
+        automl_model = ATS(score_type='rmse', forecast_period=8,
             time_interval='Month', non_seasonal_pdq=None, seasonality=False,
             seasonal_period=12, seasonal_PDQ=None, model_type='best',
-            verbose=0
+            verbose=0)
+        automl_model.fit(self.train, self.ts_column, self.target, self.sep)
+        automl_model.predict()
+        ml_dict = automl_model.get_ml_dict()
+
+        self.assertEqual(
+            automl_model.get_best_model_name(), "FB_Prophet",
+            "Best model name does not match expected value."
         )
+        self.assertEqual(
+            isinstance(automl_model.get_best_model(), Prophet), True,
+            "Best model does not match expected value."
+        )
+        # print(f"Best Model: {automl_model.get_best_model()}")
+        
+        
 
         # https://stackoverflow.com/questions/25348532/can-python-pickle-lambda-functions
         # import dill  # the code below will fail without this line
@@ -46,7 +61,7 @@ class TestAutoTS(unittest.TestCase):
 
         # self.assertDictEqual(ml_dict, ml_dict_gold, "The generated ml_dict does not match the golden dictionary.")
 
-        print(ml_dict)
+        # print(ml_dict)
 
         ##################################
         #### Checking Prophet Results ####

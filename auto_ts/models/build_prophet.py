@@ -58,7 +58,7 @@ def build_prophet_model(ts_df, time_col, target, forecast_period, time_interval,
         time_int = 'D'
     elif time_interval in ['weeks', 'weekly', 'w']:
         time_int = 'W'
-        seasonal_period = 52
+        seasonal_period = 52  # TODO: #7 Unused - Check if this is needed or somethig is missing
     elif time_interval in ['qtr', 'quarter', 'q']:
         time_int = 'Q'
     elif time_interval in ['years', 'year', 'annual', 'y', 'a']:
