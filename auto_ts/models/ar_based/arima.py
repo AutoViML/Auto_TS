@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
@@ -71,8 +72,10 @@ class BuildArima():
             ts_train = ts_train.astype(float)
         for d_val in range(d_min, self.d_max+1):
             print('\nDifferencing = %d' % d_val)
-            results_bic = pd.DataFrame(index=['AR{}'.format(i) for i in range(p_min, self.p_max+1)],
-                                    columns=['MA{}'.format(i) for i in range(q_min, self.q_max+1)])
+            results_bic = pd.DataFrame(
+                index=['AR{}'.format(i) for i in range(p_min, self.p_max+1)],
+                columns=['MA{}'.format(i) for i in range(q_min, self.q_max+1)]
+            )
             for p_val, q_val in itertools.product(range(p_min, self.p_max+1), range(q_min, self.q_max+1)):
                 if p_val == 0 and d_val == 0 and q_val == 0:
                     results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = np.nan
@@ -112,12 +115,12 @@ class BuildArima():
         bestmodel = ARIMA(ts_train, order=(best_p, best_d, best_q))
         print('####    Fitting best model for full data set now. Will take time... ######')
         try:
-            results = bestmodel.fit(transparams=True, method=self.method)
+            self.model = bestmodel.fit(transparams=True, method=self.method)
         except:
-            results = bestmodel.fit(transparams=False, method=self.method)
+            self.model = bestmodel.fit(transparams=False, method=self.method)
         ### this is needed for static forecasts ####################
         y_truth = ts_train[:]
-        y_forecasted = results.predict(typ='levels')
+        y_forecasted = self.model.predict(typ='levels')
         concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
         if best_d == 0:
             #### Do this for ARIMA only ######
@@ -126,7 +129,7 @@ class BuildArima():
             print_static_rmse(concatenated['original'].values, concatenated['predicted'].values, best_d)
             start_date = ts_df.index[-self.forecast_period]
             end_date = ts_df.index[-1]
-            pred_dynamic = results.predict(start=start_date, end=end_date, dynamic=True)
+            pred_dynamic = self.model.predict(start=start_date, end=end_date, dynamic=True)
             if self.verbose == 1:
                 ax = concatenated[['original', 'predicted']][best_d:].plot()
                 pred_dynamic.plot(label='Dynamic Forecast', ax=ax, figsize=(15, 5))
@@ -147,7 +150,7 @@ class BuildArima():
             #################################################################################
             start_date = ts_df.index[-self.forecast_period]
             end_date = ts_df.index[-1]
-            pred_dynamic = results.predict(typ=pred_type, start=start_date, end=end_date, dynamic=True)
+            pred_dynamic = self.model.predict(typ=pred_type, start=start_date, end=end_date, dynamic=True)
             try:
                 pred_dynamic[pd.to_datetime((pred_dynamic.index-best_d).values[0])] = \
                                         y_truth[pd.to_datetime((pred_dynamic.index-best_d).values[0])]
@@ -164,12 +167,12 @@ class BuildArima():
                 plt.show(block=False)
         if self.verbose == 1:
             try:
-                results.plot_diagnostics(figsize=(16, 12))
+                self.model.plot_diagnostics(figsize=(16, 12))
             except:
                 pass
-        print(results.summary())
-        res_frame = pd.DataFrame([results.forecast(self.forecast_period)[0], results.forecast(self.forecast_period)[1],
-                                                results.forecast(self.forecast_period)[2]],
+        print(self.model.summary())
+        res_frame = pd.DataFrame([self.model.forecast(self.forecast_period)[0], self.model.forecast(self.forecast_period)[1],
+                                                self.model.forecast(self.forecast_period)[2]],
                                                 index=['mean','mean_se','mean_ci'],
                                                 columns=['Forecast_' + str(x) for x
                                                 in range(1, self.forecast_period+1)]).T
@@ -179,7 +182,23 @@ class BuildArima():
         if self.verbose == 1:
             print('Model Forecast(s):\n', res_frame)
         rmse, norm_rmse = print_dynamic_rmse(ts_test, pred_dynamic, ts_train)
-        return results, res_frame, rmse, norm_rmse
+        return self.model, res_frame, rmse, norm_rmse
+
+    def predict(self, forecast_period: Optional[int] = None):
+        """
+        Return the predictions
+        """
+        # TODO: Predictions coming from ARIMA include extra information compared to SARIMAX and VAR.
+        # Need to make it consistent
+        # Extract the dynamic predicted and true values of our time series
+        if forecast_period is None:
+            # use the forecast period used during training
+            y_forecasted = self.model.forecast(self.forecast_period)
+        else:
+            # use the forecast period provided by the user
+            y_forecasted = self.model.forecast(forecast_period)
+        return y_forecasted
+
 
 
 # def predicted_diffs_restored_ARIMA(actuals, predicted, periods=1):

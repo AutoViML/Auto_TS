@@ -80,12 +80,27 @@ class TestAutoTS(unittest.TestCase):
         # )
 
 
+        print("-"*50)
+        print("Predictions with Best Model (Prophet)")
+        print("-"*50)
         print(automl_model.get_best_model_build().predict())
         print(automl_model.get_best_model_build().predict(10))
 
+        print("-"*50)
+        print("Predictions with ARIMA Model")
+        print("-"*50)
+        print(automl_model.get_model_build('ARIMA').predict())
+        print(automl_model.get_model_build('ARIMA').predict(10))
+
+        print("-"*50)
+        print("Predictions with SARIMAX Model")
+        print("-"*50)
         print(automl_model.get_model_build('SARIMAX').predict())
         print(automl_model.get_model_build('SARIMAX').predict(10))
 
+        print("-"*50)
+        print("Predictions with VAR Model")
+        print("-"*50)
         print(automl_model.get_model_build('VAR').predict())
         print(automl_model.get_model_build('VAR').predict(10))
 
