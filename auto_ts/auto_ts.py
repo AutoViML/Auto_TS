@@ -18,6 +18,7 @@ from sklearn.exceptions import DataConversionWarning # type: ignore
 warnings.filterwarnings("ignore")
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
+
 def warn(*args, **kwargs):
     pass
 warnings.warn = warn
@@ -286,7 +287,14 @@ class AutoTimeseries:
         ### When the time interval given does not match the tested_time_interval, then use FB.
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
         #########                 FB Prophet              ###################################
+
         if self.model_type.lower() in ['prophet','best']:
+            print("\n")
+            print("="*50)
+            print("Building Prophet Model")
+            print("="*50)
+            print("\n")
+
             name = 'FB_Prophet'
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             # try:
@@ -310,7 +318,15 @@ class AutoTimeseries:
             #     print('    FB Prophet may not be installed or Model is not running...')
             #     score_val = np.inf
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = prophet_model
+        
         if self.model_type.lower() in ['stats','best']:
+            print("\n")
+            print("="*50)
+            print("Building PyFlux Model")
+            print("="*50)
+            print("\n")
+
             ##### First let's try the following models in sequence #########################################
             nsims = 100   ### this is needed only for M-H models in PyFlux
             name = 'PyFlux'
@@ -335,7 +351,15 @@ class AutoTimeseries:
             else:
                 score_val = norm_rmse
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
             ################### Let's build an ARIMA Model and add results #################
+            
+            print("\n")
+            print("="*50)
+            print("Building ARIMA Model")
+            print("="*50)
+            print("\n")
+
             name = 'ARIMA'
             print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
             try:
@@ -350,7 +374,15 @@ class AutoTimeseries:
             else:
                 score_val = norm_rmse
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
             ############# Let's build a SARIMAX Model and get results ########################
+            
+            print("\n")
+            print("="*50)
+            print("Building SARIMAX Model")
+            print("="*50)
+            print("\n")
+
             name = 'SARIMAX'
             print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
             # try:
@@ -378,7 +410,16 @@ class AutoTimeseries:
             else:
                 score_val = norm_rmse
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = sarimax_model
+
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
+
+            print("\n")
+            print("="*50)
+            print("Building VAR Model")
+            print("="*50)
+            print("\n")
+
             name = 'VAR'
             if len(preds) == 0:
                 print(colorful.BOLD + '\nNo VAR model created since no explanatory variables given in data set' + colorful.END)
@@ -409,8 +450,17 @@ class AutoTimeseries:
                 score_val = norm_rmse
             ########################################################################
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
+        
         if self.model_type.lower() in ['ml','best']:
             ########## Let's build a Machine Learning Model now with Time Series Data ################
+            
+            print("\n")
+            print("="*50)
+            print("Building ML Model")
+            print("="*50)
+            print("\n")
+            
             name = 'ML'
             if len(preds) == 0:
                 print('No ML model since number of predictors is zero')
@@ -462,6 +512,8 @@ class AutoTimeseries:
                 norm_rmse = np.inf
             ########################################################################
             self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
+            
         if not self.model_type.lower() in ['stats','ml', 'prophet', 'best']:
             print('The model_type should be either stats, prophet, ml or best. Check your input and try again...')
             return self.ml_dict
@@ -494,6 +546,33 @@ class AutoTimeseries:
         Returns the best model after training
         """
         return self.ml_dict.get(self.get_best_model_name()).get('model')
+
+    def get_model(self, model_name: str):
+        """
+        Returns the specified model
+        """
+        if self.ml_dict.get(model_name) is not None:
+            return self.ml_dict.get(model_name).get('model')
+        else:
+            print(f"Model with name '{model_name}' does not exist.")
+            return None
+
+    def get_best_model_build(self):
+        """
+        Returns the best model after training
+        """
+        return self.ml_dict.get(self.get_best_model_name()).get('model_build')
+
+    def get_model_build(self, model_name: str):
+        """
+        Returns the specified model
+        """
+        if self.ml_dict.get(model_name) is not None:
+            return self.ml_dict.get(model_name).get('model_build')
+        else:
+            print(f"Model with name '{model_name}' does not exist.")
+            return None
+    
 
 
     def get_ml_dict(self):
