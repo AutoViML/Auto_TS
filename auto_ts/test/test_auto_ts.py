@@ -5,7 +5,7 @@ import pandas as pd # type: ignore
 from pandas.testing import assert_frame_equal # type: ignore
 # from fbprophet import Prophet # type: ignore
 from fbprophet.forecaster import Prophet # type: ignore
-
+from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 
 class TestAutoTS(unittest.TestCase):
@@ -56,13 +56,37 @@ class TestAutoTS(unittest.TestCase):
             automl_model.get_best_model_name(), "FB_Prophet",
             "Best model name does not match expected value."
         )
-        self.assertEqual(
-            isinstance(automl_model.get_best_model(), Prophet), True,
+        self.assertTrue(
+            isinstance(automl_model.get_best_model(), Prophet), 
             "Best model does not match expected value."
         )
         # print(f"Best Model: {automl_model.get_best_model()}")
-        
-        
+
+        self.assertTrue(
+            isinstance(automl_model.get_model('SARIMAX'), SARIMAXResultsWrapper),
+            "SARIMAX model does not match the expected type."
+        )
+
+
+        ## Find a way to import these modules (BuildProphet & BuildSarimax) and then you can enable this.
+        # self.assertTrue(
+        #     isinstance(automl_model.get_best_model_build(), BuildProphet), 
+        #     "Best model build does not match expected value."
+        # )
+
+        # self.assertTrue(
+        #     isinstance(automl_model.get_model_build('SARIMAX'), BuildSarimax),
+        #     "SARIMAX model build does not match the expected type."
+        # )
+
+
+        print(automl_model.get_best_model_build().predict())
+        print(automl_model.get_best_model_build().predict(10))
+
+        print(automl_model.get_model_build('SARIMAX').predict())
+        print(automl_model.get_model_build('SARIMAX').predict(10))
+
+               
 
         # https://stackoverflow.com/questions/25348532/can-python-pickle-lambda-functions
         # import dill  # the code below will fail without this line

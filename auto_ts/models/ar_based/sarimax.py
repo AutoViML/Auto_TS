@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import copy
@@ -13,7 +14,7 @@ from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 class BuildSarimax():
     def __init__(self, metric, seasonality=False, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
         """
-        Dummy
+        Automatically build a SARIMAX Model
         """
         self.metric = metric
         self.seasonality = seasonality
@@ -23,6 +24,7 @@ class BuildSarimax():
         self.q_max = q_max
         self.forecast_period = forecast_period
         self.verbose = verbose
+        self.model = None
        
 
     def fit(self, ts_df):
@@ -104,25 +106,28 @@ class BuildSarimax():
         
         print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
         try:
-            results = bestmodel.fit()
-            print('    Best %s metric = %0.1f' % (self.metric, eval('results.' + self.metric)))
+            self.model = bestmodel.fit()
+            print('    Best %s metric = %0.1f' % (self.metric, eval('self.model.' + self.metric)))
         except:
             print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
             return bestmodel, None, np.inf, np.inf
         
         if self.verbose == 1:
             try:
-                results.plot_diagnostics(figsize=(16, 12))
+                self.model.plot_diagnostics(figsize=(16, 12))
             except:
                 print('Error: SARIMAX plot diagnostic. Continuing...')
         
         ### this is needed for static forecasts ####################
-        y_truth = ts_train[:]
-        y_forecasted = results.predict(dynamic=False)
+        y_truth = ts_train[:]  # Note that this is only univariate analysis
+        y_forecasted = self.model.predict(dynamic=False)
         concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
+
         ### for SARIMAX, you don't have to restore differences since it predicts like actuals.###
         if self.verbose == 1:
             print('Static Forecasts:')
+            # Since you are differencing the data, some original data points will not be available
+            # Hence taking from first available value.
             print_static_rmse(concatenated['original'].values[best_d:],
                               concatenated['predicted'].values[best_d:],
                               verbose=self.verbose)
@@ -134,10 +139,11 @@ class BuildSarimax():
         ## time points.
         #################################################################################
         # Now do dynamic forecast plotting for the last X steps of the data set ######
+
         if self.verbose == 1:
             ax = concatenated[['original', 'predicted']][best_d:].plot(figsize=(16, 12))
             startdate = ts_df.index[-self.forecast_period-1]
-            pred_dynamic = results.get_prediction(start=startdate, dynamic=True, full_results=True)
+            pred_dynamic = self.model.get_prediction(start=startdate, dynamic=True, full_results=True)
             pred_dynamic_ci = pred_dynamic.conf_int()
             pred_dynamic.predicted_mean.plot(label='Dynamic Forecast', ax=ax)
             try:
@@ -150,18 +156,27 @@ class BuildSarimax():
             ax.set_ylabel('Levels')
             plt.legend()
             plt.show(block=False)
+        
         # Extract the dynamic predicted and true values of our time series
-        y_forecasted = results.forecast(self.forecast_period)
+        y_forecasted = self.predict()
         if self.verbose == 1:
-            print(results.summary())
-        print('Dynamic %d-Period Forecast:' % (self.forecast_period,))
+            print(self.model.summary())
+        print('Dynamic %d-Period Forecast:' % (self.forecast_period))
         rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
-        return results, results.get_forecast(self.forecast_period, full_results=False).summary_frame(), rmse, norm_rmse
+        return self.model, self.model.get_forecast(self.forecast_period, full_results=False).summary_frame(), rmse, norm_rmse
 
-    def predict(self):
+    def predict(self, forecast_period: Optional[int] = None):
         """
         Return the predictions
         """
+        # Extract the dynamic predicted and true values of our time series
+        if forecast_period is None:
+            # use the forecast period used during training
+            y_forecasted = self.model.forecast(self.forecast_period)
+        else:
+            # use the forecast period provided by the user
+            y_forecasted = self.model.forecast(forecast_period)
+        return y_forecasted
         
 
 
