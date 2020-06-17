@@ -1,3 +1,4 @@
+from typing import Optional
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
 import copy
@@ -15,7 +16,7 @@ class BuildProphet():
     def __init__(self, forecast_period, time_interval, 
         score_type, verbose, conf_int):
         """
-        Dummy
+        Automatically build a Prophet Model
         """
         self.forecast_period = forecast_period
         self.time_interval = time_interval
@@ -71,7 +72,7 @@ class BuildProphet():
         #print('Forecast Data frame size %s ready to submit' %(submit.shape,))
         return self.model, forecast, rmse, norm_rmse
 
-    def predict(self):
+    def predict(self, forecast_period: Optional[int] = None):
         """
         Return the predictions
         # TODO: What about future exogenous variables?
@@ -110,7 +111,11 @@ class BuildProphet():
             # time_interval = 'S'  # TODO: I think this should be time_int
         else:
             time_int = 'W'
-        future = self.model.make_future_dataframe(periods=self.forecast_period, freq=time_int)
+
+        if forecast_period is None:
+            future = self.model.make_future_dataframe(periods=self.forecast_period, freq=time_int)
+        else:
+            future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
         forecast = self.model.predict(future)
         return forecast
 
