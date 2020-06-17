@@ -30,10 +30,8 @@ sns.set(style="white", color_codes=True)
 
 #######################################
 # Models
-# from .models import build_arima_model, build_sarimax_model, build_var_model, \
-#                     build_pyflux_model, build_prophet_model, run_ensemble_model
-from .models import build_arima_model, build_pyflux_model
-from .models import BuildSarimax, BuildVAR, BuildML
+from .models import build_pyflux_model
+from .models import BuildArima, BuildSarimax, BuildVAR, BuildML
 from .models.build_prophet import BuildProphet
 
 
@@ -297,9 +295,6 @@ class AutoTimeseries:
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             # try:
             #### If FB prophet needs to run, it needs to be installed. Check it here ###
-            # model, forecast_df, rmse, norm_rmse = build_prophet_model(
-            #                             ts_df, ts_column, target, self.forecast_period, self.time_interval,
-            #                             self.score_type, self.verbose, self.conf_int)
             prophet_model = BuildProphet(self.forecast_period, self.time_interval,
                                          self.score_type, self.verbose, self.conf_int)
             model, forecast_df, rmse, norm_rmse = prophet_model.fit(
@@ -359,11 +354,14 @@ class AutoTimeseries:
             print("\n")
 
             name = 'ARIMA'
+            arima_model = None # Placeholder for cases when model can not be built
             print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
             try:
-                self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = build_arima_model(ts_df[target],
-                                                        stats_scoring,p_max,d_max,q_max,
-                                        forecast_period=self.forecast_period,method='mle',verbose=self.verbose)
+                arima_model = BuildArima(
+                    stats_scoring, p_max, d_max, q_max,
+                    forecast_period=self.forecast_period, method='mle', verbose=self.verbose
+                )
+                self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = arima_model.fit(ts_df[target])
             except:
                 print('    ARIMA model error: predictions not available.')
                 score_val = np.inf
@@ -372,7 +370,7 @@ class AutoTimeseries:
             else:
                 score_val = norm_rmse
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
+            self.ml_dict[name]['model_build'] = arima_model  
             ############# Let's build a SARIMAX Model and get results ########################
             
             print("\n")
@@ -450,7 +448,7 @@ class AutoTimeseries:
                 score_val = norm_rmse
             ########################################################################
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = var_model  # TODO: Add the right value here
+            self.ml_dict[name]['model_build'] = var_model  
         
         if self.model_type.lower() in ['ml','best']:
             ########## Let's build a Machine Learning Model now with Time Series Data ################
@@ -462,6 +460,7 @@ class AutoTimeseries:
             print("\n")
             
             name = 'ML'
+            ml_model = None # Placeholder for cases when model can not be built
             if len(preds) == 0:
                 print('No ML model since number of predictors is zero')
                 rmse = np.inf
@@ -513,7 +512,7 @@ class AutoTimeseries:
                 norm_rmse = np.inf
             ########################################################################
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
+            self.ml_dict[name]['model_build'] = ml_model  
             
         if not self.model_type.lower() in ['stats','ml', 'prophet', 'best']:
             print('The model_type should be either stats, prophet, ml or best. Check your input and try again...')
