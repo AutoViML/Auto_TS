@@ -32,9 +32,8 @@ sns.set(style="white", color_codes=True)
 # Models
 # from .models import build_arima_model, build_sarimax_model, build_var_model, \
 #                     build_pyflux_model, build_prophet_model, run_ensemble_model
-from .models import build_arima_model, build_pyflux_model, run_ensemble_model
-
-from .models import BuildSarimax, BuildVAR
+from .models import build_arima_model, build_pyflux_model
+from .models import BuildSarimax, BuildVAR, BuildML
 from .models.build_prophet import BuildProphet
 
 
@@ -479,8 +478,9 @@ class AutoTimeseries:
                                                 preds+[target], target, n_in=lag, n_out=0, dropT=False)
                         train = dfxs[:-self.forecast_period]
                         test = dfxs[-self.forecast_period:]
-                        best = run_ensemble_model(train[preds], train[target], 'TimeSeries',
-                                                self.score_type, self.verbose)
+
+                        ml_model = BuildML()
+                        best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
                         bestmodel = best[0]
                         self.ml_dict[name]['model'] = bestmodel
                         ### Certain models dont have random state => so dont do this for all since it will error
