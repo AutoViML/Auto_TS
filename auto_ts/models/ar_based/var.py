@@ -20,7 +20,7 @@ from ...models.ar_based.param_finder import find_lowest_pq
 class BuildVAR():
     def __init__(self, criteria, forecast_period=2, p_max=3, q_max=3, verbose=0):
         """
-        Automatically build a VAT Model
+        Automatically build a VAR Model
         """
         self.criteria = criteria
         self.forecast_period = forecast_period
