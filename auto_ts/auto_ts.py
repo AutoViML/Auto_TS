@@ -32,10 +32,9 @@ sns.set(style="white", color_codes=True)
 # Models
 # from .models import build_arima_model, build_sarimax_model, build_var_model, \
 #                     build_pyflux_model, build_prophet_model, run_ensemble_model
-from .models import build_arima_model, build_var_model, \
-                    build_pyflux_model, run_ensemble_model
+from .models import build_arima_model, build_pyflux_model, run_ensemble_model
 
-from .models import BuildSarimax
+from .models import BuildSarimax, BuildVAR
 from .models.build_prophet import BuildProphet
 
 
@@ -421,6 +420,7 @@ class AutoTimeseries:
             print("\n")
 
             name = 'VAR'
+            var_model = None # Placeholder for cases when model can not be built
             if len(preds) == 0:
                 print(colorful.BOLD + '\nNo VAR model created since no explanatory variables given in data set' + colorful.END)
                 rmse = np.inf
@@ -434,13 +434,14 @@ class AutoTimeseries:
                                                 %len(preds))
                         ts_df[preds] = ts_df[preds].shift(1)
                         ts_df.dropna(axis=0,inplace=True)
-                        self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = build_var_model(ts_df[[target]+preds],stats_scoring,
-                                                    self.forecast_period, p_max, q_max)
+
+                        var_model = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
+                        self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = var_model.fit(ts_df[[target]+preds])
                     else:
                         print(colorful.BOLD + '\nNo predictors available. Skipping VAR model...' + colorful.END)
                         score_val = np.inf
                 except:
-                    print('    VAR model error: predictions not available.')
+                    warnings.warn('    VAR model error: predictions not available.')
                     rmse = np.inf
                     norm_rmse = np.inf
             ################################################################
@@ -450,7 +451,7 @@ class AutoTimeseries:
                 score_val = norm_rmse
             ########################################################################
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
+            self.ml_dict[name]['model_build'] = var_model  # TODO: Add the right value here
         
         if self.model_type.lower() in ['ml','best']:
             ########## Let's build a Machine Learning Model now with Time Series Data ################

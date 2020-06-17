@@ -86,6 +86,9 @@ class TestAutoTS(unittest.TestCase):
         print(automl_model.get_model_build('SARIMAX').predict())
         print(automl_model.get_model_build('SARIMAX').predict(10))
 
+        print(automl_model.get_model_build('VAR').predict())
+        print(automl_model.get_model_build('VAR').predict(10))
+
                
 
         # https://stackoverflow.com/questions/25348532/can-python-pickle-lambda-functions

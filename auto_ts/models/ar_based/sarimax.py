@@ -158,12 +158,14 @@ class BuildSarimax():
             plt.show(block=False)
         
         # Extract the dynamic predicted and true values of our time series
+        res2 = self.model.get_forecast(self.forecast_period, full_results=False)
+        res2_df = res2.summary_frame()
         y_forecasted = self.predict()
         if self.verbose == 1:
             print(self.model.summary())
         print('Dynamic %d-Period Forecast:' % (self.forecast_period))
         rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
-        return self.model, self.model.get_forecast(self.forecast_period, full_results=False).summary_frame(), rmse, norm_rmse
+        return self.model, res2_df, rmse, norm_rmse
 
     def predict(self, forecast_period: Optional[int] = None):
         """
