@@ -29,8 +29,7 @@ class BuildVAR():
         self.verbose = verbose
         self.model = None
                
-    #def build_var_model(df, criteria, forecast_period=2, p_max=3, q_max=3, verbose=0):
-    def fit(self, ts_df): #, criteria, forecast_period=2, p_max=3, q_max=3, verbose=0):
+    def fit(self, ts_df): 
         """
         This builds a VAR model given a multivariate time series data frame with time as the Index.
         Note that the input "y_train" can be a data frame with one column or multiple cols or a
@@ -52,6 +51,7 @@ class BuildVAR():
         if self.verbose == 1:
             print('Data Set split into train %s and test %s for Cross Validation Purposes'
                 % (ts_train.shape, ts_test.shape))
+        # TODO: #14 Make sure that we have a way to not rely on column order to determine the target
         # It is assumed that the first column of the dataframe is the target variable ####
         ### make sure that is the case before doing this program ####################
         i = 1

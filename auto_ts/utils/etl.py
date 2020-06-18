@@ -1,3 +1,4 @@
+from typing import List
 import pandas as pd  # type: ignore
 import copy
 import pdb
@@ -50,6 +51,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
     """
     Transform a time series in dataframe format into a supervised learning dataset while
     keeping dataframe intact.
+    Returns the transformed pandas DataFrame, the name of the target column and the names of the predictor columns
     Arguments:
         df: A timeseries dataframe that you want to convert to Supervised dataset.
         namevars: columns that you want to lag in the data frame. Other columns will be untouched.
@@ -62,6 +64,8 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
         Note that the original columns are dropped if you set the 'dropT' argument to True.
         If not, they are preserved.
     This Pandas DataFrame of lagged time series data is immediately available for supervised learning.
+    
+    rtype: pd.DataFrame, str, List[str]
     """
     df = df[:]
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.

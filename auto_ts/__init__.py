@@ -2,7 +2,7 @@
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.21'
+version_number = '0.0.22'
 # TODO: Fix based on new interface
 print("""Running Auto Timeseries version: %s...Call by using:
         auto_ts.Auto_Timeseries(traindata, ts_column,
