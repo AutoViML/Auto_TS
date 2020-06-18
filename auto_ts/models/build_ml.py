@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 # imported ML models from scikit-learn
@@ -48,12 +48,7 @@ class BuildML():
         self.lags = lags
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
 
-        dfxs, self.transformed_target, self.transformed_preds = convert_timeseries_dataframe_to_supervised(
-            ts_df[self.original_preds+[self.original_target_col]], 
-            self.original_preds+[self.original_target_col],
-            self.original_target_col,
-            n_in=self.lags, n_out=0, dropT=False
-        )
+        dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(ts_df)
         
         train = dfxs[:-self.forecast_period]
         test = dfxs[-self.forecast_period:]
@@ -122,6 +117,19 @@ class BuildML():
         # return self.model, bestscore, besttype
         return self.model, forecast, rmse, norm_rmse
 
+    def df_to_supervised(self, ts_df: pd.DataFrame) -> Tuple[pd.DataFrame, str, List[str]]:
+        """
+        :param ts_df: The time series dataframe that needs to be converted
+        into a supervised learning problem.
+        rtype: pd.DataFrame, str, List[str]
+        """
+        dfxs, transformed_target_name, transformed_pred_names = convert_timeseries_dataframe_to_supervised(
+            ts_df[self.original_preds+[self.original_target_col]], 
+            self.original_preds+[self.original_target_col],
+            self.original_target_col,
+            n_in=self.lags, n_out=0, dropT=False
+        )
+        return dfxs, transformed_target_name, transformed_pred_names
 
     def refit(self, ts_df: pd.DataFrame):
         """
