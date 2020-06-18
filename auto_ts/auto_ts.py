@@ -492,11 +492,11 @@ class AutoTimeseries:
                         )
                         #best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
                         #best = ml_model.fit(train[preds], train[target])
-                        best = ml_model.fit(
-                            ts_df=ts_df,
-                            target_col=target,
-                            lags=lag
-                        )
+                        # best = ml_model.fit(
+                        #     ts_df=ts_df,
+                        #     target_col=target,
+                        #     lags=lag
+                        # )
 
                         self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = ml_model.fit(
                             ts_df=ts_df,
