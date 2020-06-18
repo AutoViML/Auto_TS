@@ -468,6 +468,8 @@ class AutoTimeseries:
             else:
                 try:
                     if df_orig.shape[1] > 1:
+                        # TODO: Here we have taken ts_df as the original dataframe, but for VAR, we have taken ts_orig.
+                        # Check if both of these are correct.
                         preds = [x for x in list(ts_df) if x not in [target]]
                         print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
                         print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
@@ -478,17 +480,20 @@ class AutoTimeseries:
                         train = dfxs[:-self.forecast_period]
                         test = dfxs[-self.forecast_period:]
 
-                        ml_model = BuildML()
-                        best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
+                        ml_model = BuildML(self.score_type, self.verbose)
+                        #best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
+                        best = ml_model.fit(train[preds], train[target])
                         bestmodel = best[0]
                         self.ml_dict[name]['model'] = bestmodel
                         ### Certain models dont have random state => so dont do this for all since it will error
                         #best.set_params(random_state=0)
                         self.ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
-                        rmse, norm_rmse = print_dynamic_rmse(test[target].values,
-                                                    bestmodel.predict(test[preds]),
-                                                    train[target].values)
-                        #### Plotting actual vs predicted for RF Model #################
+                        rmse, norm_rmse = print_dynamic_rmse(
+                            test[target].values,
+                            bestmodel.predict(test[preds]),
+                            train[target].values
+                        )
+                        #### Plotting actual vs predicted for ML Model #################
                         plt.figure(figsize=(5, 5))
                         plt.scatter(train.append(test)[target].values,
                                     np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
