@@ -468,40 +468,63 @@ class AutoTimeseries:
             else:
                 try:
                     if df_orig.shape[1] > 1:
-                        # TODO: Here we have taken ts_df as the original dataframe, but for VAR, we have taken ts_orig.
-                        # Check if both of these are correct.
-                        preds = [x for x in list(ts_df) if x not in [target]]
+                        
+                        # # Move inside Build Class
+                        # # TODO: Here we have taken ts_df as the original dataframe, but for VAR, we have taken ts_orig.
+                        # # Check if both of these are correct.
+                        # preds = [x for x in list(ts_df) if x not in [target]]
+                                                
                         print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
                         print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
                                     % (len(preds), lag))
                         # ipdb.set_trace()
-                        dfxs, target, preds = convert_timeseries_dataframe_to_supervised(ts_df[preds+[target]],
-                                                preds+[target], target, n_in=lag, n_out=0, dropT=False)
-                        train = dfxs[:-self.forecast_period]
-                        test = dfxs[-self.forecast_period:]
 
-                        ml_model = BuildML(self.score_type, self.verbose)
-                        #best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
-                        best = ml_model.fit(train[preds], train[target])
-                        bestmodel = best[0]
-                        self.ml_dict[name]['model'] = bestmodel
-                        ### Certain models dont have random state => so dont do this for all since it will error
-                        #best.set_params(random_state=0)
-                        self.ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
-                        rmse, norm_rmse = print_dynamic_rmse(
-                            test[target].values,
-                            bestmodel.predict(test[preds]),
-                            train[target].values
+                        # ## Move inside Build Class
+                        # dfxs, target, preds = convert_timeseries_dataframe_to_supervised(ts_df[preds+[target]],
+                        #                         preds+[target], target, n_in=lag, n_out=0, dropT=False)
+                        # train = dfxs[:-self.forecast_period]
+                        # test = dfxs[-self.forecast_period:]
+
+                        ml_model = BuildML(
+                            scoring=self.score_type,
+                            forecast_period = self.forecast_period,
+                            verbose=self.verbose
                         )
-                        #### Plotting actual vs predicted for ML Model #################
-                        plt.figure(figsize=(5, 5))
-                        plt.scatter(train.append(test)[target].values,
-                                    np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
-                        plt.xlabel('Actual')
-                        plt.ylabel('Predicted')
-                        plt.show(block=False)
-                        ############ Draw a plot of the Time Series data ######
-                        time_series_plot(dfxs[target], chart_time=self.time_interval)
+                        #best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
+                        #best = ml_model.fit(train[preds], train[target])
+                        best = ml_model.fit(
+                            ts_df=ts_df,
+                            target_col=target,
+                            lags=lag
+                        )
+
+                        self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = ml_model.fit(
+                            ts_df=ts_df,
+                            target_col=target,
+                            lags=lag
+                        )
+
+                        # bestmodel = best[0]
+                        # self.ml_dict[name]['model'] = bestmodel
+                        # ### Certain models dont have random state => so dont do this for all since it will error
+                        # #best.set_params(random_state=0)
+                        # self.ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
+                        # rmse, norm_rmse = print_dynamic_rmse(
+                        #     test[target].values,
+                        #     bestmodel.predict(test[preds]),
+                        #     train[target].values
+                        # )
+                        
+                        # #### Plotting actual vs predicted for ML Model #################
+                        # # TODO: Move inside the Build Class
+                        # plt.figure(figsize=(5, 5))
+                        # plt.scatter(train.append(test)[target].values,
+                        #             np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
+                        # plt.xlabel('Actual')
+                        # plt.ylabel('Predicted')
+                        # plt.show(block=False)
+                        # ############ Draw a plot of the Time Series data ######
+                        # time_series_plot(dfxs[target], chart_time=self.time_interval)
                     else:
                         print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
                         score_val = np.inf
