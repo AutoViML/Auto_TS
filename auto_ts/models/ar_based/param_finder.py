@@ -78,9 +78,6 @@ def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq
                                         )
                     results = model.fit()  # TODO: Result is not used, hence commenting 
 
-                    print("Nikhil results")
-                    print(results)
-
                     results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + metric)
                     if iteration % 10 == 0:
                         print('    Iteration %d completed...' % iteration)
