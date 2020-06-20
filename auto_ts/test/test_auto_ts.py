@@ -40,14 +40,15 @@ class TestAutoTS(unittest.TestCase):
             seasonal_period=12, seasonal_PDQ=None, model_type='best',
             verbose=0)
         automl_model.fit(self.train, self.ts_column, self.target, self.sep)
-        automl_model.predict()
+        automl_model.predict()  # pass the test dataframe (exogen)
         ml_dict = automl_model.get_ml_dict()
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
-                'rmse':[27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf]
+                # 'rmse':[27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf]  # This was with previous ML predict method where we had leakage
+                'rmse':[27.017947, 76.037433, 112.477032, 169.000166, 193.496506, math.inf] # This is with new ML predict method without leakage
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -192,9 +193,17 @@ class TestAutoTS(unittest.TestCase):
         #############################
         #### Checking ML Results ####
         #############################
+        
+        # This was with previous ML predict method where we had leakage
+        # forecast_gold = np.array([
+        #     475.24, 455.72, 446.58, 450.82,
+        #     453.76, 457.96, 475.04, 564.78
+        #     ])
+
+        # This is with new ML predict method without leakage
         forecast_gold = np.array([
-            475.24, 455.72, 446.58, 450.82,
-            453.76, 457.96, 475.04, 564.78
+            475.24, 444.8 , 437.7 , 446.44,
+            449.88, 476.68, 622.04, 640.48
             ])
 
         self.assertIsNone(
@@ -202,8 +211,9 @@ class TestAutoTS(unittest.TestCase):
             "ML Forecast does not match up with expected values."
         )
         
-        rmse_gold = 94.94981174
-        self.assertEqual(round(ml_dict.get('ML').get('rmse'),8), rmse_gold, "VAR RMSE does not match up with expected values.")
+        # rmse_gold = 94.94981174 # This was with previous ML predict method where we had leakage
+        rmse_gold = 76.03743322 # This is with new ML predict method without leakage
+        self.assertEqual(round(ml_dict.get('ML').get('rmse'),8), rmse_gold, "ML RMSE does not match up with expected values.")
        
 
 

@@ -528,10 +528,16 @@ class AutoTimeseries:
                     else:
                         print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
                         score_val = np.inf
-                except:
+                except Exception as e:  # TODO: Add the printing of this exception to all model types
+                    print("Excepton occured while building ML model...")
+                    print(e)
                     print('    For ML model, evaluation score is not available.')
                     score_val = np.inf
             ################################################################
+            
+            # TODO: Fix -- if the exception is hit, then the previous models 
+            # RMSE is getting assigned. Need to fix. 
+            # Also check for all model types
             if self.score_type == 'rmse':
                 score_val = rmse
             else:

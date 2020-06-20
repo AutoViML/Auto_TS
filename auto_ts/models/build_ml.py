@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Optional, Tuple
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -35,6 +36,11 @@ class BuildML():
 
         self.transformed_target: str = ""
         self.transformed_preds: List[str] = []
+
+        # This saves the last `self.lags` of the original train dataframe
+        # This is needed during predictions to transform the X_test
+        # to a supervised learning problem.
+        self.df_train_prepend: pd.DataFrame = pd.DataFrame()
        
 
     #def fit(self, X, Y, modeltype='Regression', scoring='', verbose=0):
@@ -48,6 +54,12 @@ class BuildML():
         self.lags = lags
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
 
+        # Order data
+        ts_df = self.order_df(ts_df)
+
+        train_orig_df = ts_df[:-self.forecast_period]
+        test_orig_df = ts_df[-self.forecast_period:] # This will be used for making the dynamic prediction
+
         dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(ts_df)
         
         train = dfxs[:-self.forecast_period]
@@ -59,6 +71,14 @@ class BuildML():
         y_test = test[self.transformed_target]
         X_test = test[self.transformed_preds]
         
+        # print("ML Diagnostics:")
+        # print(f"Lags: {self.lags}")
+        # print(f"Original Shape: {ts_df.shape}")
+        # print(f"Transformed Shape: {dfxs.shape}")
+        # print(f"Forecast Period: {self.forecast_period}")
+        # print(f"Train Shape: {X_train.shape}")
+        # print(f"Test Shape: {X_test.shape}")
+
         seed = 99
         if len(X_train) <= 100000 or X_train.shape[1] < 50:
             NUMS = 50
@@ -105,17 +125,43 @@ class BuildML():
             print('Best Model = %s with %0.2f Normalized RMSE score\n' % (besttype, bestscore))
         # print('Model Results:')
         
-        # Refit Model on entire train dataset (earlier, we only did on splits)
-        self.model.fit(X_train, y_train)
-        forecast = self.model.predict(X_test)
+        # Refit Model on entire train dataset (earlier, we only trained the model on the individual splits)
+        # Refit on the original dataframe minus the last `forecast_period` observations (train_orig_df)
+        self.refit(ts_df=train_orig_df)
+
+        # This is the old method that had leakage (X_test has known values of predicted y values)    
+        # forecast = self.model.predict(X_test)
+        # print("Forecasts (old method)")
+        # print(forecast)
+
+        # This is the new method without the leakage
+        # Drop the y value
+        test_orig_df_pred_only = test_orig_df.drop(self.original_target_col, axis=1, inplace=False)
+        forecast = self.predict(test_orig_df_pred_only)
+        # print("Forecasts (new)")
+        # print(forecast)
+
         rmse, norm_rmse = print_dynamic_rmse(
             y_test.values,
             forecast,
             y_train.values
         )
         
-        # return self.model, bestscore, besttype
         return self.model, forecast, rmse, norm_rmse
+
+    def order_df(self, ts_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Given a dataframe (original), this will order the columns with 
+        target as the first column and the predictors as the next set of columns
+        The actual target being placed in the first column is not important.
+        What is important is that the order of columns is maintained consistently
+        throughout the lifecycle as this will also be used when predicting with
+        test data (i.e. we need to prepend some of the train data to the test data
+        before transforming the original time series dataframe into a supervised 
+        learning problem.).
+        """
+        return ts_df[[self.original_target_col] + self.original_preds]
+
 
     def df_to_supervised(self, ts_df: pd.DataFrame) -> Tuple[pd.DataFrame, str, List[str]]:
         """
@@ -138,17 +184,94 @@ class BuildML():
         'target_col': and 'lags' do not need to be passed as was the case with the fit method.
         We will simply use the values that were stored during the training process.
         """
+        # TODO: Add for ML model
+        # Reuse the names obtained during original training
+        #dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(ts_df)
+        dfxs, _, _  = self.df_to_supervised(ts_df)
 
+        y_train = dfxs[self.transformed_target]
+        X_train = dfxs[self.transformed_preds]
 
-    def predict(self, forecast_period: Optional[int] = None):
+        self.model.fit(X_train, y_train)
+
+        # Save last `self.lags` which will be used for predictions later
+        self.df_train_prepend = ts_df[-self.lags:]
+        
+
+    def predict(self, X_exogen: pd.DataFrame, forecast_period: Optional[int] = None):
         """
         Return the predictions
+        :param: X_exogen The test dataframe in pretransformed format
+        :param: forecast_period Not used this this case since for ML based models,
+        X_egogen is a must, hence we can use the number of rows in X_egogen
+        to get the forecast period. 
         """
+
         # Extract the dynamic predicted and true values of our time series
-        if forecast_period is None:
-            # use the forecast period used during training
-            y_forecasted = self.model.forecast(self.forecast_period)
-        else:
-            # use the forecast period provided by the user
-            y_forecasted = self.model.forecast(forecast_period)
+        
+        # Placebholder for forecasted results
+        y_forecasted: List[float] = [] 
+
+        # STEP 1:       
+        # self.df_prepend has the y column as well, but X_exogen does not. 
+        # Need to add a dummy column to X_exogen before appending the 2 dataframes
+        # However, Since we are going to depend on previous values of y column to make
+        # future predictions, we can not just use all zeros for the y values
+        # (especially for forrecasts beyond the 1st prediction). So we will 
+        # make one prediction at a time and then use that prediction to make the next prediction.
+        # That way, we get the most accurate prediction without leakage of informaton.
+        
+        # print (f"Columns before adding dummy: {X_exogen.columns}")
+        X_exogen_with_dummy = X_exogen.copy(deep=True)
+
+        # Just a check to make sure user is not passing the target column to predict function.
+        if self.original_target_col in X_exogen_with_dummy.columns:
+            warnings.warn("Your X_exogen dataframe contains the target column as well. This will be deleted for the predictions.")
+            X_exogen_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
+
+        # Adding dummy value for target. 
+        X_exogen_with_dummy[self.original_target_col] = np.zeros((X_exogen_with_dummy.shape[0],1))  
+
+        # Make sure column order is correct when adding the dummy column
+        X_exogen_with_dummy = self.order_df(X_exogen_with_dummy)
+        # print (f"Columns after reordering: {X_exogen_with_dummy.columns}")
+
+        # STEP 2:
+        # Make prediction for each row. Then use the prediction for the next row.
+        df_prepend = self.df_train_prepend.copy(deep=True)
+        for i in np.arange(X_exogen_with_dummy.shape[0]):
+            
+            # Append the last n_lags of the data to the row of the X_egogen that is being preducted
+            # Note that some of this will come from the last few observations of the training data
+            # and the rest will come from the last few observations of the X_egogen data.
+            # print(f"Prepend shape before adding test: {df_prepend.shape}")
+            df_prepend = df_prepend.append(X_exogen_with_dummy.iloc[i])
+            # print(f"Prepend shape after adding test: {df_prepend.shape}")
+            # print("Prepend Dataframe")
+            # print(df_prepend)
+
+            # Convert the appended dataframe to supervised learning problem
+            dfxs, _, _  = self.df_to_supervised(df_prepend)
+
+            # Select only the predictors (transformed) from here
+            X_test = dfxs[self.transformed_preds]    
+            # print("X_test")
+            # print(X_test)
+
+            # Forecast
+            y_forecasted_temp = self.model.predict(X_test)  # Numpy array
+            # print(y_forecasted_temp) 
+            y_forecasted.append(y_forecasted_temp[0])
+
+            # Append the predicted value for use in next prediction
+            df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[0]
+
+            # Remove 1st entry as it is not needed for next round
+            df_prepend = df_prepend[1:]
+
+            # print("df_prepend end of loop")
+            # print(df_prepend)
+
+        y_forecasted = np.array(y_forecasted)
+
         return y_forecasted
