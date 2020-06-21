@@ -1,5 +1,5 @@
 import warnings
-from typing import Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union
 
 from datetime import datetime
 import copy
@@ -45,7 +45,7 @@ class AutoTimeseries:
     def __init__(self, score_type: str ='rmse',
                 forecast_period: int = 5, time_interval: str = '', non_seasonal_pdq: Optional[Tuple]=None,
                 seasonality: bool = False, seasonal_period: int = 12, seasonal_PDQ=None,
-                conf_int: float = 0.95, model_type: str ="stats", verbose: int =0):
+                conf_int: float = 0.95, model_type: Union[str, List] ="stats", verbose: int =0):
         """
         Initializae an AutoTimeSeries object
         # TODO: Add complete docstring
@@ -107,8 +107,12 @@ class AutoTimeseries:
         self.seasonal_period = seasonal_period
         self.seasonal_PDQ = seasonal_PDQ  # TODO: This is not being used anywhere. Check if this is needed.
         self.conf_int = conf_int
+        if isinstance(model_type, str):
+            model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
+
+        self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML']
 
     def fit(self, traindata, ts_column, target, sep=','):
         """
@@ -142,24 +146,24 @@ class AutoTimeseries:
                     if isinstance(ts_df, str):
                         print("""Time Series column %s could not be converted to a Pandas date time column.
                             Please convert your input into a date-time column  and try again""" %ts_column)
-                        return
+                        return None
                     else:
                         print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
                 except:
                     print('File could not be loaded. Check the path or filename and try again')
-                    return
+                    return None
         elif isinstance(traindata, pd.DataFrame):
             print('Input is data frame. Performing Time Series Analysis')
             ts_df = load_ts_data(traindata, ts_column, sep, target)
             if isinstance(ts_df, str):
                 print("""Time Series column %s could not be converted to a Pandas date time column.
                     Please convert your input into a date-time column  and try again""" %ts_column)
-                return
-            else:
+                return None
+            else: 
                 print('    Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
         else:
             print('File name is an empty string. Please check your input and try again')
-            return
+            return None
         df_orig = copy.deepcopy(ts_df)
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
@@ -220,7 +224,7 @@ class AutoTimeseries:
                     self.time_interval = 'years'
                 else:
                     print('Time Series time delta is unknown')
-                    return
+                    return None
             if diff_in_days == 0:
                 if diff_in_hours == 0:
                     print('Time series input in Minutes or Seconds = %s' % diff_in_hours)
@@ -231,7 +235,7 @@ class AutoTimeseries:
                     self.time_interval = 'hours'
                 else:
                     print('It is an Unknown Time Series delta')
-                    return
+                    return None
         else:
             print('Time Interval is given as %s' % self.time_interval)
 
@@ -271,7 +275,7 @@ class AutoTimeseries:
         mldict = lambda: defaultdict(mldict)
         self.ml_dict = mldict()
         try:
-            if self.model_type.lower() == 'best':
+            if self.__any_contained_in_list(what_list=['best'], in_list=self.model_type):
                 print(colorful.BOLD +'WARNING: Running best models will take time... Be Patient...' + colorful.END)
         except:
             print('Check if your model type is a string or one of the available types of models')
@@ -281,7 +285,7 @@ class AutoTimeseries:
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
         #########                 FB Prophet              ###################################
 
-        if self.model_type.lower() in ['prophet', 'best']:
+        if self.__any_contained_in_list(what_list=['prophet', 'best'], in_list=self.model_type):
             print("\n")
             print("="*50)
             print("Building Prophet Model")
@@ -319,7 +323,7 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
         
-        if self.model_type.lower() in ['stats', 'best']:
+        if self.__any_contained_in_list(what_list=['pyflux', 'stats', 'best'], in_list=self.model_type):
             print("\n")
             print("="*50)
             print("Building PyFlux Model")
@@ -357,7 +361,8 @@ class AutoTimeseries:
             self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  # TODO: Add the right value here
-            
+
+        if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type): 
             ################### Let's build an ARIMA Model and add results #################
             print("\n")
             print("="*50)
@@ -393,7 +398,8 @@ class AutoTimeseries:
             self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
-            
+        
+        if self.__any_contained_in_list(what_list=['SARIMAX', 'stats', 'best'], in_list=self.model_type):
             ############# Let's build a SARIMAX Model and get results ########################
             print("\n")
             print("="*50)
@@ -437,6 +443,7 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
+        if self.__any_contained_in_list(what_list=['VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
             print("\n")
@@ -480,7 +487,7 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
         
-        if self.model_type.lower() in ['ml', 'best']:
+        if self.__any_contained_in_list(what_list=['ml', 'best'], in_list=self.model_type):
             ########## Let's build a Machine Learning Model now with Time Series Data ################
             
             print("\n")
@@ -544,19 +551,16 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
             
-        if not self.model_type.lower() in ['stats','ml', 'prophet', 'best']:
-            print('The model_type should be either stats, prophet, ml or best. Check your input and try again...')
-            return self.ml_dict
-        
+        if not self.__all_contained_in_list(what_list=self.model_type, in_list=self.allowed_models):
+            print(f'The model_type should be any of the following: {self.allowed_models}. You entered {self.model_type}. Some models may not have been developed...')
+            if len(list(self.ml_dict.keys())) == 0:  
+                return None        
         
         ######## Selecting the best model based on the lowest rmse score ######
-        # f1_stats = {}
-        # for key, _ in self.ml_dict.items():
-        #     f1_stats[key] = self.ml_dict[key][self.score_type]
-        best_model_name = self.get_best_model_name()    # min(f1_stats.items(), key=operator.itemgetter(1))[0]
+        best_model_name = self.get_best_model_name()    
         print(colorful.BOLD + '\nBest Model is:' + colorful.END)
         print('    %s' % best_model_name)
-        # best_model = self.ml_dict[best_model_name]['model']  # unused
+        
         print('    Best Model Forecasts: %s' %self.ml_dict[best_model_name]['forecast'])
         print('    Best Model Score: %0.2f' % self.ml_dict[best_model_name][self.score_type])
         return self
@@ -653,3 +657,23 @@ class AutoTimeseries:
         results = pd.DataFrame({"name": names, self.score_type: rmses})
         results.sort_values(self.score_type, ascending=ascending, inplace=True)
         return results
+
+    def __any_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
+        """
+        Returns True is any element in the 'in_list' is contained in the 'what_list'
+        """
+        if lower:
+            what_list = [elem.lower() for elem in what_list]
+            in_list = [elem.lower() for elem in in_list]
+
+        return any([True if elem in in_list else False for elem in what_list])
+
+    def __all_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
+        """
+        Returns True is all elements in the 'in_list' are contained in the 'what_list'
+        """
+        if lower:
+            what_list = [elem.lower() for elem in what_list]
+            in_list = [elem.lower() for elem in in_list]
+
+        return all([True if elem in in_list else False for elem in what_list])
