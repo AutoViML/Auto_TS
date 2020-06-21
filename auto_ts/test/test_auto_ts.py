@@ -289,7 +289,7 @@ class TestAutoTS(unittest.TestCase):
 
 
 
-    #@unittest.skip
+    # @unittest.skip
     def test_auto_ts_multivar(self):
         """
         test to check functionality of the auto_ts function
@@ -570,7 +570,7 @@ class TestAutoTS(unittest.TestCase):
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
 
-    #@unittest.skip
+    # @unittest.skip
     def test_auto_ts_univar(self):
         """
         test to check functionality of the auto_ts function (univariate models)
@@ -854,7 +854,7 @@ class TestAutoTS(unittest.TestCase):
         )
        
 
-    #@unittest.skip
+    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -876,7 +876,7 @@ class TestAutoTS(unittest.TestCase):
                 'rmse':[76.037433, 193.496506] 
             }
         )
-        # TODO: Bug: ML results are coming out to be different if be use 'best' vs. if we use ['SARIMAX', 'ML']. Must be some leakage. Check and fix.
+        # TODO: #15 Bug: ML results are coming out to be different if be use 'best' vs. if we use ['SARIMAX', 'ML']. Must be some leakage. Check and fix.
         # [left]:  [74.133644, 193.496506]  # Got this
         # [right]: [76.037433, 193.496506]  # Expected this
         # assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -905,7 +905,25 @@ class TestAutoTS(unittest.TestCase):
         status = automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
         self.assertIsNone(status)
 
-       
+    #@unittest.skip
+    def test_passing_list_instead_of_str(self):
+        """
+        test to check functionality of the training with only a subset of models
+        """
+        import numpy as np  # type: ignore
+        from auto_ts.auto_ts import AutoTimeseries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            model_type=['SARIMAX', 'ML'],
+            verbose=0)
+        automl_model.fit(self.train_multivar, [self.ts_column], [self.target], self.sep)
+        print(automl_model.get_leaderboard())
+        leaderboard_models = np.array(['ML', 'SARIMAX'])
+
+        np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
+                        
      
 if __name__ == '__main__':
     unittest.main()

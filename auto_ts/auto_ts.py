@@ -114,14 +114,16 @@ class AutoTimeseries:
 
         self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML']
 
-    def fit(self, traindata, ts_column, target, sep=','):
+    def fit(
+        self,
+        traindata: Union[str, pd.DataFrame],
+        ts_column: Union[str, int, List[str]],
+        target: Union[str, List[str]],
+        sep: str = ','):
         """
         Train the AutoTimeseries object
         # TODO: Complete docstring
         """
-            
-        # start_time = time.time()  # Unused
-
         ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
         stats_scoring = 'aic'
         # seed = 99  # Unused
@@ -137,7 +139,23 @@ class AutoTimeseries:
             d_max = 1
             q_max = 3
         
+        # Check 'ts_column' type
+        if isinstance(ts_column, int):
+            ### If ts_column is a number, then it means you need to convert it to a named variable
+            ts_column = list(ts_df)[ts_column]
+        if isinstance(ts_column, list):
+            # If it is of type List, just pick the first one
+            print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
+            ts_column = ts_column[0]
         
+        # Check 'target' type
+        if isinstance(target, list):
+            target = target[0]
+            print('    Taking the first column in target list as Target variable = %s' %target)
+        else:
+            print('    Target variable = %s' %target)
+
+
         ########## This is where we start the loading of the data file ######################
         if isinstance(traindata, str):
             if traindata != '':
@@ -168,15 +186,8 @@ class AutoTimeseries:
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
             target = list(ts_df)[0]
-        if not isinstance(ts_column, str):
-            ### If ts_column is a number, then it means you need to convert it to a named variable
-            ts_column = list(ts_df)[ts_column]
-        if isinstance(target,list):
-            target = target[0]
-            print('    Taking the first column in target list as Target variable = %s' %target)
-        else:
-            print('    Target variable = %s' %target)
-        
+                
+                
         preds = [x for x in list(ts_df) if x not in [ts_column, target]]
 
         ##################################################################################################
