@@ -150,6 +150,8 @@ class BuildArima():
             ## and after that, forecasts are generated using values from previous forecasted
             ## time points.
             #################################################################################
+            
+            # TODO: Check if this can be changed to use predict function directly.
             start_date = ts_df.index[-self.forecast_period]
             end_date = ts_df.index[-1]
             pred_dynamic = self.model.predict(typ=pred_type, start=start_date, end=end_date, dynamic=True)
@@ -173,14 +175,9 @@ class BuildArima():
             except:
                 pass
         print(self.model.summary())
-        res_frame = pd.DataFrame([self.model.forecast(self.forecast_period)[0], self.model.forecast(self.forecast_period)[1],
-                                                self.model.forecast(self.forecast_period)[2]],
-                                                index=['mean','mean_se','mean_ci'],
-                                                columns=['Forecast_' + str(x) for x
-                                                in range(1, self.forecast_period+1)]).T
-        res_frame['mean_ci_lower'] = res_frame['mean_ci'].map(lambda x: x[0])
-        res_frame['mean_ci_upper'] = res_frame['mean_ci'].map(lambda x: x[1])
-        res_frame.drop('mean_ci', axis=1, inplace=True)
+
+        res_frame = self.predict(simple=False)
+        
         if self.verbose == 1:
             print('Model Forecast(s):\n', res_frame)
         rmse, norm_rmse = print_dynamic_rmse(ts_test, pred_dynamic, ts_train)
@@ -193,6 +190,8 @@ class BuildArima():
         simple: bool = True):
         """
         Return the predictions
+        # TODO: Check if the series can be converted to a dataframe for all models.
+        :rtype cam be Pandas Series (simple), pandas dataframe (simple = False) or None
         """
 
         # TODO: Add processing of 'simple' argument and return type
@@ -208,28 +207,36 @@ class BuildArima():
         # Extract the dynamic predicted and true values of our time series
         if forecast_period is None:
             # use the forecast period used during training
-            y_forecasted = self.model.forecast(self.forecast_period)
+            forecast_period = self.forecast_period
+       
+        y_forecasted = self.model.forecast(forecast_period)
+
+
+        # TODO: Check if the datetime index can be obtained as in the case of SARIMAX.
+        # Currently it is just a text index, e.g. Forecast_1, ...
+        if simple:
+            res_frame = pd.DataFrame([
+                y_forecasted[0], # Mean Forecast
+                ],
+                index=['mean'],
+                columns=['Forecast_' + str(x) for x in range(1, forecast_period+1)]
+            ).T
+            res_frame = res_frame.squeeze() # Convert to a pandas series object
         else:
-            # use the forecast period provided by the user
-            y_forecasted = self.model.forecast(forecast_period)
-        return y_forecasted
+            res_frame = pd.DataFrame([
+                y_forecasted[0], # Mean Forecast
+                y_forecasted[1], # Std Error
+                y_forecasted[2], # Lower and Upper CI
+                ],
+                index=['mean','mean_se','mean_ci'],
+                columns=['Forecast_' + str(x) for x in range(1, forecast_period+1)]
+            ).T
+
+            res_frame['mean_ci_lower'] = res_frame['mean_ci'].map(lambda x: x[0])
+            res_frame['mean_ci_upper'] = res_frame['mean_ci'].map(lambda x: x[1])
+            res_frame.drop('mean_ci', axis=1, inplace=True)
+
+        return res_frame
 
 
 
-# def predicted_diffs_restored_ARIMA(actuals, predicted, periods=1):
-#     """
-#     This utility is needed only we dont set typ="levels" in arima.fit() method.
-#     Hence this utility caters only to ARIMA models in a few cases. Don't need it.
-#     """
-#     if periods == 0:
-#         restored = predicted.copy()
-#         restored.sort_index(inplace=True)
-#         restored[0] = actuals[0]
-#     else:
-#         restored = actuals.copy()
-#         restored.iloc[periods:] = predicted[periods:]
-#         restored = restored[(periods-1):].cumsum()
-#     res = pd.concat([actuals, predicted, restored], axis=1)
-#     res.columns = ['original', 'pred_as_diffs', 'predicted']
-#     print_static_rmse(res['original'].values, res['predicted'].values, periods-1)
-#     return res[['original', 'predicted']]

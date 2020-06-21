@@ -158,14 +158,20 @@ class BuildSarimax():
             plt.show(block=False)
         
         # Extract the dynamic predicted and true values of our time series
-        res2 = self.model.get_forecast(self.forecast_period, full_results=False)
-        res2_df = res2.summary_frame()
-        y_forecasted = self.predict(simple=False)
+        # res2 = self.model.get_forecast(self.forecast_period, full_results=False)
+        # res2_df = res2.summary_frame()
+        # y_forecasted = self.predict(simple=False)
+        
+        res_df = self.predict(simple=False)
+
+        
         if self.verbose == 1:
             print(self.model.summary())
         print('Dynamic %d-Period Forecast:' % (self.forecast_period))
-        rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
-        return self.model, res2_df, rmse, norm_rmse
+        #rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
+        rmse, norm_rmse = print_dynamic_rmse(ts_test, res_df['mean'].values, ts_train)
+        # return self.model, res2_df, rmse, norm_rmse
+        return self.model, res_df, rmse, norm_rmse
 
     def predict(
         self,
@@ -175,17 +181,22 @@ class BuildSarimax():
         """
         Return the predictions
         """
-
-        # TODO: Add processing of 'simple' argument and return type 
-
         # Extract the dynamic predicted and true values of our time series
         if forecast_period is None:
             # use the forecast period used during training
-            y_forecasted = self.model.forecast(self.forecast_period)
+            forecast_period = self.forecast_period
+        
+        res = self.model.get_forecast(forecast_period)
+        res_frame = res.summary_frame()
+
+        if simple:
+            res_frame = res_frame['mean']
+            res_frame = res_frame.squeeze() # Convert to a pandas series object
         else:
-            # use the forecast period provided by the user
-            y_forecasted = self.model.forecast(forecast_period)
-        return y_forecasted
+            # Pass as is
+            pass
+            
+        return res_frame
         
 
 

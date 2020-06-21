@@ -2,6 +2,7 @@ import unittest
 import math
 import numpy as np # type: ignore
 import pandas as pd # type: ignore
+from pandas.testing import assert_series_equal # type: ignore
 from pandas.testing import assert_frame_equal # type: ignore
 # from fbprophet import Prophet # type: ignore
 from fbprophet.forecaster import Prophet # type: ignore
@@ -58,6 +59,27 @@ class TestAutoTS(unittest.TestCase):
             749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
             ])
 
+        results = [
+            749.061242, 751.077262, 796.892366, 783.206733,
+            689.698130, 595.713426, 569.486600, 635.884371           
+            ]
+        index = np.arange(40, 48)
+
+        self.forecast_gold_prophet_multivar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_prophet_multivar_series.name = 'yhat'
+
+        results = results + [576.473786, 581.275889]
+        index = np.arange(40, 50)
+            
+        self.forecast_gold_prophet_multivar_series_10 = pd.Series(
+                data = results, 
+                index = index
+            )
+        self.forecast_gold_prophet_multivar_series_10.name = 'yhat'
+
         self.rmse_gold_prophet_multivar = 27.01794672
 
 
@@ -65,30 +87,78 @@ class TestAutoTS(unittest.TestCase):
         #### ARIMA Golden Results ####
         ##############################
 
-        self.forecast_gold_arima_uni_multivar = np.array([
+        results = [
             801.78660584, 743.16044526, 694.38764549, 684.72931967,
             686.70229610, 692.13402266, 698.59426282, 705.36034762            
-            ])
-        
+            ]
+        index = [
+            'Forecast_1', 'Forecast_2', 'Forecast_3', 'Forecast_4',
+            'Forecast_5', 'Forecast_6', 'Forecast_7', 'Forecast_8'  
+            ]
+
+        self.forecast_gold_arima_uni_multivar = np.array(results)
+
+        self.forecast_gold_arima_uni_multivar_series = pd.Series(
+            data = results,
+            index = index
+        )
+        self.forecast_gold_arima_uni_multivar_series.name = 'mean'
+
+        results = results + [712.217380, 719.101457]
+        index = index + ['Forecast_9', 'Forecast_10']
+
+        self.forecast_gold_arima_uni_multivar_series_10 = pd.Series(
+            data = results,
+            index = index
+        )
+        self.forecast_gold_arima_uni_multivar_series_10.name = 'mean'
+
         self.rmse_gold_arima_uni_multivar = 169.00016628
         
         ################################
         #### SARIMAX Golden Results ####
         ################################
 
-        self.forecast_gold_sarimax_univar = np.array([
+        results = [
             803.31673726, 762.46093997, 718.3581931,  711.42130506,
-            719.36254603, 732.70981867, 747.57645435, 762.47349398
-            ])
+            719.36254603, 732.70981867, 747.57645435, 762.47349398            
+            ]
         
+        self.forecast_gold_sarimax_univar = np.array(results)
         self.rmse_gold_sarimax_univar = 193.49650578
 
         # TODO: Change multivariate model results after adding capability for multivariate models
-        self.forecast_gold_sarimax_multivar = np.array([
+        
+        results = [
             803.31673726, 762.46093997, 718.3581931,  711.42130506,
-            719.36254603, 732.70981867, 747.57645435, 762.47349398
+            719.36254603, 732.70981867, 747.57645435, 762.47349398            
+            ]
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
             ])
         
+        self.forecast_gold_sarimax_multivar = np.array(results)
+        
+        self.forecast_gold_sarimax_multivar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_multivar_series.name = 'mean'
+
+        results = results + [776.914078, 790.809653]
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
+            '2014-05-01', '2014-06-01'
+            ])
+            
+        self.forecast_gold_sarimax_multivar_series_10 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_multivar_series_10.name = 'mean'
+
         self.rmse_gold_sarimax_multivar = 193.49650578
 
         ############################
@@ -98,13 +168,39 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_var_univar = None
         self.rmse_gold_var_univar = math.inf
 
-        self.forecast_gold_var_multivar = np.array([
+        results = [
             741.37790864, 676.23341949, 615.53872102, 571.7977285,
-            546.95278336, 537.34223069, 537.4744872,  542.30739271
+            546.95278336, 537.34223069, 537.4744872,  542.30739271           
+            ]
+
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
             ])
 
+        self.forecast_gold_var_multivar = np.array(results)
+
+        self.forecast_gold_var_multivar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_var_multivar_series.name = 'mean'
+
+        results = results + [548.245948, 553.274306]
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
+            '2014-05-01', '2014-06-01'
+            ])
+            
+        self.forecast_gold_var_multivar_series_10 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_var_multivar_series_10.name = 'mean'
+
         self.rmse_gold_var_multivar = 112.4770318
-        
+
 
         ###########################
         #### ML Golden Results ####
@@ -148,6 +244,8 @@ class TestAutoTS(unittest.TestCase):
         print("Test Predictions from outside AutoML:")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
+        print("Final Dictionary...")
+        print(ml_dict)
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
@@ -188,37 +286,74 @@ class TestAutoTS(unittest.TestCase):
 
 
         if automl_model.get_best_model_build() is not None:
-            print("-"*50)
-            print("Predictions with Best Model (Prophet)")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_best_model_build().predict())}")
-            print(automl_model.get_best_model_build().predict())
-            print(automl_model.get_best_model_build().predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with Best Model (Prophet)")
+            # print("-"*50)
+
+            test_predictions = automl_model.predict(forecast_period=self.forecast_period)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
+
+            test_predictions = automl_model.predict(forecast_period=10)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)   
+
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="FB_Prophet"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
+
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="FB_Prophet")
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)        
 
         if automl_model.get_model_build('ARIMA') is not None:
-            print("-"*50)
-            print("Predictions with ARIMA Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('ARIMA').predict())}")
-            print(automl_model.get_model_build('ARIMA').predict())
-            print(automl_model.get_model_build('ARIMA').predict(forecast_period=10))
-
+            # print("-"*50)
+            # print("Predictions with ARIMA Model")
+            # print("-"*50)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ARIMA"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series) 
+            
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="ARIMA"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10) 
+            
         if automl_model.get_model_build('SARIMAX') is not None:
-            print("-"*50)
-            print("Predictions with SARIMAX Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('SARIMAX').predict())}")
-            print(automl_model.get_model_build('SARIMAX').predict())
-            print(automl_model.get_model_build('SARIMAX').predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with SARIMAX Model")
+            # print("-"*50)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="SARIMAX"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
+            
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="SARIMAX"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series_10)
 
         if automl_model.get_model_build('VAR') is not None:
-            print("-"*50)
-            print("Predictions with VAR Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('VAR').predict())}")
-            print(automl_model.get_model_build('VAR').predict())
-            print(automl_model.get_model_build('VAR').predict(forecast_period=10))
-
+            # print("-"*50)
+            # print("Predictions with VAR Model")
+            # print("-"*50)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="VAR"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_var_multivar_series)
+            
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="VAR"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_var_multivar_series_10)
         
         ##################################
         #### Checking Prophet Results ####
@@ -316,6 +451,8 @@ class TestAutoTS(unittest.TestCase):
         print("Test Predictions from outside AutoML:")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
+        print("Final Dictionary...")
+        print(ml_dict)
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(

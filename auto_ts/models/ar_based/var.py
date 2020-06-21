@@ -109,11 +109,11 @@ class BuildVAR():
             self.model.plot_diagnostics(figsize=(16, 12))
             ax = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
             ax.set(xlabel='Time Steps', title='Impulse Response Functions')
-        res2 = self.model.get_forecast(self.forecast_period)
-        res2_df = res2.summary_frame()
-        y_forecasted =  res2_df['mean'].values
-        rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:,0], y_forecasted, ts_train.iloc[:,0])
-        return self.model, res2_df, rmse, norm_rmse
+        
+        res_df = self.predict(simple=False)
+   
+        rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:,0], res_df['mean'].values, ts_train.iloc[:,0])
+        return self.model, res_df, rmse, norm_rmse
 
     def predict(
         self,
@@ -125,7 +125,7 @@ class BuildVAR():
         """
 
         # TODO: Add processing of 'simple' argument and return type
-        
+
         if X_exogen is not None:
             warnings.warn(
                 "You have passed exogenous variables to make predictions for a VAR model." +
@@ -135,8 +135,21 @@ class BuildVAR():
         # Extract the dynamic predicted and true values of our time series
         if forecast_period is None:
             # use the forecast period used during training
-            y_forecasted = self.model.forecast(self.forecast_period)
+            forecast_period = self.forecast_period
+            
+        # y_forecasted = self.model.forecast(forecast_period) 
+
+        res = self.model.get_forecast(forecast_period)
+        res_frame = res.summary_frame()
+
+        if simple:
+            res_frame = res_frame['mean']
+            res_frame = res_frame.squeeze() # Convert to a pandas series object
         else:
-            # use the forecast period provided by the user
-            y_forecasted = self.model.forecast(forecast_period) 
-        return y_forecasted
+            # Pass as is
+            pass
+            
+        return res_frame
+
+        
+        

@@ -628,8 +628,8 @@ class AutoTimeseries:
                 forecast_period=forecast_period,
                 simple=simple
             )
-        elif self.get_model_build(model.upper()) is not None:
-            predictions = self.get_model_build(model.upper()).predict(
+        elif self.get_model_build(model) is not None:
+            predictions = self.get_model_build(model).predict(
                 X_exogen = X_exogen,
                 forecast_period=forecast_period,
                 simple=simple
