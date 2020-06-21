@@ -29,7 +29,8 @@ def load_ts_data(filename, ts_column, sep, target):
             dft.index = pd.to_datetime(dft.pop(ts_column))
             preds = [x for x in list(dft) if x not in [target]]
             df = dft[[target]+preds]
-        except:
+        except Exception as e:
+            print(e)
             print('Error: Could not convert Time Series column to an index. Please check your input and try again')
             return ''
     return df
