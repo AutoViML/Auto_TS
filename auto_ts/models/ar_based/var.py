@@ -56,7 +56,11 @@ class BuildVAR():
         ### make sure that is the case before doing this program ####################
         i = 1
         results_dict = {}
+
         for d_val in range(1, dmax):
+            # Takes the target column and one other endogenous column at a time
+            # and makes a predictino based on that. Then selects the best 
+            # engogenous column at the end.
             y_train = ts_train.iloc[:, [0, d_val]]
             print('\nAdditional Variable in VAR model = %s' % cols[d_val])
             info_criteria = pd.DataFrame(

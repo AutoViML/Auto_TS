@@ -167,7 +167,7 @@ class BuildSarimax():
         rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
         return self.model, res2_df, rmse, norm_rmse
 
-    def predict(self, forecast_period: Optional[int] = None):
+    def predict(self, X_exogen: Optional[pd.DataFrame]=None, forecast_period: Optional[int] = None):
         """
         Return the predictions
         """
@@ -182,18 +182,3 @@ class BuildSarimax():
         
 
 
-# def predicted_diffs_restored_SARIMAX(original, predicted, periods=1):
-#     """
-#     THIS UTILITY IS NEEDED ONLY WHEN WE HAVE SIMPLE DIFFERENCING SET TO TRUE IN SARIMAX!
-#     The number of periods is equal to the differencing order (d) in the SARIMAX mode.
-#     SARIMAX predicts a "differenced” prediction only when this simple_differencing=True.
-#     """
-#     restored = original.loc[~predicted.isnull()]
-#     predicted = predicted.loc[~predicted.isnull()]
-#     restored.iloc[periods:] = predicted[periods:]
-#     restored = restored.cumsum()
-#     res = pd.concat([original, predicted, restored], axis=1)
-#     res.columns = ['original', 'pred_as_diffs', 'predicted']
-#     res[['original', 'predicted']].plot()
-#     print_static_rmse(concatenated['original'], concatenated['predicted'])
-#     return res[['original', 'predicted']]

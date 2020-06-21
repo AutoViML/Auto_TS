@@ -292,26 +292,35 @@ class AutoTimeseries:
             print("\n")
 
             name = 'FB_Prophet'
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
-            # try:
-            #### If FB prophet needs to run, it needs to be installed. Check it here ###
-            prophet_model = BuildProphet(self.forecast_period, self.time_interval,
-                                         self.score_type, self.verbose, self.conf_int)
-            model, forecast_df, rmse, norm_rmse = prophet_model.fit(
-                                         ts_df, ts_column, target)
+            try:
+                #### If FB prophet needs to run, it needs to be installed. Check it here ###
+                model_build = BuildProphet(self.forecast_period, self.time_interval,
+                                            self.score_type, self.verbose, self.conf_int)
+                model, forecast_df, rmse, norm_rmse = model_build.fit(
+                                            ts_df, ts_column, target)
 
+                forecasts = forecast_df['yhat'].values
+                
+                ##### Make sure that RMSE works, if not set it to np.inf  #########
+                if self.score_type == 'rmse':
+                    score_val = rmse
+                else:
+                    score_val = norm_rmse
+            except Exception as e:  
+                print("Exception occured while building Prophet model...")
+                print(e)
+                print('    FB Prophet may not be installed or Model is not running...')
+                
             self.ml_dict[name]['model'] = model
-            self.ml_dict[name]['forecast'] = forecast_df['yhat'].values
-            ##### Make sure that RMSE works, if not set it to np.inf  #########
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
-            # except:
-            #     print('    FB Prophet may not be installed or Model is not running...')
-            #     score_val = np.inf
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = prophet_model
+            self.ml_dict[name]['model_build'] = model_build
         
         if self.model_type.lower() in ['stats','best']:
             print("\n")
@@ -323,30 +332,36 @@ class AutoTimeseries:
             ##### First let's try the following models in sequence #########################################
             nsims = 100   ### this is needed only for M-H models in PyFlux
             name = 'PyFlux'
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
             print(colorful.BOLD + '\nRunning PyFlux Model...' + colorful.END)
             try:
-                self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = \
+                model, forecasts, rmse, norm_rmse = \
                     build_pyflux_model(ts_df, target, p_max, q_max, d_max, self.forecast_period,
                                     'MLE', nsims, self.score_type, self.verbose)
-                if isinstance(rmse,str):
+
+                ##### Make sure that RMSE works, if not set it to np.inf  #########
+                if isinstance(rmse, str):
                     print('    PyFlux not installed. Install PyFlux and run it again')
-                    score_val = np.inf
-                    rmse = np.inf
-                    norm_rmse = np.inf
-            except:
+                else:
+                    if self.score_type == 'rmse':
+                        score_val = rmse
+                    else:
+                        score_val = norm_rmse                
+            except Exception as e:  
+                print("Exception occured while building PyFlux model...")
+                print(e)
                 print('    PyFlux model error: predictions not available.')
-                score_val = np.inf
-                rmse = np.inf
-                norm_rmse = np.inf
-            ##### Make sure that RMSE works, if not set it to np.inf  #########
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
+
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = None  # TODO: Add the right value here
-            ################### Let's build an ARIMA Model and add results #################
+            self.ml_dict[name]['model_build'] = model_build  # TODO: Add the right value here
             
+            ################### Let's build an ARIMA Model and add results #################
             print("\n")
             print("="*50)
             print("Building ARIMA Model")
@@ -354,25 +369,35 @@ class AutoTimeseries:
             print("\n")
 
             name = 'ARIMA'
-            arima_model = None # Placeholder for cases when model can not be built
+
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
             print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
             try:
-                arima_model = BuildArima(
+                model_build = BuildArima(
                     stats_scoring, p_max, d_max, q_max,
                     forecast_period=self.forecast_period, method='mle', verbose=self.verbose
                 )
-                self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = arima_model.fit(ts_df[target])
-            except:
+                model, forecasts, rmse, norm_rmse = model_build.fit(ts_df[target])
+
+                if self.score_type == 'rmse':
+                    score_val = rmse
+                else:
+                    score_val = norm_rmse
+            except Exception as e:  
+                print("Exception occured while building ARIMA model...")
+                print(e)
                 print('    ARIMA model error: predictions not available.')
-                score_val = np.inf
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
+                
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = arima_model  
-            ############# Let's build a SARIMAX Model and get results ########################
+            self.ml_dict[name]['model_build'] = model_build  
             
+            ############# Let's build a SARIMAX Model and get results ########################
             print("\n")
             print("="*50)
             print("Building SARIMAX Model")
@@ -380,33 +405,40 @@ class AutoTimeseries:
             print("\n")
 
             name = 'SARIMAX'
-            print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
-            # try:
-            # self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = build_sarimax_model(
-            #     ts_df[target], stats_scoring, self.seasonality,
-            #     self.seasonal_period, p_max, d_max, q_max,
-            #     self.forecast_period,self.verbose
-            # )
-            sarimax_model = BuildSarimax(
-                metric=stats_scoring,
-                seasonality=self.seasonality,
-                seasonal_period=self.seasonal_period,
-                p_max=p_max, d_max=d_max, q_max=q_max,
-                forecast_period=self.forecast_period,
-                verbose=self.verbose
-            )
-            # TODO: https://github.com/AutoViML/Auto_TS/issues/10
-            self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = sarimax_model.fit(ts_df[target])
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
 
-            # except:
-            #     print('    SARIMAX model error: predictions not available.')
-            #     score_val = np.inf
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
+            print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
+            try:
+                model_build = BuildSarimax(
+                    metric=stats_scoring,
+                    seasonality=self.seasonality,
+                    seasonal_period=self.seasonal_period,
+                    p_max=p_max, d_max=d_max, q_max=q_max,
+                    forecast_period=self.forecast_period,
+                    verbose=self.verbose
+                )
+                # TODO: https://github.com/AutoViML/Auto_TS/issues/10
+                model, forecasts, rmse, norm_rmse = model_build.fit(
+                    ts_df[target]
+                )
+
+                if self.score_type == 'rmse':
+                    score_val = rmse
+                else:
+                    score_val = norm_rmse
+            except Exception as e:  
+                print("Exception occured while building SARIMAX model...")
+                print(e)
+                print('    SARIMAX model error: predictions not available.')
+                
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = sarimax_model
+            self.ml_dict[name]['model_build'] = model_build
 
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
@@ -417,7 +449,12 @@ class AutoTimeseries:
             print("\n")
 
             name = 'VAR'
-            var_model = None # Placeholder for cases when model can not be built
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
+            
             if len(preds) == 0:
                 print(colorful.BOLD + '\nNo VAR model created since no explanatory variables given in data set' + colorful.END)
                 rmse = np.inf
@@ -432,23 +469,25 @@ class AutoTimeseries:
                         ts_df[preds] = ts_df[preds].shift(1)
                         ts_df.dropna(axis=0,inplace=True)
 
-                        var_model = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
-                        self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = var_model.fit(ts_df[[target]+preds])
+                        model_build = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
+                        model, forecasts, rmse, norm_rmse = model_build.fit(
+                            ts_df[[target]+preds])
+
+                        if self.score_type == 'rmse':
+                            score_val = rmse
+                        else:
+                            score_val = norm_rmse
                     else:
                         print(colorful.BOLD + '\nNo predictors available. Skipping VAR model...' + colorful.END)
-                        score_val = np.inf
-                except:
+                except Exception as e:  
+                    print("Exception occured while building VAR model...")
+                    print(e)
                     warnings.warn('    VAR model error: predictions not available.')
-                    rmse = np.inf
-                    norm_rmse = np.inf
-            ################################################################
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
-            ########################################################################
+                    
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = var_model  
+            self.ml_dict[name]['model_build'] = model_build  
         
         if self.model_type.lower() in ['ml','best']:
             ########## Let's build a Machine Learning Model now with Time Series Data ################
@@ -460,7 +499,12 @@ class AutoTimeseries:
             print("\n")
             
             name = 'ML'
-            ml_model = None # Placeholder for cases when model can not be built
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecasts = None
+            
             if len(preds) == 0:
                 print('No ML model since number of predictors is zero')
                 rmse = np.inf
@@ -485,25 +529,29 @@ class AutoTimeseries:
                         # train = dfxs[:-self.forecast_period]
                         # test = dfxs[-self.forecast_period:]
 
-                        ml_model = BuildML(
+                        model_build = BuildML(
                             scoring=self.score_type,
                             forecast_period = self.forecast_period,
                             verbose=self.verbose
                         )
-                        #best = ml_model.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
-                        #best = ml_model.fit(train[preds], train[target])
-                        # best = ml_model.fit(
+                        #best = model_build.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
+                        #best = model_build.fit(train[preds], train[target])
+                        # best = model_build.fit(
                         #     ts_df=ts_df,
                         #     target_col=target,
                         #     lags=lag
                         # )
 
-                        self.ml_dict[name]['model'], self.ml_dict[name]['forecast'], rmse, norm_rmse = ml_model.fit(
+                        model, forecasts, rmse, norm_rmse = model_build.fit(
                             ts_df=ts_df,
                             target_col=target,
                             lags=lag
                         )
 
+                        if self.score_type == 'rmse':
+                            score_val = rmse
+                        else:
+                            score_val = norm_rmse
                         # bestmodel = best[0]
                         # self.ml_dict[name]['model'] = bestmodel
                         # ### Certain models dont have random state => so dont do this for all since it will error
@@ -527,30 +575,21 @@ class AutoTimeseries:
                         # time_series_plot(dfxs[target], chart_time=self.time_interval)
                     else:
                         print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
-                        score_val = np.inf
-                except Exception as e:  # TODO: Add the printing of this exception to all model types
-                    print("Excepton occured while building ML model...")
+                except Exception as e:  
+                    print("Exception occured while building ML model...")
                     print(e)
                     print('    For ML model, evaluation score is not available.')
-                    score_val = np.inf
-            ################################################################
-            
-            # TODO: Fix -- if the exception is hit, then the previous models 
-            # RMSE is getting assigned. Need to fix. 
-            # Also check for all model types
-            if self.score_type == 'rmse':
-                score_val = rmse
-            else:
-                score_val = norm_rmse
-                rmse = np.inf
-                norm_rmse = np.inf
-            ########################################################################
+  
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = ml_model  
+            self.ml_dict[name]['model_build'] = model_build  
             
         if not self.model_type.lower() in ['stats','ml', 'prophet', 'best']:
             print('The model_type should be either stats, prophet, ml or best. Check your input and try again...')
             return self.ml_dict
+        
+        
         ######## Selecting the best model based on the lowest rmse score ######
         # f1_stats = {}
         # for key, _ in self.ml_dict.items():
