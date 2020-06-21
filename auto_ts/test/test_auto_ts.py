@@ -2,9 +2,9 @@ import unittest
 import math
 import numpy as np # type: ignore
 import pandas as pd # type: ignore
+
 from pandas.testing import assert_series_equal # type: ignore
 from pandas.testing import assert_frame_equal # type: ignore
-# from fbprophet import Prophet # type: ignore
 from fbprophet.forecaster import Prophet # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
@@ -34,9 +34,14 @@ class TestAutoTS(unittest.TestCase):
 
         self.forecast_period = 8
 
+        # self.expected_pred_col_names_prophet = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
+        self.expected_pred_col_names_stats = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
+        
         ################################
         #### Prophet Golden Results ####
         ################################
+
+        #### UNIVARIATE ####
 
         self.forecast_gold_prophet_univar = np.array([
             397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
@@ -47,8 +52,31 @@ class TestAutoTS(unittest.TestCase):
             749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
             ])
 
+        results = [
+            749.061242, 751.077262, 796.892366, 783.206733,
+            689.698130, 595.713426, 569.486600, 635.884371           
+            ]
+        index = np.arange(40, 48)
+
+        self.forecast_gold_prophet_univar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_prophet_univar_series.name = 'yhat'
+
+        results = results + [576.473786, 581.275889]
+        index = np.arange(40, 50)
+            
+        self.forecast_gold_prophet_univar_series_10 = pd.Series(
+                data = results, 
+                index = index
+            )
+        self.forecast_gold_prophet_univar_series_10.name = 'yhat'
+
         self.rmse_gold_prophet_univar = 27.01794672
 
+
+        #### MULTIVARIATE ####
         # TODO: Change multivariate model results after adding capability for multivariate models
         self.forecast_gold_prophet_multivar = np.array([
             397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
@@ -87,6 +115,8 @@ class TestAutoTS(unittest.TestCase):
         #### ARIMA Golden Results ####
         ##############################
 
+        #### UNIVARIATE and MULTIVARIATE ####
+
         results = [
             801.78660584, 743.16044526, 694.38764549, 684.72931967,
             686.70229610, 692.13402266, 698.59426282, 705.36034762            
@@ -119,14 +149,42 @@ class TestAutoTS(unittest.TestCase):
         #### SARIMAX Golden Results ####
         ################################
 
+        #### UNIVARIATE ####
+
         results = [
             803.31673726, 762.46093997, 718.3581931,  711.42130506,
             719.36254603, 732.70981867, 747.57645435, 762.47349398            
             ]
+
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
+            ])
         
         self.forecast_gold_sarimax_univar = np.array(results)
+        
+        self.forecast_gold_sarimax_univar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_univar_series.name = 'mean'
+
+        results = results + [776.914078, 790.809653]
+        index = pd.to_datetime([
+            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
+            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
+            '2014-05-01', '2014-06-01'
+            ])
+            
+        self.forecast_gold_sarimax_univar_series_10 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_univar_series_10.name = 'mean'
+
         self.rmse_gold_sarimax_univar = 193.49650578
 
+        #### MULTIVARIATE ####
         # TODO: Change multivariate model results after adding capability for multivariate models
         
         results = [
@@ -165,9 +223,13 @@ class TestAutoTS(unittest.TestCase):
         #### VAR Golden Results ####
         ############################
 
+        #### UNIVARIATE ####
         self.forecast_gold_var_univar = None
         self.rmse_gold_var_univar = math.inf
+        self.forecast_gold_var_univar_series = None
+        self.forecast_gold_var_univar_series_10 = None
 
+        #### MULTIVARIATE ####
         results = [
             741.37790864, 676.23341949, 615.53872102, 571.7977285,
             546.95278336, 537.34223069, 537.4744872,  542.30739271           
@@ -290,70 +352,144 @@ class TestAutoTS(unittest.TestCase):
             # print("Predictions with Best Model (Prophet)")
             # print("-"*50)
 
+            # Simple forecast with forecast window = one used in training
+            # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=self.forecast_period)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
 
+            # Simple forecast with forecast window != one used in training
+            # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=10)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)   
 
+            # Simple forecast with forecast window = one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="FB_Prophet"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
 
+            # Simple forecast with forecast window != one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="FB_Prophet")
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)        
 
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="FB_Prophet",
+                simple=False
+            )
+            # print(test_predictions)
+            # self.assertIsNone(
+            #     np.testing.assert_array_equal(
+            #         test_predictions.columns.values, self.expected_pred_col_names_prophet
+            #     )
+            # )
+        
+
         if automl_model.get_model_build('ARIMA') is not None:
             # print("-"*50)
             # print("Predictions with ARIMA Model")
             # print("-"*50)
+            
+            # Simple forecast with forecast window = one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="ARIMA"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series) 
             
+            # Simple forecast with forecast window != one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="ARIMA"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10) 
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ARIMA",
+                simple=False
+            )
+            # print(test_predictions)
+            # self.assertIsNone(
+            #     np.testing.assert_array_equal(
+            #         test_predictions.columns.values, self.expected_pred_col_names_stats
+            #     )
+            # )
             
         if automl_model.get_model_build('SARIMAX') is not None:
             # print("-"*50)
             # print("Predictions with SARIMAX Model")
             # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
             
+            # Simple forecast with forecast window != one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series_10)
 
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="SARIMAX",
+                simple=False
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                )
+            )
+            
         if automl_model.get_model_build('VAR') is not None:
             # print("-"*50)
             # print("Predictions with VAR Model")
             # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="VAR"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_var_multivar_series)
             
+            # Simple forecast with forecast window != one used in training
+            # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="VAR"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_var_multivar_series_10)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="VAR",
+                simple=False
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                )
+            )
         
         ##################################
         #### Checking Prophet Results ####
@@ -491,37 +627,181 @@ class TestAutoTS(unittest.TestCase):
         # )
 
 
+        # if automl_model.get_best_model_build() is not None:
+        #     print("-"*50)
+        #     print("Predictions with Best Model (Prophet)")
+        #     print("-"*50)
+        #     print(f"Type: {type(automl_model.get_best_model_build().predict())}")
+        #     print(automl_model.get_best_model_build().predict())
+        #     print(automl_model.get_best_model_build().predict(forecast_period=10))
+
+        # if automl_model.get_model_build('ARIMA') is not None:
+        #     print("-"*50)
+        #     print("Predictions with ARIMA Model")
+        #     print("-"*50)
+        #     print(f"Type: {type(automl_model.get_model_build('ARIMA').predict())}")
+        #     print(automl_model.get_model_build('ARIMA').predict())
+        #     print(automl_model.get_model_build('ARIMA').predict(forecast_period=10))
+
+        # if automl_model.get_model_build('SARIMAX') is not None:
+        #     print("-"*50)
+        #     print("Predictions with SARIMAX Model")
+        #     print("-"*50)
+        #     print(f"Type: {type(automl_model.get_model_build('SARIMAX').predict())}")
+        #     print(automl_model.get_model_build('SARIMAX').predict())
+        #     print(automl_model.get_model_build('SARIMAX').predict(forecast_period=10))
+
+        # if automl_model.get_model_build('VAR') is not None:
+        #     print("-"*50)
+        #     print("Predictions with VAR Model")
+        #     print("-"*50)
+        #     print(f"Type: {type(automl_model.get_model_build('VAR').predict())}")
+        #     print(automl_model.get_model_build('VAR').predict())
+        #     print(automl_model.get_model_build('VAR').predict(forecast_period=10))
+
         if automl_model.get_best_model_build() is not None:
-            print("-"*50)
-            print("Predictions with Best Model (Prophet)")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_best_model_build().predict())}")
-            print(automl_model.get_best_model_build().predict())
-            print(automl_model.get_best_model_build().predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with Best Model (Prophet)")
+            # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using default (best model)
+            test_predictions = automl_model.predict(forecast_period=self.forecast_period)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series)        
+
+            # Simple forecast with forecast window != one used in training
+            # Using default (best model)
+            test_predictions = automl_model.predict(forecast_period=10)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series_10)   
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="FB_Prophet"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series)        
+
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="FB_Prophet")
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series_10)        
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="FB_Prophet",
+                simple=False
+            )
+            # print(test_predictions)
+            # self.assertIsNone(
+            #     np.testing.assert_array_equal(
+            #         test_predictions.columns.values, self.expected_pred_col_names_prophet
+            #     )
+            # )
+        
 
         if automl_model.get_model_build('ARIMA') is not None:
-            print("-"*50)
-            print("Predictions with ARIMA Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('ARIMA').predict())}")
-            print(automl_model.get_model_build('ARIMA').predict())
-            print(automl_model.get_model_build('ARIMA').predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with ARIMA Model")
+            # print("-"*50)
+            
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ARIMA"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series) 
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="ARIMA"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10) 
 
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ARIMA",
+                simple=False
+            )
+            # print(test_predictions)
+            # self.assertIsNone(
+            #     np.testing.assert_array_equal(
+            #         test_predictions.columns.values, self.expected_pred_col_names_stats
+            #     )
+            # )
+            
         if automl_model.get_model_build('SARIMAX') is not None:
-            print("-"*50)
-            print("Predictions with SARIMAX Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('SARIMAX').predict())}")
-            print(automl_model.get_model_build('SARIMAX').predict())
-            print(automl_model.get_model_build('SARIMAX').predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with SARIMAX Model")
+            # print("-"*50)
 
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="SARIMAX"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_series)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="SARIMAX"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_series_10)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="SARIMAX",
+                simple=False
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                )
+            )
+            
         if automl_model.get_model_build('VAR') is not None:
-            print("-"*50)
-            print("Predictions with VAR Model")
-            print("-"*50)
-            print(f"Type: {type(automl_model.get_model_build('VAR').predict())}")
-            print(automl_model.get_model_build('VAR').predict())
-            print(automl_model.get_model_build('VAR').predict(forecast_period=10))
+            # print("-"*50)
+            # print("Predictions with VAR Model")
+            # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="VAR"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_var_univar_series)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                model="VAR"
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_var_univar_series_10)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="VAR",
+                simple=False
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                )
+            )
 
         
         #########################################
