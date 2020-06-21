@@ -1,4 +1,5 @@
 from typing import Optional
+import warnings
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
 import copy
@@ -52,7 +53,7 @@ class BuildProphet():
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
         # model = Prophet(interval_width=self.conf_int) # moved to init
         self.model.fit(dft)
-        forecast = self.predict()
+        forecast = self.predict(simple=False, return_train_preds=True)
 
         # act_n = len(dft)  # TODO: Not used anywhere, hence commenting
         ####  We are going to plot Prophet's forecasts differently since it is better
@@ -72,12 +73,25 @@ class BuildProphet():
         #print('Forecast Data frame size %s ready to submit' %(submit.shape,))
         return self.model, forecast, rmse, norm_rmse
 
-    def predict(self, forecast_period: Optional[int] = None):
+    def predict(
+        self,
+        X_exogen: Optional[pd.DataFrame]=None,
+        forecast_period: Optional[int] = None,
+        simple: bool = True,
+        return_train_preds: bool = False
+        ):
         """
         Return the predictions
         # TODO: What about future exogenous variables?
         # https://towardsdatascience.com/forecast-model-tuning-with-additional-regressors-in-prophet-ffcbf1777dda
         """
+
+        if X_exogen is not None:
+            warnings.warn(
+                "Multivariate models are not supported by the AutoML prophet module." +  
+                "Univariate predictions will be returned for now."                
+            )
+
         # Prophet is a Little Complicated - You need 2 steps to Forecast
         ## 1. You need to create a dataframe to hold the predictions which specifies datetime
         ##    periods that you want to predict. It automatically creates one with both past
@@ -113,10 +127,24 @@ class BuildProphet():
             time_int = 'W'
 
         if forecast_period is None:
-            future = self.model.make_future_dataframe(periods=self.forecast_period, freq=time_int)
-        else:
-            future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
+            forecast_period = self.forecast_period
+        
+        future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
         forecast = self.model.predict(future)
+
+        # Return values for the forecast period only
+        if simple:
+            if return_train_preds:
+                forecast = forecast['yhat']
+            else:
+                forecast = forecast.iloc[-forecast_period:]['yhat']
+            
+        else:
+            if return_train_preds:
+                forecast = forecast
+            else:
+                forecast = forecast.iloc[-forecast_period:]
+            
         return forecast
 
 

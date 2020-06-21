@@ -31,6 +31,7 @@ class TestAutoTS(unittest.TestCase):
         self.train_univar = dft[:40][[self.ts_column, self.target]]
         self.test_univar = dft[40:][[self.ts_column, self.target]]
 
+        self.forecast_period = 8
 
         ################################
         #### Prophet Golden Results ####
@@ -138,12 +139,14 @@ class TestAutoTS(unittest.TestCase):
         import numpy as np  # type: ignore
         from auto_ts.auto_ts import AutoTimeseries as ATS
         automl_model = ATS(
-            score_type='rmse', forecast_period=8, time_interval='Month',
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
-        automl_model.predict()  # pass the test dataframe (exogen)
+        test_predictions = automl_model.predict(forecast_period=self.forecast_period)  # TODO: pass the test dataframe (exogen)
+        print("Test Predictions from outside AutoML:")
+        print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
 
         print(automl_model.get_leaderboard())
@@ -188,29 +191,33 @@ class TestAutoTS(unittest.TestCase):
             print("-"*50)
             print("Predictions with Best Model (Prophet)")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_best_model_build().predict())}")
             print(automl_model.get_best_model_build().predict())
-            print(automl_model.get_best_model_build().predict(10))
+            print(automl_model.get_best_model_build().predict(forecast_period=10))
 
         if automl_model.get_model_build('ARIMA') is not None:
             print("-"*50)
             print("Predictions with ARIMA Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('ARIMA').predict())}")
             print(automl_model.get_model_build('ARIMA').predict())
-            print(automl_model.get_model_build('ARIMA').predict(10))
+            print(automl_model.get_model_build('ARIMA').predict(forecast_period=10))
 
         if automl_model.get_model_build('SARIMAX') is not None:
             print("-"*50)
             print("Predictions with SARIMAX Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('SARIMAX').predict())}")
             print(automl_model.get_model_build('SARIMAX').predict())
-            print(automl_model.get_model_build('SARIMAX').predict(10))
+            print(automl_model.get_model_build('SARIMAX').predict(forecast_period=10))
 
         if automl_model.get_model_build('VAR') is not None:
             print("-"*50)
             print("Predictions with VAR Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('VAR').predict())}")
             print(automl_model.get_model_build('VAR').predict())
-            print(automl_model.get_model_build('VAR').predict(10))
+            print(automl_model.get_model_build('VAR').predict(forecast_period=10))
 
         
         ##################################
@@ -300,12 +307,14 @@ class TestAutoTS(unittest.TestCase):
         import numpy as np  # type: ignore
         from auto_ts.auto_ts import AutoTimeseries as ATS
         automl_model = ATS(
-            score_type='rmse', forecast_period=8, time_interval='Month',
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_univar, self.ts_column, self.target, self.sep)
-        automl_model.predict()  # pass the test dataframe (exogen)
+        test_predictions = automl_model.predict(forecast_period=self.forecast_period)  
+        print("Test Predictions from outside AutoML:")
+        print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
 
         print(automl_model.get_leaderboard())
@@ -349,29 +358,33 @@ class TestAutoTS(unittest.TestCase):
             print("-"*50)
             print("Predictions with Best Model (Prophet)")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_best_model_build().predict())}")
             print(automl_model.get_best_model_build().predict())
-            print(automl_model.get_best_model_build().predict(10))
+            print(automl_model.get_best_model_build().predict(forecast_period=10))
 
         if automl_model.get_model_build('ARIMA') is not None:
             print("-"*50)
             print("Predictions with ARIMA Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('ARIMA').predict())}")
             print(automl_model.get_model_build('ARIMA').predict())
-            print(automl_model.get_model_build('ARIMA').predict(10))
+            print(automl_model.get_model_build('ARIMA').predict(forecast_period=10))
 
         if automl_model.get_model_build('SARIMAX') is not None:
             print("-"*50)
             print("Predictions with SARIMAX Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('SARIMAX').predict())}")
             print(automl_model.get_model_build('SARIMAX').predict())
-            print(automl_model.get_model_build('SARIMAX').predict(10))
+            print(automl_model.get_model_build('SARIMAX').predict(forecast_period=10))
 
         if automl_model.get_model_build('VAR') is not None:
             print("-"*50)
             print("Predictions with VAR Model")
             print("-"*50)
+            print(f"Type: {type(automl_model.get_model_build('VAR').predict())}")
             print(automl_model.get_model_build('VAR').predict())
-            print(automl_model.get_model_build('VAR').predict(10))
+            print(automl_model.get_model_build('VAR').predict(forecast_period=10))
 
         
         #########################################

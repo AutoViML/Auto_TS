@@ -275,12 +275,13 @@ class AutoTimeseries:
                 print(colorful.BOLD +'WARNING: Running best models will take time... Be Patient...' + colorful.END)
         except:
             print('Check if your model type is a string or one of the available types of models')
+        
         ######### This is when you need to use FB Prophet ###################################
         ### When the time interval given does not match the tested_time_interval, then use FB.
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
         #########                 FB Prophet              ###################################
 
-        if self.model_type.lower() in ['prophet','best']:
+        if self.model_type.lower() in ['prophet', 'best']:
             print("\n")
             print("="*50)
             print("Building Prophet Model")
@@ -318,7 +319,7 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
         
-        if self.model_type.lower() in ['stats','best']:
+        if self.model_type.lower() in ['stats', 'best']:
             print("\n")
             print("="*50)
             print("Building PyFlux Model")
@@ -479,7 +480,7 @@ class AutoTimeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
         
-        if self.model_type.lower() in ['ml','best']:
+        if self.model_type.lower() in ['ml', 'best']:
             ########## Let's build a Machine Learning Model now with Time Series Data ################
             
             print("\n")
@@ -612,12 +613,32 @@ class AutoTimeseries:
         """
         return self.ml_dict
 
-    def predict(self, model: str = 'best') -> Optional[np.array]:
+    def predict(
+        self,
+        model: str = 'best',
+        X_exogen: Optional[pd.DataFrame]=None,
+        forecast_period: Optional[int] = None,
+        simple: bool = True) -> Optional[np.array]:
         """
         Predict the results
         """
-        print("This function has not been implemented yet. But the idea would be that this would make the prediction using the best model or the model type passed as an argument.")
-        return None
+        if model.lower() == 'best': 
+            predictions = self.get_best_model_build().predict(
+                X_exogen = X_exogen,
+                forecast_period=forecast_period,
+                simple=simple
+            )
+        elif self.get_model_build(model.upper()) is not None:
+            predictions = self.get_model_build(model.upper()).predict(
+                X_exogen = X_exogen,
+                forecast_period=forecast_period,
+                simple=simple
+            )
+        else:
+            warnings.warn(f"Model of type '{model}' does not exist. No predictions will be made.")
+            predictions = None 
+
+        return predictions
 
     def get_leaderboard(self, ascending=True) -> pd.DataFrame:
         """

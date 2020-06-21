@@ -137,7 +137,7 @@ class BuildML():
         # This is the new method without the leakage
         # Drop the y value
         test_orig_df_pred_only = test_orig_df.drop(self.original_target_col, axis=1, inplace=False)
-        forecast = self.predict(test_orig_df_pred_only)
+        forecast = self.predict(X_exogen=test_orig_df_pred_only, simple=False)
         # print("Forecasts (new)")
         # print(forecast)
 
@@ -198,7 +198,11 @@ class BuildML():
         self.df_train_prepend = ts_df[-self.lags:]
         
 
-    def predict(self, X_exogen: pd.DataFrame, forecast_period: Optional[int] = None):
+    def predict(
+        self,
+        X_exogen: Optional[pd.DataFrame]=None,
+        forecast_period: Optional[int] = None,
+        simple: bool = True):
         """
         Return the predictions
         :param: X_exogen The test dataframe in pretransformed format
@@ -206,6 +210,15 @@ class BuildML():
         X_egogen is a must, hence we can use the number of rows in X_egogen
         to get the forecast period. 
         """
+
+        # TODO: Add processing of 'simple' argument and return type
+
+        if X_exogen is None:
+            warnings.warn(
+                "You have not provided the exogenous variable in order to make the prediction. " + 
+                "Machine Learing based models only support multivariate time series models. " +
+                "Hence predictions will not be made.")
+            return None
 
         # Extract the dynamic predicted and true values of our time series
         

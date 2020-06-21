@@ -1,4 +1,5 @@
 from typing import Optional
+import warnings
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
@@ -185,10 +186,23 @@ class BuildArima():
         rmse, norm_rmse = print_dynamic_rmse(ts_test, pred_dynamic, ts_train)
         return self.model, res_frame, rmse, norm_rmse
 
-    def predict(self, forecast_period: Optional[int] = None):
+    def predict(
+        self,
+        X_exogen: Optional[pd.DataFrame]=None,
+        forecast_period: Optional[int] = None,
+        simple: bool = True):
         """
         Return the predictions
         """
+
+        # TODO: Add processing of 'simple' argument and return type
+
+        if X_exogen is not None:
+            warnings.warn(
+                "You have passed exogenous variables to make predictions for a ARIMA model." +
+                "ARIMA models are univariate models and hence these exogenous variables will be ignored for these predictions."
+            )
+
         # TODO: Predictions coming from ARIMA include extra information compared to SARIMAX and VAR.
         # Need to make it consistent
         # Extract the dynamic predicted and true values of our time series

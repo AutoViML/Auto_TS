@@ -1,4 +1,5 @@
 from typing import Optional
+import warnings
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
 import itertools
@@ -114,10 +115,23 @@ class BuildVAR():
         rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:,0], y_forecasted, ts_train.iloc[:,0])
         return self.model, res2_df, rmse, norm_rmse
 
-    def predict(self, forecast_period: Optional[int] = None):
+    def predict(
+        self,
+        X_exogen: Optional[pd.DataFrame]=None,
+        forecast_period: Optional[int] = None,
+        simple: bool = True):
         """
         Return the predictions
         """
+
+        # TODO: Add processing of 'simple' argument and return type
+        
+        if X_exogen is not None:
+            warnings.warn(
+                "You have passed exogenous variables to make predictions for a VAR model." +
+                "VAR model will predict all exogenous variables automatically, hence your passed values will not be used."
+            )
+
         # Extract the dynamic predicted and true values of our time series
         if forecast_period is None:
             # use the forecast period used during training
