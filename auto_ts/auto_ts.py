@@ -1,5 +1,5 @@
 import warnings
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from datetime import datetime
 import copy
@@ -43,7 +43,7 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 
 class AutoTimeseries:
     def __init__(self, score_type: str ='rmse',
-                forecast_period: int = 5, time_interval: str = '', non_seasonal_pdq=None,
+                forecast_period: int = 5, time_interval: str = '', non_seasonal_pdq: Optional[Tuple]=None,
                 seasonality: bool = False, seasonal_period: int = 12, seasonal_PDQ=None,
                 conf_int: float = 0.95, model_type: str ="stats", verbose: int =0):
         """
@@ -105,7 +105,7 @@ class AutoTimeseries:
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
         self.seasonal_period = seasonal_period
-        self.seasonal_PDQ = seasonal_PDQ
+        self.seasonal_PDQ = seasonal_PDQ  # TODO: This is not being used anywhere. Check if this is needed.
         self.conf_int = conf_int
         self.model_type = model_type
         self.verbose = verbose
@@ -132,13 +132,8 @@ class AutoTimeseries:
             p_max = 3
             d_max = 1
             q_max = 3
-        ################################
-        # TODO: #8 Check: seasonal_order is not used anywhere in the code, hence commented for now.
-        # if type(self.seasonal_PDQ) == tuple:
-        #     seasonal_order = copy.deepcopy(self.seasonal_PDQ)
-        # else:
-        #     seasonal_order = (3, 1, 3)
-
+        
+        
         ########## This is where we start the loading of the data file ######################
         if isinstance(traindata, str):
             if traindata != '':
@@ -177,7 +172,8 @@ class AutoTimeseries:
             print('    Taking the first column in target list as Target variable = %s' %target)
         else:
             print('    Target variable = %s' %target)
-        preds = [x for x in list(ts_df) if x not in [ts_column,target]]
+        
+        preds = [x for x in list(ts_df) if x not in [ts_column, target]]
 
         ##################################################################################################
         ### Turn the time series index into a variable and calculate the difference.
@@ -189,9 +185,9 @@ class AutoTimeseries:
             ts_df = ts_df.set_index(ts_column)
         ts_index = ts_df.index
 
-        ################    IF TIME INTERVAL IS NOT GIVEN DO THIS   ########################
-        #######   This is where the program tries to tease out the time period in the data set ###########
-        ##################################################################################################
+        ##################    IF TIME INTERVAL IS NOT GIVEN DO THIS   ########################
+        #### This is where the program tries to tease out the time period in the data set ####
+        ######################################################################################
         if self.time_interval == '':
             ts_index = pd.to_datetime(ts_df.index)
             diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
@@ -457,28 +453,22 @@ class AutoTimeseries:
             
             if len(preds) == 0:
                 print(colorful.BOLD + '\nNo VAR model created since no explanatory variables given in data set' + colorful.END)
-                rmse = np.inf
-                norm_rmse = np.inf
             else:
                 try:
-                    if df_orig.shape[1] > 1:
-                        preds = [x for x in list(df_orig) if x not in [target]]
-                        print(colorful.BOLD + '\nRunning VAR Model...' + colorful.END)
-                        print('    Shifting %d predictors by 1 to align prior predictor values with current target values...'
-                                                %len(preds))
-                        ts_df[preds] = ts_df[preds].shift(1)
-                        ts_df.dropna(axis=0,inplace=True)
+                    print(colorful.BOLD + '\nRunning VAR Model...' + colorful.END)
+                    print('    Shifting %d predictors by 1 to align prior predictor values with current target values...'
+                                            %len(preds))
+                    ts_df[preds] = ts_df[preds].shift(1)
+                    ts_df.dropna(axis=0,inplace=True)
 
-                        model_build = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
-                        model, forecasts, rmse, norm_rmse = model_build.fit(
-                            ts_df[[target]+preds])
+                    model_build = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
+                    model, forecasts, rmse, norm_rmse = model_build.fit(
+                        ts_df[[target]+preds])
 
-                        if self.score_type == 'rmse':
-                            score_val = rmse
-                        else:
-                            score_val = norm_rmse
+                    if self.score_type == 'rmse':
+                        score_val = rmse
                     else:
-                        print(colorful.BOLD + '\nNo predictors available. Skipping VAR model...' + colorful.END)
+                        score_val = norm_rmse
                 except Exception as e:  
                     print("Exception occured while building VAR model...")
                     print(e)
@@ -506,75 +496,43 @@ class AutoTimeseries:
             forecasts = None
             
             if len(preds) == 0:
-                print('No ML model since number of predictors is zero')
-                rmse = np.inf
-                norm_rmse = np.inf
+                print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
             else:
                 try:
-                    if df_orig.shape[1] > 1:
-                        
-                        # # Move inside Build Class
-                        # # TODO: Here we have taken ts_df as the original dataframe, but for VAR, we have taken ts_orig.
-                        # # Check if both of these are correct.
-                        # preds = [x for x in list(ts_df) if x not in [target]]
-                                                
-                        print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
-                        print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
-                                    % (len(preds), lag))
-                        # ipdb.set_trace()
+                    print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
+                    print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
+                                % (len(preds), lag))
+            
+                    model_build = BuildML(
+                        scoring=self.score_type,
+                        forecast_period = self.forecast_period,
+                        verbose=self.verbose
+                    )
+                    
+                    # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
+                    model, forecasts, rmse, norm_rmse = model_build.fit(
+                        ts_df=ts_df,
+                        target_col=target,
+                        lags=lag
+                    )
 
-                        # ## Move inside Build Class
-                        # dfxs, target, preds = convert_timeseries_dataframe_to_supervised(ts_df[preds+[target]],
-                        #                         preds+[target], target, n_in=lag, n_out=0, dropT=False)
-                        # train = dfxs[:-self.forecast_period]
-                        # test = dfxs[-self.forecast_period:]
-
-                        model_build = BuildML(
-                            scoring=self.score_type,
-                            forecast_period = self.forecast_period,
-                            verbose=self.verbose
-                        )
-                        #best = model_build.fit(train[preds], train[target], 'TimeSeries', self.score_type, self.verbose)
-                        #best = model_build.fit(train[preds], train[target])
-                        # best = model_build.fit(
-                        #     ts_df=ts_df,
-                        #     target_col=target,
-                        #     lags=lag
-                        # )
-
-                        model, forecasts, rmse, norm_rmse = model_build.fit(
-                            ts_df=ts_df,
-                            target_col=target,
-                            lags=lag
-                        )
-
-                        if self.score_type == 'rmse':
-                            score_val = rmse
-                        else:
-                            score_val = norm_rmse
-                        # bestmodel = best[0]
-                        # self.ml_dict[name]['model'] = bestmodel
-                        # ### Certain models dont have random state => so dont do this for all since it will error
-                        # #best.set_params(random_state=0)
-                        # self.ml_dict[name]['forecast'] = bestmodel.fit(train[preds],train[target]).predict(test[preds])
-                        # rmse, norm_rmse = print_dynamic_rmse(
-                        #     test[target].values,
-                        #     bestmodel.predict(test[preds]),
-                        #     train[target].values
-                        # )
-                        
-                        # #### Plotting actual vs predicted for ML Model #################
-                        # # TODO: Move inside the Build Class
-                        # plt.figure(figsize=(5, 5))
-                        # plt.scatter(train.append(test)[target].values,
-                        #             np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
-                        # plt.xlabel('Actual')
-                        # plt.ylabel('Predicted')
-                        # plt.show(block=False)
-                        # ############ Draw a plot of the Time Series data ######
-                        # time_series_plot(dfxs[target], chart_time=self.time_interval)
+                    if self.score_type == 'rmse':
+                        score_val = rmse
                     else:
-                        print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
+                        score_val = norm_rmse
+                    # bestmodel = best[0]
+                                            
+                    # #### Plotting actual vs predicted for ML Model #################
+                    # # TODO: Move inside the Build Class
+                    # plt.figure(figsize=(5, 5))
+                    # plt.scatter(train.append(test)[target].values,
+                    #             np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
+                    # plt.xlabel('Actual')
+                    # plt.ylabel('Predicted')
+                    # plt.show(block=False)
+                    # ############ Draw a plot of the Time Series data ######
+                    # time_series_plot(dfxs[target], chart_time=self.time_interval)
+                                        
                 except Exception as e:  
                     print("Exception occured while building ML model...")
                     print(e)
