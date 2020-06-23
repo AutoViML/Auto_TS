@@ -124,8 +124,6 @@ class BuildVAR():
         Return the predictions
         """
 
-        # TODO: Add processing of 'simple' argument and return type
-
         if X_exogen is not None:
             warnings.warn(
                 "You have passed exogenous variables to make predictions for a VAR model." +
