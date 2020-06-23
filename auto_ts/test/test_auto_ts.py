@@ -25,7 +25,8 @@ class TestAutoTS(unittest.TestCase):
         self.ts_column = 'Time Period'
         self.sep = ','
         self.target = 'Sales'
-
+        self.preds = [x for x in list(dft) if x not in [self.ts_column, self.target]] # Exogenous variable names
+        
         self.train_multivar = dft[:40]
         self.test_multivar = dft[40:]
 
@@ -187,16 +188,32 @@ class TestAutoTS(unittest.TestCase):
         #### MULTIVARIATE ####
         # TODO: Change multivariate model results after adding capability for multivariate models
         
+        ## Internal (to AutoML) test set results
         results = [
-            803.31673726, 762.46093997, 718.3581931,  711.42130506,
-            719.36254603, 732.70981867, 747.57645435, 762.47349398            
-            ]
+            772.268886, 716.337431, 686.167231, 739.269047,
+            704.280567, 757.450733, 767.711055, 785.960125
+        ]
+        self.forecast_gold_sarimax_multivar = np.array(results)
+
+
+        ## External Test Set results
+        ## This gives different results than internal test set since 
+        ## exogenoug variable values are different between internal
+        ## and external test sets
+        # # Univariate
+        # results = [
+        #     803.31673726, 762.46093997, 718.3581931,  711.42130506,
+        #     719.36254603, 732.70981867, 747.57645435, 762.47349398            
+        #     ]
+        # With Multivariate columns accepted
+        results = [
+            794.347645, 834.496267, 809.813198, 783.392163,
+            775.357709, 749.449793, 750.866326, 771.304842
+        ]
         index = pd.to_datetime([
             '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
             '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
             ])
-        
-        self.forecast_gold_sarimax_multivar = np.array(results)
         
         self.forecast_gold_sarimax_multivar_series = pd.Series(
                 data = results,
@@ -204,11 +221,10 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_sarimax_multivar_series.name = 'mean'
 
-        results = results + [776.914078, 790.809653]
+        results = results[0:6] 
         index = pd.to_datetime([
             '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
-            '2014-05-01', '2014-06-01'
+            '2014-01-01', '2014-02-01'
             ])
             
         self.forecast_gold_sarimax_multivar_series_10 = pd.Series(
@@ -217,7 +233,8 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_sarimax_multivar_series_10.name = 'mean'
 
-        self.rmse_gold_sarimax_multivar = 193.49650578
+        # self.rmse_gold_sarimax_multivar = 193.49650578  # Univariate
+        self.rmse_gold_sarimax_multivar = 185.704684  # With Multivariate columns accepted
 
         ############################
         #### VAR Golden Results ####
@@ -313,10 +330,23 @@ class TestAutoTS(unittest.TestCase):
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
-                # 'rmse':[27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf]  # This was with previous ML predict method where we had leakage
-                'rmse':[27.017947, 76.037433, 112.477032, 169.000166, 193.496506, math.inf] # This is with new ML predict method without leakage
+                # 'rmse': [27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf] # This was with previous ML predict method where we had leakage
+                # 'rmse': [27.017947, 76.037433, 112.477032, 169.000166, 193.496506, math.inf] # This is with new ML predict method without leakage
+                'rmse':[
+                    self.rmse_gold_prophet_multivar,
+                    self.rmse_gold_ml_multivar,
+                    self.rmse_gold_var_multivar,
+                    self.rmse_gold_arima_uni_multivar,
+                    self.rmse_gold_sarimax_multivar,
+                    math.inf
+                ]
+                # This is with new ML predict method without leakage
             }
         )
+
+        print("Leaderboard Info: ")
+        print(automl_model.get_leaderboard().info())
+
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
@@ -434,23 +464,26 @@ class TestAutoTS(unittest.TestCase):
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
-                model="SARIMAX"
+                X_exogen=self.test_multivar[self.preds],
+                model="SARIMAX"                
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
             
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
-                forecast_period=10,
-                model="SARIMAX"
+                forecast_period=6,
+                X_exogen=self.test_multivar.iloc[0:6][self.preds],
+                model="SARIMAX"                
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
                 model="SARIMAX",
-                simple=False
+                simple=False                
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
@@ -528,14 +561,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 8),
+                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 6),
                 self.forecast_gold_sarimax_multivar
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
         
         self.assertEqual(
-            round(ml_dict.get('SARIMAX').get('rmse'),8), self.rmse_gold_sarimax_multivar,
+            round(ml_dict.get('SARIMAX').get('rmse'), 6), self.rmse_gold_sarimax_multivar,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
                
         ##############################
@@ -905,7 +938,7 @@ class TestAutoTS(unittest.TestCase):
         status = automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
         self.assertIsNone(status)
 
-    #@unittest.skip
+    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         test to check functionality of the training with only a subset of models

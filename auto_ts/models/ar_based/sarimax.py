@@ -27,13 +27,23 @@ class BuildSarimax():
         self.model = None
        
 
-    def fit(self, ts_df):
+    def fit(self, ts_df: pd.DataFrame, target_col: str):
         """
         Build a Time Series Model using SARIMAX from statsmodels.
         """
+
+        self.original_target_col = target_col
+        self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+
+        if len(self.original_preds) == 0:
+            self.univariate = True
+        else:
+            self.univariate = False
+
         ############ Split the data set into train and test for Cross Validation Purposes ########
-        ts_train = ts_df[:-self.forecast_period]
-        ts_test = ts_df[-self.forecast_period:]
+        ts_train = ts_df.iloc[:-self.forecast_period]
+        ts_test = ts_df.iloc[-self.forecast_period:]
+
         if self.verbose == 1:
             print('Data Set split into train %s and test %s for Cross Validation Purposes'
                                 % (ts_train.shape, ts_test.shape))
@@ -41,9 +51,15 @@ class BuildSarimax():
         if not self.seasonality:
             print('Building a Non Seasonal Model...')
             print('\nFinding best Non Seasonal Parameters:')
-            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(ts_train, self.metric,
-                                    self.p_max, self.d_max, self.q_max, non_seasonal_pdq=None,
-                                    seasonal_period=None, seasonality=False, verbose=self.verbose)
+            # TODO: Check if we need to also pass the exogenous variables here and 
+            # change the functionality of find_best_pdq_or_PDQ to incorporate these 
+            # exogenoug variables.
+            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
+                # ts_train,
+                ts_train[self.original_target_col],
+                self.metric,
+                self.p_max, self.d_max, self.q_max, non_seasonal_pdq=None,
+                seasonal_period=None, seasonality=False, verbose=self.verbose)
             print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (best_p, best_d,
                                                             best_q,self.metric, best_bic))
             #### In order to get forecasts to be in the same value ranges of the orig_endogs,
@@ -51,29 +67,54 @@ class BuildSarimax():
             #### same as ARIMA.
             #### THat is the only way to ensure that the output of this model is
             #### comparable to other ARIMA models
-            bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
-                                                enforce_stationarity=False,
-                                                enforce_invertibility=False,
-                                                trend='ct',
-                                                start_params=[0, 0, 0, 1],
-                                                simple_differencing=False)
+            if self.univariate:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    # exog=ts_train[self.original_preds],
+                    order=(best_p, best_d, best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
+            else:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    exog=ts_train[self.original_preds],
+                    order=(best_p, best_d, best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
         else:
             print(colorful.BOLD + 'Building a Seasonal Model...'+colorful.END)
             print(colorful.BOLD + '\n    Finding best Non-Seasonal pdq Parameters:' + colorful.END)
-            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(ts_train, self.metric,
-                                                self.p_max, self.d_max, self.q_max,
-                                                non_seasonal_pdq=None,
-                                                seasonal_period=None,
-                                                seasonality=False,verbose=self.verbose)
+            # TODO: Check if we need to also pass the exogenous variables here and 
+            # change the functionality of find_best_pdq_or_PDQ to incorporate these 
+            # exogenoug variables.
+            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
+                # ts_train,
+                ts_train[self.original_target_col],
+                self.metric,
+                self.p_max, self.d_max, self.q_max,
+                non_seasonal_pdq=None,
+                seasonal_period=None,
+                seasonality=False,verbose=self.verbose)
             print(colorful.BOLD + '\n    Finding best Seasonal PDQ Model Parameters:' + colorful.END)
-            best_P, best_D, best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(ts_train, self.metric,
-                                                self.p_max, self.d_max, self.q_max,
-                                                non_seasonal_pdq=(best_p, best_d, best_q),
-                                                seasonal_period=self.seasonal_period,
-                                                seasonality=True, verbose=self.verbose)
+            # TODO: Check if we need to also pass the exogenous variables here and 
+            # change the functionality of find_best_pdq_or_PDQ to incorporate these 
+            # exogenoug variables.
+            best_P, best_D, best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(
+                # ts_train,
+                ts_train[self.original_target_col],
+                self.metric,
+                self.p_max, self.d_max, self.q_max,
+                non_seasonal_pdq=(best_p, best_d, best_q),
+                seasonal_period=self.seasonal_period,
+                seasonality=True, verbose=self.verbose)
             
-            
-            
+                        
             if seasonality:
                 print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
                                                 best_p, best_d, best_q, best_P,
@@ -83,12 +124,26 @@ class BuildSarimax():
                 #### the same as ARIMA.
                 #### THat is the only way to ensure that the output of this model is
                 #### comparable to other ARIMA models
-                bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
-                                    seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
-                                    enforce_stationarity=False,
-                                    enforce_invertibility=False,
-                                    simple_differencing=False, trend='ct',
-                                    start_params=[0, 0, 0, 1])
+                if self.univariate:
+                    bestmodel = SARIMAX(
+                        endog=ts_train[self.original_target_col],
+                        # exog=ts_train[self.original_preds],
+                        order=(best_p, best_d, best_q),
+                        seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        simple_differencing=False, trend='ct',
+                        start_params=[0, 0, 0, 1])
+                else:
+                    bestmodel = SARIMAX(
+                        endog=ts_train[self.original_target_col],
+                        exog=ts_train[self.original_preds],
+                        order=(best_p, best_d, best_q),
+                        seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        simple_differencing=False, trend='ct',
+                        start_params=[0, 0, 0, 1])
             else:
                 print('\nBest model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
                                                     best_p, best_d, best_q))
@@ -97,12 +152,26 @@ class BuildSarimax():
                 #### the same as ARIMA.
                 #### THat is the only way to ensure that the output of this model is
                 #### comparable to other ARIMA models
-                bestmodel = SARIMAX(ts_train, order=(best_p, best_d, best_q),
-                                    enforce_stationarity=False,
-                                    enforce_invertibility=False,
-                                    trend='ct',
-                                    start_params=[0, 0, 0, 1],
-                                    simple_differencing=False)
+                if self.univariate:
+                    bestmodel = SARIMAX(
+                        endog=ts_train[self.original_target_col],
+                        # exog=ts_train[self.original_preds],
+                        order=(best_p, best_d, best_q),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False)
+                else:
+                    bestmodel = SARIMAX(
+                        endog=ts_train[self.original_target_col],
+                        exog=ts_train[self.original_preds],
+                        order=(best_p, best_d, best_q),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False)
         
         print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
         try:
@@ -120,7 +189,12 @@ class BuildSarimax():
         
         ### this is needed for static forecasts ####################
         y_truth = ts_train[:]  # Note that this is only univariate analysis
-        y_forecasted = self.model.predict(dynamic=False)
+
+        if self.univariate:
+            y_forecasted = self.model.predict(dynamic=False)
+        else:
+            y_forecasted = self.model.predict(dynamic=False, exog=ts_test[self.original_preds])
+
         concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
 
         ### for SARIMAX, you don't have to restore differences since it predicts like actuals.###
@@ -162,14 +236,15 @@ class BuildSarimax():
         # res2_df = res2.summary_frame()
         # y_forecasted = self.predict(simple=False)
         
-        res_df = self.predict(simple=False)
+        res_df = self.predict(X_exogen=ts_test[self.original_preds], simple=False)
 
         
         if self.verbose == 1:
             print(self.model.summary())
         print('Dynamic %d-Period Forecast:' % (self.forecast_period))
         #rmse, norm_rmse = print_dynamic_rmse(ts_test, y_forecasted, ts_train)
-        rmse, norm_rmse = print_dynamic_rmse(ts_test, res_df['mean'].values, ts_train)
+        #rmse, norm_rmse = print_dynamic_rmse(ts_test, res_df['mean'].values, ts_train)
+        rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], res_df['mean'].values, ts_train[self.original_target_col])
         # return self.model, res2_df, rmse, norm_rmse
         return self.model, res_df, rmse, norm_rmse
 
@@ -186,7 +261,11 @@ class BuildSarimax():
             # use the forecast period used during training
             forecast_period = self.forecast_period
         
-        res = self.model.get_forecast(forecast_period)
+        if self.univariate:
+            res = self.model.get_forecast(forecast_period)
+        else:
+            res = self.model.get_forecast(forecast_period, exog=X_exogen)
+
         res_frame = res.summary_frame()
 
         if simple:
