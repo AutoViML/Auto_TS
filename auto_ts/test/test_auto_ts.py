@@ -318,7 +318,7 @@ class TestAutoTS(unittest.TestCase):
         test to check functionality of the auto_ts function
         """
         import numpy as np  # type: ignore
-        from auto_ts.auto_ts import AutoTimeseries as ATS
+        from auto_ts import AutoTimeSeries as ATS
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
@@ -608,7 +608,7 @@ class TestAutoTS(unittest.TestCase):
         test to check functionality of the auto_ts function (univariate models)
         """
         import numpy as np  # type: ignore
-        from auto_ts.auto_ts import AutoTimeseries as ATS
+        from auto_ts import AutoTimeSeries as ATS
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
@@ -899,7 +899,7 @@ class TestAutoTS(unittest.TestCase):
         test to check functionality of the training with only a subset of models
         """
         import numpy as np  # type: ignore
-        from auto_ts.auto_ts import AutoTimeseries as ATS
+        from auto_ts import AutoTimeSeries as ATS
 
 
         automl_model = ATS(
@@ -947,7 +947,7 @@ class TestAutoTS(unittest.TestCase):
         test to check functionality of the training with only a subset of models
         """
         import numpy as np  # type: ignore
-        from auto_ts.auto_ts import AutoTimeseries as ATS
+        from auto_ts import AutoTimeSeries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -960,6 +960,24 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
                         
+
+    # @unittest.skip
+    def test_simple_testing_no_checks(self):
+        """
+        test to check functionality of the training with only a subset of models
+        """
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            model_type=['ARIMA'],
+            verbose=0)
+        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        print(automl_model.get_leaderboard())
+        
      
 if __name__ == '__main__':
     unittest.main()
