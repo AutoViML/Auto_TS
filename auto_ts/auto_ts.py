@@ -283,7 +283,7 @@ class AutoTimeseries:
             self.seasonal_period = 12
 
         ########################### This is where we store all models in a nested dictionary ##########
-        mldict: Dict = lambda: defaultdict(mldict)
+        mldict = lambda: defaultdict(mldict)
         self.ml_dict = mldict()
         try:
             if self.__any_contained_in_list(what_list=['best'], in_list=self.model_type):
@@ -482,12 +482,13 @@ class AutoTimeseries:
                     # TODO: This causes an issue later in ML (most likely cause of https://github.com/AutoViML/Auto_TS/issues/15)
                     # Since we are passing ts_df there. Make sure you dont assign it 
                     # back to the same variable. Make a copy and make changes to that copy.
-                    ts_df[preds] = ts_df[preds].shift(1)
-                    ts_df.dropna(axis=0,inplace=True)
+                    ts_df_shifted = ts_df.copy(deep=True)
+                    ts_df_shifted[preds] = ts_df_shifted[preds].shift(1)
+                    ts_df_shifted.dropna(axis=0,inplace=True)
 
                     model_build = BuildVAR(criteria=stats_scoring, forecast_period=self.forecast_period, p_max=p_max, q_max=q_max)
                     model, forecasts, rmse, norm_rmse = model_build.fit(
-                        ts_df[[target]+preds])
+                        ts_df_shifted[[target]+preds])
 
                     if self.score_type == 'rmse':
                         score_val = rmse

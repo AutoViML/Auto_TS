@@ -288,21 +288,27 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_univar = None
         self.rmse_gold_ml_univar = math.inf
 
-        # This was with previous ML predict method where we had leakage
+        # This was with previous ML predict method where we had leakage of train into test set
         # self.forecast_gold_ml_multivar = np.array([
         #     475.24, 455.72, 446.58, 450.82,
         #     453.76, 457.96, 475.04, 564.78
         #     ])
+        # self.rmse_gold_ml_multivar = 94.94981174
 
-        # This is with new ML predict method without leakage
+
+        # # This is with new ML predict method without leakage of train into test set
+        # self.forecast_gold_ml_multivar = np.array([
+        #     475.24, 444.8 , 437.7 , 446.44,
+        #     449.88, 476.68, 622.04, 640.48
+        #     ])
+         # self.rmse_gold_ml_multivar = 76.03743322
+    
+        # After fixing leakage of variable from VAR into ML model
         self.forecast_gold_ml_multivar = np.array([
-            475.24, 444.8 , 437.7 , 446.44,
-            449.88, 476.68, 622.04, 640.48
+            509.64, 447.34, 438.2 , 456.98,
+            453.04, 449.36, 530.02, 626.8
             ])
-
-        # self.rmse_gold_ml_multivar = 94.94981174 # This was with previous ML predict method where we had leakage
-        self.rmse_gold_ml_multivar = 76.03743322 # This is with new ML predict method without leakage
-        
+        self.rmse_gold_ml_multivar = 74.133644
 
 
 
@@ -330,8 +336,6 @@ class TestAutoTS(unittest.TestCase):
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
-                # 'rmse': [27.017947, 94.949812, 112.477032, 169.000166, 193.496506, math.inf] # This was with previous ML predict method where we had leakage
-                # 'rmse': [27.017947, 76.037433, 112.477032, 169.000166, 193.496506, math.inf] # This is with new ML predict method without leakage
                 'rmse':[
                     self.rmse_gold_prophet_multivar,
                     self.rmse_gold_ml_multivar,
@@ -340,13 +344,8 @@ class TestAutoTS(unittest.TestCase):
                     self.rmse_gold_sarimax_multivar,
                     math.inf
                 ]
-                # This is with new ML predict method without leakage
             }
         )
-
-        print("Leaderboard Info: ")
-        print(automl_model.get_leaderboard().info())
-
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
@@ -599,7 +598,7 @@ class TestAutoTS(unittest.TestCase):
         )
         
         self.assertEqual(
-            round(ml_dict.get('ML').get('rmse'),8), self.rmse_gold_ml_multivar,
+            round(ml_dict.get('ML').get('rmse'), 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
 
@@ -626,8 +625,15 @@ class TestAutoTS(unittest.TestCase):
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['FB_Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
-                'rmse':[27.017947, 169.000166, 193.496506, math.inf, math.inf, math.inf] 
+                'name': ['FB_Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
+                'rmse':[
+                    self.rmse_gold_prophet_univar,
+                    self.rmse_gold_arima_uni_multivar,
+                    self.rmse_gold_sarimax_univar,
+                    math.inf,
+                    math.inf,
+                    math.inf
+                ]
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -905,14 +911,11 @@ class TestAutoTS(unittest.TestCase):
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['ML', 'SARIMAX'],
-                'rmse':[76.037433, 193.496506] 
+                'name': ['ML', 'SARIMAX'],
+                'rmse': [self.rmse_gold_ml_multivar, self.rmse_gold_sarimax_multivar] 
             }
         )
-        # TODO: #15 Bug: ML results are coming out to be different if be use 'best' vs. if we use ['SARIMAX', 'ML']. Must be some leakage. Check and fix.
-        # [left]:  [74.133644, 193.496506]  # Got this
-        # [right]: [76.037433, 193.496506]  # Expected this
-        # assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
+        assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -921,14 +924,14 @@ class TestAutoTS(unittest.TestCase):
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
         print(automl_model.get_leaderboard())
+        
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['ML', 'SARIMAX'],
-                'rmse':[76.037433, 193.496506] 
+                'name': ['ML', 'SARIMAX'],
+                'rmse': [self.rmse_gold_ml_multivar, self.rmse_gold_sarimax_multivar] 
             }
         )
-        # assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
-
+        assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
