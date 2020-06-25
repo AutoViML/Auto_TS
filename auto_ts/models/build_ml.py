@@ -1,7 +1,10 @@
 import warnings
 from typing import List, Optional, Tuple
+
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+from pandas.core.generic import NDFrame # type:ignore
+
 # imported ML models from scikit-learn
 from sklearn.model_selection import (ShuffleSplit, StratifiedShuffleSplit, # type: ignore
                                     TimeSeriesSplit, cross_val_score) # type: ignore
@@ -12,8 +15,10 @@ from sklearn.ensemble import (BaggingRegressor, ExtraTreesRegressor,  # type: ig
 from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV # type: ignore
 from sklearn.svm import LinearSVC, SVR, LinearSVR # type: ignore
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: ignore
+
 # imported specialized tree models from scikit-garden
 # from skgarden import RandomForestQuantileRegressor
+
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised
 import pdb
@@ -143,11 +148,11 @@ class BuildML():
 
         rmse, norm_rmse = print_dynamic_rmse(
             y_test.values,
-            forecast,
+            forecast['mean'],
             y_train.values
         )
         
-        return self.model, forecast, rmse, norm_rmse
+        return self.model, forecast['mean'], rmse, norm_rmse
 
     def order_df(self, ts_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -202,7 +207,7 @@ class BuildML():
         self,
         X_exogen: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
-        simple: bool = True):
+        simple: bool = True) -> NDFrame:
         """
         Return the predictions
         :param: X_exogen The test dataframe in pretransformed format
@@ -210,8 +215,6 @@ class BuildML():
         X_egogen is a must, hence we can use the number of rows in X_egogen
         to get the forecast period. 
         """
-
-        # TODO: Add processing of 'simple' argument and return type
 
         if X_exogen is None:
             warnings.warn(
@@ -251,6 +254,19 @@ class BuildML():
 
         # STEP 2:
         # Make prediction for each row. Then use the prediction for the next row.
+
+        # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
+        ## When this is fixed in the AutoML module, we can shify and get the future index
+        ## to be in a proper time series format.
+        # print("Train Prepend")
+        # print(self.df_train_prepend)
+        # index = self.df_train_prepend.index
+        # print("Index Before")
+        # print(index)
+        # index = index.shift(X_exogen_with_dummy.shape[0])
+        # print("Index After")
+        # print(index)
+
         df_prepend = self.df_train_prepend.copy(deep=True)
         for i in np.arange(X_exogen_with_dummy.shape[0]):
             
@@ -285,6 +301,13 @@ class BuildML():
             # print("df_prepend end of loop")
             # print(df_prepend)
 
-        y_forecasted = np.array(y_forecasted)
+        # y_forecasted = np.array(y_forecasted)
+        res_frame = pd.DataFrame({'mean': y_forecasted})
+        res_frame['mean_se'] = np.nan
+        res_frame['mean_ci_lower'] = np.nan
+        res_frame['mean_ci_upper'] = np.nan
 
-        return y_forecasted
+        if simple:
+            return res_frame['mean']
+        else:
+            return res_frame
