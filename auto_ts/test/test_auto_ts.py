@@ -35,8 +35,9 @@ class TestAutoTS(unittest.TestCase):
 
         self.forecast_period = 8
 
+        # TODO: Update Prophet column names when you make it consistent
         # self.expected_pred_col_names_prophet = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
-        self.expected_pred_col_names_stats = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
+        self.expected_pred_col_names = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
         
         ################################
         #### Prophet Golden Results ####
@@ -186,8 +187,7 @@ class TestAutoTS(unittest.TestCase):
         self.rmse_gold_sarimax_univar = 193.49650578
 
         #### MULTIVARIATE ####
-        # TODO: Change multivariate model results after adding capability for multivariate models
-        
+                
         ## Internal (to AutoML) test set results
         results = [
             772.268886, 716.337431, 686.167231, 739.269047,
@@ -195,17 +195,10 @@ class TestAutoTS(unittest.TestCase):
         ]
         self.forecast_gold_sarimax_multivar = np.array(results)
 
-
-        ## External Test Set results
+        ## External Test Set results (With Multivariate columns accepted)
         ## This gives different results than internal test set since 
         ## exogenoug variable values are different between internal
         ## and external test sets
-        # # Univariate
-        # results = [
-        #     803.31673726, 762.46093997, 718.3581931,  711.42130506,
-        #     719.36254603, 732.70981867, 747.57645435, 762.47349398            
-        #     ]
-        # With Multivariate columns accepted
         results = [
             794.347645, 834.496267, 809.813198, 783.392163,
             775.357709, 749.449793, 750.866326, 771.304842
@@ -233,8 +226,7 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_sarimax_multivar_series_10.name = 'mean'
 
-        # self.rmse_gold_sarimax_multivar = 193.49650578  # Univariate
-        self.rmse_gold_sarimax_multivar = 185.704684  # With Multivariate columns accepted
+        self.rmse_gold_sarimax_multivar = 185.704684  
 
         ############################
         #### VAR Golden Results ####
@@ -285,31 +277,46 @@ class TestAutoTS(unittest.TestCase):
         #### ML Golden Results ####
         ###########################
 
+        #### UNIVARIATE ####
         self.forecast_gold_ml_univar = None
         self.rmse_gold_ml_univar = math.inf
+        self.forecast_gold_ml_univar_series = None
+        self.forecast_gold_ml_univar_series_10 = None
 
-        # This was with previous ML predict method where we had leakage of train into test set
-        # self.forecast_gold_ml_multivar = np.array([
-        #     475.24, 455.72, 446.58, 450.82,
-        #     453.76, 457.96, 475.04, 564.78
-        #     ])
-        # self.rmse_gold_ml_multivar = 94.94981174
+        #### MULTIVARIATE ####
 
-
-        # # This is with new ML predict method without leakage of train into test set
-        # self.forecast_gold_ml_multivar = np.array([
-        #     475.24, 444.8 , 437.7 , 446.44,
-        #     449.88, 476.68, 622.04, 640.48
-        #     ])
-         # self.rmse_gold_ml_multivar = 76.03743322
-    
-        # After fixing leakage of variable from VAR into ML model
-        self.forecast_gold_ml_multivar = np.array([
+        ## Internal (to AutoML) test set results
+        results = [
             509.64, 447.34, 438.2 , 456.98,
             453.04, 449.36, 530.02, 626.8
-            ])
-        self.rmse_gold_ml_multivar = 74.133644
+        ]
+        self.forecast_gold_ml_multivar = np.array(results)
+                
+        ## External Test Set results (With Multivariate columns accepted)
+        ## This gives different results than internal test set since 
+        ## exogenoug variable values are different between internal
+        ## and external test sets        
+        results = [
+            509.64, 485.24, 479.72, 483.98, 
+            482.78, 455.04, 518.62, 524.08
+        ]
+        index = np.arange(0, 8)
 
+        self.forecast_gold_ml_multivar_series = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_ml_multivar_series.name = 'mean'
+
+        results = results[0:6] 
+        index = index[0:6]            
+        self.forecast_gold_ml_multivar_series_10 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_ml_multivar_series_10.name = 'mean'
+
+        self.rmse_gold_ml_multivar = 74.133644
 
 
     # @unittest.skip
@@ -325,7 +332,10 @@ class TestAutoTS(unittest.TestCase):
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
-        test_predictions = automl_model.predict(forecast_period=self.forecast_period)  # TODO: pass the test dataframe (exogen)
+        test_predictions = automl_model.predict(
+            forecast_period=self.forecast_period,
+            X_exogen=self.test_multivar[self.preds] # Not needed for best model (prophet) but sending anyway
+        )  
         print("Test Predictions from outside AutoML:")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
@@ -383,7 +393,10 @@ class TestAutoTS(unittest.TestCase):
 
             # Simple forecast with forecast window = one used in training
             # Using default (best model)
-            test_predictions = automl_model.predict(forecast_period=self.forecast_period)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds]    
+            )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
 
             # Simple forecast with forecast window != one used in training
@@ -450,7 +463,7 @@ class TestAutoTS(unittest.TestCase):
             # print(test_predictions)
             # self.assertIsNone(
             #     np.testing.assert_array_equal(
-            #         test_predictions.columns.values, self.expected_pred_col_names_stats
+            #         test_predictions.columns.values, self.expected_pred_col_names
             #     )
             # )
             
@@ -486,7 +499,7 @@ class TestAutoTS(unittest.TestCase):
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                    test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
             
@@ -519,7 +532,43 @@ class TestAutoTS(unittest.TestCase):
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                    test_predictions.columns.values, self.expected_pred_col_names
+                )
+            )
+
+        if automl_model.get_model_build('ML') is not None:
+            # print("-"*50)
+            # print("Predictions with ML Model")
+            # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_series)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=6,
+                X_exogen=self.test_multivar.iloc[0:6][self.preds],
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_series_10)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="ML",
+                simple=False                
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
         
@@ -741,7 +790,7 @@ class TestAutoTS(unittest.TestCase):
             # print(test_predictions)
             # self.assertIsNone(
             #     np.testing.assert_array_equal(
-            #         test_predictions.columns.values, self.expected_pred_col_names_stats
+            #         test_predictions.columns.values, self.expected_pred_col_names
             #     )
             # )
             
@@ -774,7 +823,7 @@ class TestAutoTS(unittest.TestCase):
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                    test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
             
@@ -807,9 +856,43 @@ class TestAutoTS(unittest.TestCase):
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names_stats
+                    test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
+
+        if automl_model.get_model_build('ML') is not None:
+            # print("-"*50)
+            # print("Predictions with ML Model")
+            # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_univar_series)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=6,
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_univar_series_10)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                model="ML",
+                simple=False                
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names
+                )
+            )
+           
 
         
         #########################################
