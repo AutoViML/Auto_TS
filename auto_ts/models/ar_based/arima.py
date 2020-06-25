@@ -1,19 +1,20 @@
 from typing import Optional
 import warnings
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
-import matplotlib.pyplot as plt  # type: ignore
 import itertools
 import operator
 import copy
+
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from pandas.core.generic import NDFrame # type:ignore
+
+import matplotlib.pyplot as plt  # type: ignore
 import seaborn as sns  # type: ignore
-import matplotlib.pyplot as plt
-# This gives an error when running from a python script. 
-# Maybe, this should be set in the jupyter notebook directly.
-# get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
+
 # imported ARIMA from statsmodels pkg
 from statsmodels.tsa.arima_model import ARIMA # type: ignore
+
 # helper functions
 from ...utils import print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_lowest_pq
@@ -189,7 +190,7 @@ class BuildArima():
         self,
         X_exogen: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
-        simple: bool = True):
+        simple: bool = True) -> NDFrame:
         """
         Return the predictions
         # TODO: Check if the series can be converted to a dataframe for all models.

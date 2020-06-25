@@ -1,11 +1,15 @@
 from typing import Optional
+import copy
+
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
-import copy
+from pandas.core.generic import NDFrame # type:ignore
+
 import matplotlib.pyplot as plt # type: ignore
 
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
+
 # helper functions
 from ...utils import colorful, print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
@@ -244,7 +248,7 @@ class BuildSarimax():
         self,
         X_exogen: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
-        simple: bool = True):
+        simple: bool = True) -> NDFrame:
         """
         Return the predictions
         """
