@@ -11,25 +11,33 @@ import matplotlib.pyplot as plt # type: ignore
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 
+from ..build_base import BuildBase
+
 # helper functions
 from ...utils import colorful, print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 
 
-class BuildSarimax():
-    def __init__(self, metric, seasonality=False, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
+class BuildSarimax(BuildBase):
+    def __init__(self, scoring, seasonality=False, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
         """
         Automatically build a SARIMAX Model
         """
-        self.metric = metric
+        super().__init__(
+            scoring=scoring,
+            forecast_period=forecast_period,
+            verbose=verbose
+        )
+
+        # self.scoring = scoring
         self.seasonality = seasonality
         self.seasonal_period = seasonal_period
         self.p_max = p_max
         self.d_max = d_max
         self.q_max = q_max
-        self.forecast_period = forecast_period
-        self.verbose = verbose
-        self.model = None
+        # self.forecast_period = forecast_period
+        # self.verbose = verbose
+        # self.model = None
        
 
     def fit(self, ts_df: pd.DataFrame, target_col: str):
@@ -62,11 +70,11 @@ class BuildSarimax():
             best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
                 # ts_train,
                 ts_train[self.original_target_col],
-                self.metric,
+                self.scoring,
                 self.p_max, self.d_max, self.q_max, non_seasonal_pdq=None,
                 seasonal_period=None, seasonality=False, verbose=self.verbose)
             print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (best_p, best_d,
-                                                            best_q,self.metric, best_bic))
+                                                            best_q,self.scoring, best_bic))
             #### In order to get forecasts to be in the same value ranges of the orig_endogs,
             #### you must  set the simple_differencing = False and the start_params to be the
             #### same as ARIMA.
@@ -101,7 +109,7 @@ class BuildSarimax():
             best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
                 # ts_train,
                 ts_train[self.original_target_col],
-                self.metric,
+                self.scoring,
                 self.p_max, self.d_max, self.q_max,
                 non_seasonal_pdq=None,
                 seasonal_period=None,
@@ -113,7 +121,7 @@ class BuildSarimax():
             best_P, best_D, best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(
                 # ts_train,
                 ts_train[self.original_target_col],
-                self.metric,
+                self.scoring,
                 self.p_max, self.d_max, self.q_max,
                 non_seasonal_pdq=(best_p, best_d, best_q),
                 seasonal_period=self.seasonal_period,
@@ -123,7 +131,7 @@ class BuildSarimax():
             if seasonality:
                 print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
                                                 best_p, best_d, best_q, best_P,
-                                                best_D, best_Q, self.seasonal_period, self.metric, best_bic))
+                                                best_D, best_Q, self.seasonal_period, self.scoring, best_bic))
                 #### In order to get forecasts to be in the same value ranges of the orig_endogs,
                 #### you must set the simple_differencing =False and the start_params to be
                 #### the same as ARIMA.
@@ -181,7 +189,7 @@ class BuildSarimax():
         print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
         try:
             self.model = bestmodel.fit()
-            print('    Best %s metric = %0.1f' % (self.metric, eval('self.model.' + self.metric)))
+            print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
         except:
             print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
             return bestmodel, None, np.inf, np.inf
@@ -244,6 +252,16 @@ class BuildSarimax():
         print('Dynamic %d-Period Forecast:' % (self.forecast_period))
         rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], res_df['mean'].values, ts_train[self.original_target_col])
         return self.model, res_df, rmse, norm_rmse
+
+    def refit(self, ts_df: pd.DataFrame) -> object:
+        """
+        Refits an already trained model using a new dataset
+        Useful when fitting to the full data after testing with cross validation
+        :param ts_df The time series data to be used for fitting the model
+        :type ts_df pd.DataFrame
+        :rtype object
+        """
+        # TODO: Add refit method
 
     def predict(
         self,

@@ -222,6 +222,9 @@ class AutoTimeSeries:
             ts_df = ts_df.set_index(ts_column)
         ts_index = ts_df.index
 
+        ## TODO: Be sure to also assign a frequency to the index column
+        ## This will be helpful when finding the "future dataframe" especially for ARIMA, and ML.
+        # https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
 
         print("Start of figuring out the time interval.....")
         ##################    IF TIME INTERVAL IS NOT GIVEN DO THIS   ########################
@@ -461,7 +464,7 @@ class AutoTimeSeries:
             print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
             try:
                 model_build = BuildSarimax(
-                    metric=stats_scoring,
+                    scoring=stats_scoring,
                     seasonality=self.seasonality,
                     seasonal_period=self.seasonal_period,
                     p_max=p_max, d_max=d_max, q_max=q_max,
