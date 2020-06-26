@@ -502,6 +502,22 @@ class TestAutoTS(unittest.TestCase):
                     test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
+
+            with self.assertRaises(ValueError):
+                test_predictions = automl_model.predict(
+                    forecast_period=self.forecast_period,
+                    # X_exogen=self.test_multivar[self.preds],
+                    model="SARIMAX"                
+                )
+
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                X_exogen=self.test_multivar[self.preds],
+                model="SARIMAX"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
+
+
             
         if automl_model.get_model_build('VAR') is not None:
             # print("-"*50)

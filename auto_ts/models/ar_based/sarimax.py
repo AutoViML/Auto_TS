@@ -1,4 +1,5 @@
 from typing import Optional
+import warnings
 import copy
 
 import numpy as np  # type: ignore
@@ -253,9 +254,19 @@ class BuildSarimax():
         Return the predictions
         """
         # Extract the dynamic predicted and true values of our time series
-        if forecast_period is None:
-            # use the forecast period used during training
-            forecast_period = self.forecast_period
+        
+        if self.univariate:
+            if forecast_period is None:
+                # use the forecast period used during training
+                forecast_period = self.forecast_period
+        else:
+            if X_exogen is None:
+                raise ValueError("SARIMAX needs X_exogen to make predictions, but this was not provided. Please provide to proceed.")
+                        
+            if forecast_period != X_exogen.shape[0]:
+                warnings.warn("Forecast Period is not equal to the number of observations in X_exogen. The forecast period will be assumed to be the number of observations in X_exogen.")
+            
+            forecast_period = X_exogen.shape[0]
         
         if self.univariate:
             res = self.model.get_forecast(forecast_period)
