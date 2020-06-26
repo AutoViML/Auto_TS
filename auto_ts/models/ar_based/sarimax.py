@@ -268,6 +268,12 @@ class BuildSarimax():
             
             forecast_period = X_exogen.shape[0]
         
+            try:
+                X_exogen = X_exogen[self.original_preds]
+            except Exception as e:
+                print(e)
+                raise ValueError("Some exogenous columns that were used during training are missing in X_exogen. Please make sure you are passing the correct exogenous columns.")
+
         if self.univariate:
             res = self.model.get_forecast(forecast_period)
         else:

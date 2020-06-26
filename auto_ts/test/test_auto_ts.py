@@ -503,12 +503,23 @@ class TestAutoTS(unittest.TestCase):
                 )
             )
 
+            # Checking missing exogenous variables
             with self.assertRaises(ValueError):
                 test_predictions = automl_model.predict(
                     forecast_period=self.forecast_period,
                     # X_exogen=self.test_multivar[self.preds],
                     model="SARIMAX"                
                 )
+
+            # Checking missing columns from exogenous variables
+            with self.assertRaises(ValueError):
+                test_multivar_temp = self.test_multivar.copy(deep=True)
+                test_multivar_temp.rename(columns={'Marketing Expense': 'Incorrect Column'}, inplace=True)
+                test_predictions = automl_model.predict(
+                        forecast_period=self.forecast_period,
+                        X_exogen=test_multivar_temp,
+                        model="SARIMAX"                
+                    )
 
             test_predictions = automl_model.predict(
                 forecast_period=10,
