@@ -1054,7 +1054,7 @@ class TestAutoTS(unittest.TestCase):
     # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
-        test to check functionality of the training with only a subset of models
+        TODO: Add docstring
         """
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
@@ -1074,7 +1074,7 @@ class TestAutoTS(unittest.TestCase):
     # @unittest.skip
     def test_simple_testing_no_checks(self):
         """
-        test to check functionality of the training with only a subset of models
+        TODO: Add docstring
         """
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS

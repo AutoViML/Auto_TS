@@ -16,27 +16,25 @@ from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV #
 from sklearn.svm import LinearSVC, SVR, LinearSVR # type: ignore
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: ignore
 
-# imported specialized tree models from scikit-garden
-# from skgarden import RandomForestQuantileRegressor
+from .build_base import BuildBase
 
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised
 import pdb
 
-class BuildML():
-    def __init__(self, scoring='', forecast_period=2, verbose=0):
+class BuildML(BuildBase):
+    def __init__(self, scoring: str = '', forecast_period: int = 2, verbose: int = 0):
         """
         Automatically build a ML Model
         """
-        self.scoring = scoring
-        self.forecast_period = forecast_period
-        self.verbose = verbose
-        self.model = None
-
+        super().__init__(
+            scoring=scoring,
+            forecast_period=forecast_period,
+            verbose=verbose
+        )
+        
         # Specific to ML model
         # These are needed so that during prediction later, the data can be transformed correctly
-        self.original_target_col: str = ""
-        self.original_preds: List[str] = []
         self.lags: int = 0
 
         self.transformed_target: str = ""
@@ -48,7 +46,6 @@ class BuildML():
         self.df_train_prepend: pd.DataFrame = pd.DataFrame()
        
 
-    #def fit(self, X, Y, modeltype='Regression', scoring='', verbose=0):
     def fit(self, ts_df: pd.DataFrame, target_col: str, lags: int = 0):
         """
         Build a Time Series Model using Machine Learning models.
@@ -189,9 +186,9 @@ class BuildML():
         'target_col': and 'lags' do not need to be passed as was the case with the fit method.
         We will simply use the values that were stored during the training process.
         """
-        # TODO: Add for ML model
-        # Reuse the names obtained during original training
-        #dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(ts_df)
+        
+        self.check_model_built()
+        
         dfxs, _, _  = self.df_to_supervised(ts_df)
 
         y_train = dfxs[self.transformed_target]
@@ -201,6 +198,8 @@ class BuildML():
 
         # Save last `self.lags` which will be used for predictions later
         self.df_train_prepend = ts_df[-self.lags:]
+
+        return self
         
 
     def predict(
@@ -216,6 +215,8 @@ class BuildML():
         to get the forecast period. 
         """
 
+        self.check_model_built()
+        
         if X_exogen is None:
             warnings.warn(
                 "You have not provided the exogenous variable in order to make the prediction. " + 
@@ -257,7 +258,7 @@ class BuildML():
 
         # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
         ## When this is fixed in the AutoML module, we can shify and get the future index
-        ## to be in a proper time series format.
+        ## to be in a proper time series format.        
         # print("Train Prepend")
         # print(self.df_train_prepend)
         # index = self.df_train_prepend.index
