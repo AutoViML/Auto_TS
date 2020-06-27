@@ -70,7 +70,7 @@ class BuildSarimax(BuildBase):
             # TODO: Check if we need to also pass the exogenous variables here and 
             # change the functionality of find_best_pdq_or_PDQ to incorporate these 
             # exogenoug variables.
-            self.best_p, self.best_d, self.best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
+            self.best_p, self.best_d, self.best_q, best_bic, _ = find_best_pdq_or_PDQ(
                 ts_df=ts_train[self.original_target_col],
                 scoring=self.scoring,
                 p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
@@ -200,11 +200,12 @@ class BuildSarimax(BuildBase):
                         simple_differencing=False
                     )
         
-        print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
+        print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
         try:
-            self.model = bestmodel.fit()
+            self.model = bestmodel.fit(disp=False)
             print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
-        except:
+        except Exception as e:
+            print(e)
             print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
             return bestmodel, None, np.inf, np.inf
         
@@ -276,7 +277,44 @@ class BuildSarimax(BuildBase):
         :type ts_df pd.DataFrame
         :rtype object
         """
-        # TODO: Add refit method
+        # TODO: Add refit method (Work in progress)
+        # Fix to see if seasonality needs to added or not
+        if not self.seasonality:
+            if self.univariate:
+                bestmodel = SARIMAX(
+                    endog=ts_df[self.original_target_col],
+                    # exog=ts_df[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
+            else:
+                bestmodel = SARIMAX(
+                    endog=ts_df[self.original_target_col],
+                    exog=ts_df[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
+        else:
+            pass        
+
+
+
+        
+
+        print(colorful.BOLD + 'Refitting data with previously found best parameters' + colorful.END)
+        try:
+            self.model = bestmodel.fit(disp=False)
+            print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
+        except Exception as e:
+            print(e)
+            
+        return self
 
     def predict(
         self,

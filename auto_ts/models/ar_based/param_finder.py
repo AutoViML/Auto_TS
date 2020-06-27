@@ -83,7 +83,7 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                         start_params=[0, 0, 0, 1],
                         simple_differencing=False
                     )
-                    results = model.fit()   
+                    results = model.fit(disp=False)   
 
                     results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + scoring)
                     if iteration % 10 == 0:
@@ -96,6 +96,10 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                 iteration += 1
                 continue
         results_bic = results_bic[results_bic.columns].astype(float)
+
+        print("Inside find_best_pdq_or_PDQ --> results_bic")
+        print(results_bic)
+
         interim_d = d_val
         if results_bic.isnull().all().all():
             print('    D = %d results in an empty ARMA set. Setting Seasonality to False since model might overfit' %d_val)

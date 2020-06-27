@@ -88,7 +88,7 @@ class BuildArima():
                 else:
                     try:
                         model = ARIMA(ts_train, order=(p_val, d_val, q_val))
-                        results = model.fit(transparams=False, method=self.method, solver=solver)
+                        results = model.fit(transparams=False, method=self.method, solver=solver, disp=False)
                         results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + self.metric)
                         if iteration % 10 == 0:
                             print(' Iteration %d completed...' % iteration)
@@ -120,9 +120,9 @@ class BuildArima():
         bestmodel = ARIMA(ts_train, order=(best_p, best_d, best_q))
         print('####    Fitting best model for full data set now. Will take time... ######')
         try:
-            self.model = bestmodel.fit(transparams=True, method=self.method, solver=solver)
+            self.model = bestmodel.fit(transparams=True, method=self.method, solver=solver, disp=False)
         except:
-            self.model = bestmodel.fit(transparams=False, method=self.method, solver=solver)
+            self.model = bestmodel.fit(transparams=False, method=self.method, solver=solver, disp=False)
         ### this is needed for static forecasts ####################
         y_truth = ts_train[:]
         y_forecasted = self.model.predict(typ='levels')

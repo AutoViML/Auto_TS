@@ -179,7 +179,7 @@ class BuildML(BuildBase):
         )
         return dfxs, transformed_target_name, transformed_pred_names
 
-    def refit(self, ts_df: pd.DataFrame):
+    def refit(self, ts_df: pd.DataFrame) -> object:
         """
         :param ts_df The original dataframe. All transformations to a supervised learning
         problem should be taken care internally by this method.

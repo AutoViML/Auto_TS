@@ -78,7 +78,8 @@ class BuildVAR():
                 else:
                     try:
                         model = VARMAX(y_train, order=(p_val, q_val), trend='c')
-                        model = model.fit(max_iter=1000, displ=False)
+                        #model = model.fit(max_iter=1000, displ=False)
+                        model = model.fit(max_iter=1000, disp=False)
                         info_criteria.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('model.' + self.criteria)
                         print(' Iteration %d completed' % i)
                         i += 1
@@ -106,7 +107,7 @@ class BuildVAR():
         print('Best variable selected for VAR: %s' % ts_train.columns.tolist()[best_d])
         y_train = ts_train.iloc[:, [0, best_d]]
         self.model = VARMAX(y_train, order=(best_p, best_q), trend='c')
-        self.model = self.model.fit()
+        self.model = self.model.fit(disp=False)
         if self.verbose == 1:
             self.model.plot_diagnostics(figsize=(16, 12))
             ax = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
