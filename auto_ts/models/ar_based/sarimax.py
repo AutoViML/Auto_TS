@@ -125,7 +125,7 @@ class BuildSarimax(BuildBase):
             # TODO: Check if we need to also pass the exogenous variables here and 
             # change the functionality of find_best_pdq_or_PDQ to incorporate these 
             # exogenoug variables.
-            self.best_P, self.best_D, self.best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(
+            self.best_P, self.best_D, self.best_Q, best_bic, self.seasonality = find_best_pdq_or_PDQ(
                 ts_df=ts_train[self.original_target_col],
                 scoring=self.scoring,
                 p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
@@ -135,7 +135,7 @@ class BuildSarimax(BuildBase):
                 verbose=self.verbose
             )            
                         
-            if seasonality:
+            if self.seasonality:
                 print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
                     self.best_p, self.best_d, self.best_q,
                     self.best_P, self.best_D, self.best_Q,
@@ -170,7 +170,7 @@ class BuildSarimax(BuildBase):
                         simple_differencing=False
                     )
             else:
-                print('\nBest model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
+                print('\nEven though seasonality has been set to True, the best model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
                     self.best_p, self.best_d, self.best_q))
                 #### In order to get forecasts to be in the same value ranges of the orig_endogs,
                 #### you must set the simple_differencing =False and the start_params to be
@@ -263,6 +263,10 @@ class BuildSarimax(BuildBase):
         # Extract the dynamic predicted and true values of our time series
         res_df = self.predict(X_exogen=ts_test[self.original_preds], simple=False)
         
+
+        # Refit the model on the entire dataset
+        self.refit(ts_df=ts_df)
+
         if self.verbose == 1:
             print(self.model.summary())
         print('Dynamic %d-Period Forecast:' % (self.forecast_period))
@@ -301,11 +305,30 @@ class BuildSarimax(BuildBase):
                     start_params=[0, 0, 0, 1],
                     simple_differencing=False)
         else:
-            pass        
-
-
-
-        
+            if self.univariate:
+                bestmodel = SARIMAX(
+                    endog=ts_df[self.original_target_col],
+                    # exog=ts_df[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False
+                )
+            else:
+                bestmodel = SARIMAX(
+                    endog=ts_df[self.original_target_col],
+                    exog=ts_df[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False
+                )        
 
         print(colorful.BOLD + 'Refitting data with previously found best parameters' + colorful.END)
         try:

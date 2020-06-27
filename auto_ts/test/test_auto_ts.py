@@ -153,80 +153,79 @@ class TestAutoTS(unittest.TestCase):
 
         #### UNIVARIATE ####
 
+        ## Internal (to AutoML) validation set results
         results = [
             803.31673726, 762.46093997, 718.3581931,  711.42130506,
             719.36254603, 732.70981867, 747.57645435, 762.47349398            
             ]
-
-        index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
-            ])
-        
-        self.forecast_gold_sarimax_univar = np.array(results)
-        
-        self.forecast_gold_sarimax_univar_series = pd.Series(
-                data = results,
-                index = index
-            )
-        self.forecast_gold_sarimax_univar_series.name = 'mean'
-
-        results = results + [776.914078, 790.809653]
-        index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
-            '2014-05-01', '2014-06-01'
-            ])
-            
-        self.forecast_gold_sarimax_univar_series_10 = pd.Series(
-                data = results,
-                index = index
-            )
-        self.forecast_gold_sarimax_univar_series_10.name = 'mean'
-
+        self.forecast_gold_sarimax_univar_internal_val = np.array(results)
         self.rmse_gold_sarimax_univar = 193.49650578
 
+        ## External Test Set results
+        results=[
+            737.281499, 718.144765, 672.007487, 618.321458,
+            578.990868, 567.799468, 586.467414, 625.619993
+        ]
+        index = pd.to_datetime([
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+            ])
+        
+        self.forecast_gold_sarimax_univar_external_test = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_univar_external_test.name = 'mean'
+
+        results = results + [669.666326, 703.29552]
+        index = pd.to_datetime([
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
+            '2015-01-01', '2015-02-01'
+            ])
+            
+        self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
+
+        
         #### MULTIVARIATE ####
                 
-        ## Internal (to AutoML) test set results
+        ## Internal (to AutoML) validation set results
         results = [
             772.268886, 716.337431, 686.167231, 739.269047,
             704.280567, 757.450733, 767.711055, 785.960125
         ]
-        self.forecast_gold_sarimax_multivar = np.array(results)
+        self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
+        self.rmse_gold_sarimax_multivar = 185.704684  
 
         ## External Test Set results (With Multivariate columns accepted)
-        ## This gives different results than internal test set since 
-        ## exogenoug variable values are different between internal
-        ## and external test sets
         results = [
-            794.347645, 834.496267, 809.813198, 783.392163,
-            775.357709, 749.449793, 750.866326, 771.304842
+            750.135204, 806.821297, 780.232195, 743.309074,
+            724.400616, 683.117893, 673.696113, 686.807075
         ]
         index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
             ])
         
-        self.forecast_gold_sarimax_multivar_series = pd.Series(
+        self.forecast_gold_sarimax_multivar_external_test = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_sarimax_multivar_series.name = 'mean'
+        self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
 
         results = results[0:6] 
-        index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01'
-            ])
-            
-        self.forecast_gold_sarimax_multivar_series_10 = pd.Series(
+        index = index[0:6]
+        self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_sarimax_multivar_series_10.name = 'mean'
+        self.forecast_gold_sarimax_multivar_external_test_10.name = 'mean'
 
-        self.rmse_gold_sarimax_multivar = 185.704684  
+        
 
         ############################
         #### VAR Golden Results ####
@@ -285,38 +284,36 @@ class TestAutoTS(unittest.TestCase):
 
         #### MULTIVARIATE ####
 
-        ## Internal (to AutoML) test set results
+        ## Internal (to AutoML) validation set results
         results = [
             509.64, 447.34, 438.2 , 456.98,
             453.04, 449.36, 530.02, 626.8
         ]
-        self.forecast_gold_ml_multivar = np.array(results)
+        self.forecast_gold_ml_multivar_internal_val = np.array(results)
+        self.rmse_gold_ml_multivar = 74.133644
                 
         ## External Test Set results (With Multivariate columns accepted)
-        ## This gives different results than internal test set since 
-        ## exogenoug variable values are different between internal
-        ## and external test sets        
         results = [
             509.64, 485.24, 479.72, 483.98, 
             482.78, 455.04, 518.62, 524.08
         ]
         index = np.arange(0, 8)
 
-        self.forecast_gold_ml_multivar_series = pd.Series(
+        self.forecast_gold_ml_multivar_external_test = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_ml_multivar_series.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test.name = 'mean'
 
         results = results[0:6] 
         index = index[0:6]            
-        self.forecast_gold_ml_multivar_series_10 = pd.Series(
+        self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_ml_multivar_series_10.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
 
-        self.rmse_gold_ml_multivar = 74.133644
+        
 
 
     # @unittest.skip
@@ -482,7 +479,16 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar[self.preds],
                 model="SARIMAX"                
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
+
+            print("Train Multivar")
+            print(self.train_multivar)
+
+            print("Test Multivar")
+            print(self.test_multivar)
+
+            print("SARIMAX Predictions (test)")
+            print(test_predictions)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
             
             # Simple forecast with forecast window != one used in training
             # Using named model
@@ -491,7 +497,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar.iloc[0:6][self.preds],
                 model="SARIMAX"                
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series_10)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -529,7 +535,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar[self.preds],
                 model="SARIMAX"                
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_series)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
 
 
             
@@ -578,7 +584,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar[self.preds],
                 model="ML"                
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_series)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test)
             
             # Simple forecast with forecast window != one used in training
             # Using named model
@@ -587,7 +593,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar.iloc[0:6][self.preds],
                 model="ML"                
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_series_10)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -640,7 +646,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertIsNone(
             np.testing.assert_array_equal(
                 np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 6),
-                self.forecast_gold_sarimax_multivar
+                self.forecast_gold_sarimax_multivar_internal_val
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
@@ -671,7 +677,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertIsNone(
             np.testing.assert_array_equal(
                 np.round(ml_dict.get('ML').get('forecast').astype(np.double), 2),
-                self.forecast_gold_ml_multivar
+                self.forecast_gold_ml_multivar_internal_val
             ),
             "(Multivar Test) ML Forecast does not match up with expected values."
         )
@@ -835,7 +841,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="SARIMAX"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_series)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_external_test)
             
             # Simple forecast with forecast window != one used in training
             # Using named model
@@ -843,7 +849,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=10,
                 model="SARIMAX"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_series_10)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_external_test_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -970,7 +976,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertIsNone(
             np.testing.assert_array_equal(
                 np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 8),
-                self.forecast_gold_sarimax_univar
+                self.forecast_gold_sarimax_univar_internal_val
             ),
             "(Univar Test) SARIMAX Forecast does not match up with expected values."
         )
