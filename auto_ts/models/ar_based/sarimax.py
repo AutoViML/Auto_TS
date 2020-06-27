@@ -29,15 +29,18 @@ class BuildSarimax(BuildBase):
             verbose=verbose
         )
 
-        # self.scoring = scoring
         self.seasonality = seasonality
         self.seasonal_period = seasonal_period
         self.p_max = p_max
         self.d_max = d_max
         self.q_max = q_max
-        # self.forecast_period = forecast_period
-        # self.verbose = verbose
-        # self.model = None
+
+        self.best_p = None
+        self.best_d = None
+        self.best_q = None
+        self.best_P = None
+        self.best_D = None
+        self.best_Q = None
        
 
     def fit(self, ts_df: pd.DataFrame, target_col: str):
@@ -67,14 +70,17 @@ class BuildSarimax(BuildBase):
             # TODO: Check if we need to also pass the exogenous variables here and 
             # change the functionality of find_best_pdq_or_PDQ to incorporate these 
             # exogenoug variables.
-            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
-                # ts_train,
-                ts_train[self.original_target_col],
-                self.scoring,
-                self.p_max, self.d_max, self.q_max, non_seasonal_pdq=None,
-                seasonal_period=None, seasonality=False, verbose=self.verbose)
-            print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (best_p, best_d,
-                                                            best_q,self.scoring, best_bic))
+            self.best_p, self.best_d, self.best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
+                ts_df=ts_train[self.original_target_col],
+                scoring=self.scoring,
+                p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
+                non_seasonal_pdq=None,
+                seasonal_period=None,
+                seasonality=False,
+                verbose=self.verbose
+            )
+            print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (
+                self.best_p, self.best_d, self.best_q, self.scoring, best_bic))
             #### In order to get forecasts to be in the same value ranges of the orig_endogs,
             #### you must  set the simple_differencing = False and the start_params to be the
             #### same as ARIMA.
@@ -84,7 +90,7 @@ class BuildSarimax(BuildBase):
                 bestmodel = SARIMAX(
                     endog=ts_train[self.original_target_col],
                     # exog=ts_train[self.original_preds],
-                    order=(best_p, best_d, best_q),
+                    order=(self.best_p, self.best_d, self.best_q),
                     enforce_stationarity=False,
                     enforce_invertibility=False,
                     trend='ct',
@@ -94,7 +100,7 @@ class BuildSarimax(BuildBase):
                 bestmodel = SARIMAX(
                     endog=ts_train[self.original_target_col],
                     exog=ts_train[self.original_preds],
-                    order=(best_p, best_d, best_q),
+                    order=(self.best_p, self.best_d, self.best_q),
                     enforce_stationarity=False,
                     enforce_invertibility=False,
                     trend='ct',
@@ -106,32 +112,34 @@ class BuildSarimax(BuildBase):
             # TODO: Check if we need to also pass the exogenous variables here and 
             # change the functionality of find_best_pdq_or_PDQ to incorporate these 
             # exogenoug variables.
-            best_p, best_d, best_q, best_bic, seasonality = find_best_pdq_or_PDQ(
-                # ts_train,
-                ts_train[self.original_target_col],
-                self.scoring,
-                self.p_max, self.d_max, self.q_max,
+            self.best_p, self.best_d, self.best_q, _, _ = find_best_pdq_or_PDQ(
+                ts_df=ts_train[self.original_target_col],
+                scoring=self.scoring,
+                p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
                 non_seasonal_pdq=None,
                 seasonal_period=None,
-                seasonality=False,verbose=self.verbose)
+                seasonality=False,
+                verbose=self.verbose
+            )
             print(colorful.BOLD + '\n    Finding best Seasonal PDQ Model Parameters:' + colorful.END)
             # TODO: Check if we need to also pass the exogenous variables here and 
             # change the functionality of find_best_pdq_or_PDQ to incorporate these 
             # exogenoug variables.
-            best_P, best_D, best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(
-                # ts_train,
-                ts_train[self.original_target_col],
-                self.scoring,
-                self.p_max, self.d_max, self.q_max,
-                non_seasonal_pdq=(best_p, best_d, best_q),
+            self.best_P, self.best_D, self.best_Q, best_bic, seasonality = find_best_pdq_or_PDQ(
+                ts_df=ts_train[self.original_target_col],
+                scoring=self.scoring,
+                p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
+                non_seasonal_pdq=(self.best_p, self.best_d, self.best_q),
                 seasonal_period=self.seasonal_period,
-                seasonality=True, verbose=self.verbose)
-            
+                seasonality=True,
+                verbose=self.verbose
+            )            
                         
             if seasonality:
                 print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
-                                                best_p, best_d, best_q, best_P,
-                                                best_D, best_Q, self.seasonal_period, self.scoring, best_bic))
+                    self.best_p, self.best_d, self.best_q,
+                    self.best_P, self.best_D, self.best_Q,
+                    self.seasonal_period, self.scoring, best_bic))
                 #### In order to get forecasts to be in the same value ranges of the orig_endogs,
                 #### you must set the simple_differencing =False and the start_params to be
                 #### the same as ARIMA.
@@ -141,25 +149,29 @@ class BuildSarimax(BuildBase):
                     bestmodel = SARIMAX(
                         endog=ts_train[self.original_target_col],
                         # exog=ts_train[self.original_preds],
-                        order=(best_p, best_d, best_q),
-                        seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
+                        order=(self.best_p, self.best_d, self.best_q),
+                        seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
                         enforce_stationarity=False,
                         enforce_invertibility=False,
-                        simple_differencing=False, trend='ct',
-                        start_params=[0, 0, 0, 1])
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False
+                    )
                 else:
                     bestmodel = SARIMAX(
                         endog=ts_train[self.original_target_col],
                         exog=ts_train[self.original_preds],
-                        order=(best_p, best_d, best_q),
-                        seasonal_order=(best_P, best_D, best_Q, self.seasonal_period),
+                        order=(self.best_p, self.best_d, self.best_q),
+                        seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
                         enforce_stationarity=False,
                         enforce_invertibility=False,
-                        simple_differencing=False, trend='ct',
-                        start_params=[0, 0, 0, 1])
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False
+                    )
             else:
                 print('\nBest model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
-                                                    best_p, best_d, best_q))
+                    self.best_p, self.best_d, self.best_q))
                 #### In order to get forecasts to be in the same value ranges of the orig_endogs,
                 #### you must set the simple_differencing =False and the start_params to be
                 #### the same as ARIMA.
@@ -169,22 +181,24 @@ class BuildSarimax(BuildBase):
                     bestmodel = SARIMAX(
                         endog=ts_train[self.original_target_col],
                         # exog=ts_train[self.original_preds],
-                        order=(best_p, best_d, best_q),
+                        order=(self.best_p, self.best_d, self.best_q),
                         enforce_stationarity=False,
                         enforce_invertibility=False,
                         trend='ct',
                         start_params=[0, 0, 0, 1],
-                        simple_differencing=False)
+                        simple_differencing=False
+                    )
                 else:
                     bestmodel = SARIMAX(
                         endog=ts_train[self.original_target_col],
                         exog=ts_train[self.original_preds],
-                        order=(best_p, best_d, best_q),
+                        order=(self.best_p, self.best_d, self.best_q),
                         enforce_stationarity=False,
                         enforce_invertibility=False,
                         trend='ct',
                         start_params=[0, 0, 0, 1],
-                        simple_differencing=False)
+                        simple_differencing=False
+                    )
         
         print(colorful.BOLD + 'Fitting best SARIMAX model for full data set'+colorful.END)
         try:
@@ -201,6 +215,7 @@ class BuildSarimax(BuildBase):
                 print('Error: SARIMAX plot diagnostic. Continuing...')
         
         ### this is needed for static forecasts ####################
+        # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
         y_truth = ts_train[:]  # Note that this is only univariate analysis
 
         if self.univariate:
@@ -215,8 +230,8 @@ class BuildSarimax(BuildBase):
             print('Static Forecasts:')
             # Since you are differencing the data, some original data points will not be available
             # Hence taking from first available value.
-            print_static_rmse(concatenated['original'].values[best_d:],
-                              concatenated['predicted'].values[best_d:],
+            print_static_rmse(concatenated['original'].values[self.best_d:],
+                              concatenated['predicted'].values[self.best_d:],
                               verbose=self.verbose)
         
         ########### Dynamic One Step Ahead Forecast ###########################
@@ -228,7 +243,7 @@ class BuildSarimax(BuildBase):
         # Now do dynamic forecast plotting for the last X steps of the data set ######
 
         if self.verbose == 1:
-            ax = concatenated[['original', 'predicted']][best_d:].plot(figsize=(16, 12))
+            ax = concatenated[['original', 'predicted']][self.best_d:].plot(figsize=(16, 12))
             startdate = ts_df.index[-self.forecast_period-1]
             pred_dynamic = self.model.get_prediction(start=startdate, dynamic=True, full_results=True)
             pred_dynamic_ci = pred_dynamic.conf_int()

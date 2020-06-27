@@ -36,7 +36,7 @@ def find_lowest_pq(df):
     return ar_p, ma_q, lowest_bic
 
 
-def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq,
+def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                          seasonal_period, seasonality=False, verbose=0):
     p_min = 0
     d_min = 0
@@ -58,27 +58,34 @@ def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq
                 continue
             try:
                 if seasonality:
-                    #### In order to get forecasts to be in the same value ranges of the
-                    #### orig_endogs, you must set the simple_differencing = False and
-                    #### the start_params to be the same as ARIMA.
-                    #### THat is the only way to ensure that the output of this
-                    #### model is comparable to other ARIMA models
-                    model = SARIMAX(ts_train, order=(ns_p, ns_d, ns_q),
-                                    seasonal_order=(p_val, d_val, q_val, seasonal_period),
-                                    enforce_stationarity=False,
-                                    enforce_invertibility=False,
-                                    simple_differencing=False, trend='ct',
-                                    start_params=[0, 0, 0, 1])
+                    # In order to get forecasts to be in the same value ranges of the
+                    # orig_endogs, you must set the simple_differencing = False and
+                    # the start_params to be the same as ARIMA.
+                    # That is the only way to ensure that the output of this
+                    # model is comparable to other ARIMA models
+                    model = SARIMAX(
+                        ts_df,
+                        order=(ns_p, ns_d, ns_q),
+                        seasonal_order=(p_val, d_val, q_val, seasonal_period),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False
+                    )
                 else:
-                    model = SARIMAX(ts_train, order=(p_val, d_val, q_val),
-                                    enforce_stationarity=False,
-                                    enforce_invertibility=False,
-                                    simple_differencing=False, trend='ct',
-                                    start_params=[0, 0, 0, 1]
-                                        )
+                    model = SARIMAX(
+                        ts_df,
+                        order=(p_val, d_val, q_val),
+                        enforce_stationarity=False,
+                        enforce_invertibility=False,
+                        trend='ct',
+                        start_params=[0, 0, 0, 1],
+                        simple_differencing=False
+                    )
                     results = model.fit()   
 
-                    results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + metric)
+                    results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + scoring)
                     if iteration % 10 == 0:
                         print('    Iteration %d completed...' % iteration)
                         iteration += 1
@@ -88,7 +95,7 @@ def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq
             except:
                 iteration += 1
                 continue
-        results_bic = results_bic[results_bic. columns].astype(float)
+        results_bic = results_bic[results_bic.columns].astype(float)
         interim_d = d_val
         if results_bic.isnull().all().all():
             print('    D = %d results in an empty ARMA set. Setting Seasonality to False since model might overfit' %d_val)
@@ -101,7 +108,7 @@ def find_best_pdq_or_PDQ(ts_train, metric, p_max, d_max, q_max, non_seasonal_pdq
         if verbose == 1:
             fig, ax = plt.subplots(figsize=(20, 10))
             ax = sns.heatmap(results_bic, mask=results_bic.isnull(), ax=ax, annot=True, fmt='.0f')
-            ax.set_title(metric)
+            ax.set_title(scoring)
         results_dict[str(interim_p)+' '+str(interim_d)+' '+str(interim_q)] = interim_bic
     try:
         best_bic = min(results_dict.items(), key=operator.itemgetter(1))[1]
