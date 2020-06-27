@@ -326,9 +326,12 @@ class TestAutoTS(unittest.TestCase):
         """
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
+        # TODO: seasonal_period argument does not make a difference. Commenting out for now.
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            # non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            # non_seasonal_pdq=None, seasonality=False, seasonal_period=3, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_PDQ=None,
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)

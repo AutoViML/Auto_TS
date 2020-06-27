@@ -60,14 +60,39 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 
 
 class AutoTimeSeries:
-    def __init__(self, score_type: str ='rmse',
-                forecast_period: int = 5, time_interval: str = '', non_seasonal_pdq: Optional[Tuple]=None,
-                seasonality: bool = False, seasonal_period: int = 12, seasonal_PDQ=None,
-                conf_int: float = 0.95, model_type: Union[str, List] ="stats", verbose: int =0):
+    def __init__(
+        self,
+        forecast_period: int, 
+        score_type: str = 'rmse',
+        time_interval: str = '',
+        non_seasonal_pdq: Optional[Tuple]=None,
+        seasonality: bool = False,
+        seasonal_period: int = 12,
+        seasonal_PDQ: Optional[Tuple]=None,
+        conf_int: float = 0.95,
+        model_type: Union[str, List] ="stats",
+        verbose: int = 0
+    ):
         """
         Initializae an AutoTimeSeries object
         # TODO: Add complete docstring
         # TODO: Add object types
+
+        :param: non_seasonal_pdq Indicates the maximum value of p, d, q to be used in the search for the best models.
+        If None, then the following values are assumed max_p = 3, max_d = 1, max_q = 3
+        :type non_seasonal_pdq Optional[Tuple]
+
+        :param seasonality Used in the building of the SARIMAX model only at this time
+        :type seasonality bool
+
+        TODO: seasonal_period is calculated internally, so why is it needed to be passed
+        :param seasonal_period: Check if this needs to be passed at all.
+
+        TODO: seasonal_PDQ is not being used anywhere. Maybe this is a placeholder to be used in the future.
+        :param seasonal_PDQ: Check if this needs to be passed at all.
+
+
+
 
         ####################################################################################
         ####                          Auto Time Series                                  ####

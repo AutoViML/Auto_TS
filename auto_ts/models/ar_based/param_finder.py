@@ -106,7 +106,7 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
             seasonality = True
         interim_p, interim_q, interim_bic = find_lowest_pq(results_bic)
         if verbose == 1:
-            fig, ax = plt.subplots(figsize=(20, 10))
+            _, ax = plt.subplots(figsize=(20, 10))
             ax = sns.heatmap(results_bic, mask=results_bic.isnull(), ax=ax, annot=True, fmt='.0f')
             ax.set_title(scoring)
         results_dict[str(interim_p)+' '+str(interim_d)+' '+str(interim_q)] = interim_bic
