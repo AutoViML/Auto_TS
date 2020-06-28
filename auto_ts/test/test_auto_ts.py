@@ -225,7 +225,37 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_sarimax_multivar_external_test_10.name = 'mean'
 
-        
+        ## Internal (to AutoML) validation set results (with seasonality = True, Seasonal Period = 12)
+        results = [
+            726.115602, 646.028979, 657.249936, 746.752393,
+            732.813245, 749.435178, 863.356789, 903.168728 
+        ]
+        self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
+        self.rmse_gold_sarimax_multivar_s12 = 197.18894
+
+        ## External Test Set results (With Multivariate columns accepted) (with seasonality = True, Seasonal Period = 12)
+        results = [
+            1044.155690, 545.915184, 798.401786, 575.422700,
+             451.474245, 165.615416, 434.389006, 392.163033
+        ]
+        index = pd.to_datetime([
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+            ])
+                
+        self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
+
+        results = results[0:6] 
+        index = index[0:6]
+        self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_sarimax_multivar_external_test_10_s12.name = 'mean'
 
         ############################
         #### VAR Golden Results ####
@@ -317,18 +347,18 @@ class TestAutoTS(unittest.TestCase):
 
 
     # @unittest.skip
-    def test_auto_ts_multivar(self):
+    def test_auto_ts_multivar_ns_SARIMAX(self):
         """
-        test to check functionality of the auto_ts function
+        test to check functionality of the auto_ts function (multivariate with non seasonal SARIMAX)
         """
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
-        # TODO: seasonal_period argument does not make a difference. Commenting out for now.
+        # seasonal_period argument does not make a difference since seasonality has been set to False.
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            # non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
-            # non_seasonal_pdq=None, seasonality=False, seasonal_period=3, seasonal_PDQ=None,
-            non_seasonal_pdq=None, seasonality=False, seasonal_PDQ=None,
+            # non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            # non_seasonal_pdq=None, seasonality=False, seasonal_period=3,
+            non_seasonal_pdq=None, seasonality=False,
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
@@ -480,14 +510,14 @@ class TestAutoTS(unittest.TestCase):
                 model="SARIMAX"                
             )
 
-            print("Train Multivar")
-            print(self.train_multivar)
+            # print("Train Multivar")
+            # print(self.train_multivar)
 
-            print("Test Multivar")
-            print(self.test_multivar)
+            # print("Test Multivar")
+            # print(self.test_multivar)
 
-            print("SARIMAX Predictions (test)")
-            print(test_predictions)
+            # print("SARIMAX Predictions (test)")
+            # print(test_predictions)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
             
             # Simple forecast with forecast window != one used in training
@@ -688,15 +718,15 @@ class TestAutoTS(unittest.TestCase):
 
 
     # @unittest.skip
-    def test_auto_ts_univar(self):
+    def test_auto_ts_univar_ns_SARIMAX(self):
         """
-        test to check functionality of the auto_ts function (univariate models)
+        test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
         """
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type='best',
             verbose=0)
         automl_model.fit(self.train_univar, self.ts_column, self.target, self.sep)
@@ -1013,6 +1043,126 @@ class TestAutoTS(unittest.TestCase):
        
 
     # @unittest.skip
+    def test_auto_ts_multivar_seasonal_SARIMAX(self):
+        """
+        test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
+        """
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+        # TODO: seasonal_period argument does not make a difference. Commenting out for now.
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=True, seasonal_period=12,
+            # non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
+            model_type='SARIMAX',
+            verbose=0)
+        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        test_predictions = automl_model.predict(
+            forecast_period=self.forecast_period,
+            X_exogen=self.test_multivar[self.preds] 
+        )  
+        print("Test Predictions from outside AutoML:")
+        print(test_predictions)
+        ml_dict = automl_model.get_ml_dict()
+        print("Final Dictionary...")
+        print(ml_dict)
+
+        print(automl_model.get_leaderboard())
+        leaderboard_gold = pd.DataFrame(
+            {
+                'name':['SARIMAX'],
+                'rmse':[self.rmse_gold_sarimax_multivar_s12]
+            }
+        )
+        assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
+
+        if automl_model.get_model_build('SARIMAX') is not None:
+            # print("-"*50)
+            # print("Predictions with SARIMAX Model")
+            # print("-"*50)
+
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="SARIMAX"                
+            )
+
+            print("Test Multivar")
+            print(self.test_multivar)
+
+            print("SARIMAX Predictions (test)")
+            print(test_predictions)
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s12)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=6,
+                X_exogen=self.test_multivar.iloc[0:6][self.preds],
+                model="SARIMAX"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10_s12)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="SARIMAX",
+                simple=False                
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names
+                )
+            )
+
+            # Checking missing exogenous variables
+            with self.assertRaises(ValueError):
+                test_predictions = automl_model.predict(
+                    forecast_period=self.forecast_period,
+                    # X_exogen=self.test_multivar[self.preds],
+                    model="SARIMAX"                
+                )
+
+            # Checking missing columns from exogenous variables
+            with self.assertRaises(ValueError):
+                test_multivar_temp = self.test_multivar.copy(deep=True)
+                test_multivar_temp.rename(columns={'Marketing Expense': 'Incorrect Column'}, inplace=True)
+                test_predictions = automl_model.predict(
+                        forecast_period=self.forecast_period,
+                        X_exogen=test_multivar_temp,
+                        model="SARIMAX"                
+                    )
+
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                X_exogen=self.test_multivar[self.preds],
+                model="SARIMAX"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s12)
+
+
+        ##################################
+        #### Checking SARIMAX Results ####
+        ##################################
+        self.assertIsNone(
+            np.testing.assert_array_equal(
+                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 6),
+                self.forecast_gold_sarimax_multivar_internal_val_s12
+            ),
+            "(Multivar Test) SARIMAX Forecast does not match up with expected values."
+        )
+        
+        self.assertEqual(
+            round(ml_dict.get('SARIMAX').get('rmse'), 6), self.rmse_gold_sarimax_multivar_s12,
+            "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
+               
+        
+
+
+    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1023,7 +1173,7 @@ class TestAutoTS(unittest.TestCase):
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'ML'],
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
@@ -1038,7 +1188,7 @@ class TestAutoTS(unittest.TestCase):
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'bogus', 'ML'],
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
@@ -1054,7 +1204,7 @@ class TestAutoTS(unittest.TestCase):
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['bogus'],
             verbose=0)
         status = automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
@@ -1070,7 +1220,7 @@ class TestAutoTS(unittest.TestCase):
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'ML'],
             verbose=0)
         automl_model.fit(self.train_multivar, [self.ts_column], [self.target], self.sep)
@@ -1091,7 +1241,7 @@ class TestAutoTS(unittest.TestCase):
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12, seasonal_PDQ=None,
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['ARIMA'],
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
