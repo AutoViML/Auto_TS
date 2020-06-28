@@ -64,39 +64,81 @@ class AutoTimeSeries:
         self,
         forecast_period: int, 
         score_type: str = 'rmse',
-        time_interval: str = '',
+        time_interval: Optional[str] = None,
         non_seasonal_pdq: Optional[Tuple]=None,
         seasonality: bool = False,
         seasonal_period: int = 12,
-        seasonal_PDQ: Optional[Tuple]=None,
         conf_int: float = 0.95,
-        model_type: Union[str, List] ="stats",
+        model_type: Union[str, List] = "stats",
         verbose: int = 0
     ):
         """
-        Initializae an AutoTimeSeries object
-        # TODO: Add complete docstring
-        # TODO: Add object types
+        Initialize an AutoTimeSeries object
+        
+        :forecast_period The number of time intervals ahead that you want to forecast
+        :type forecast_period int
 
-        :param: non_seasonal_pdq Indicates the maximum value of p, d, q to be used in the search for the best models.
+        :score_type: The metric used for scoring the models. Default = 'rmse'
+        Currently only 2 are supported:
+        (1) RMSE
+        (2) Normalized RMSE (ratio of RMSE to the standard deviation of actuals)
+        :type str
+
+        :param time_interval Used to indicate the frequency at which the data is collected
+        This is used for 2 purposes (1) in building the Prophet model and (2) used to impute 
+        the seasonal period for SARIMAX in case it is not provided by the user (None)
+        Allowed values are:
+          (1) 'months', 'month', 'm' for monthly frequency data
+          (2) 'days', 'daily', 'd' for daily freuency data
+          (3) 'weeks', 'weekly', 'w' for weekly frequency data
+          (4) 'qtr', 'quarter', 'q' for quarterly frequency data
+          (5) 'years', 'year', 'annual', 'y', 'a' for yearly frequency data
+          (6) 'hours', 'hourly', 'h' for hourly frequency data
+          (7) 'minutes', 'minute', 'min', 'n' for minute frequency data
+          (8) 'seconds', 'second', 'sec', 's' for second frequency data
+        :type time_interval Optional[str]
+
+        :param: non_seasonal_pdq Indicates the maximum value of p, d, q to be used in the search for "stats" based models.
         If None, then the following values are assumed max_p = 3, max_d = 1, max_q = 3
         :type non_seasonal_pdq Optional[Tuple]
 
-        :param seasonality Used in the building of the SARIMAX model only at this time
+        :param seasonality Used in the building of the SARIMAX model only at this time.
         :type seasonality bool
 
-        TODO: seasonal_period is calculated internally, so why is it needed to be passed
-        :param seasonal_period: Check if this needs to be passed at all.
+        :param seasonal_period: Indicates the seasonality period in the data. 
+        Used in the building of the SARIMAX model only at this time.
+        There is no impact of this argument if seasonality is set to False
+        If None, the program will try to inder this from the time_interval (frequency) of the data
+        (1) If frequency = Monthly, then seasonal_period = 12
+        (1) If frequency = Daily, then seasonal_period = 30
+        (1) If frequency = Weekly, then seasonal_period = 52
+        (1) If frequency = Quarterly, then seasonal_period = 4
+        (1) If frequency = Yearly, then seasonal_period = 1
+        (1) If frequency = Hourly, then seasonal_period = 24
+        (1) If frequency = Minutes, then seasonal_period = 60
+        (1) If frequency = Seconds, then seasonal_period = 60
+        :type seasonal_period int
 
-        TODO: seasonal_PDQ is not being used anywhere. Maybe this is a placeholder to be used in the future.
-        :param seasonal_PDQ: Check if this needs to be passed at all.
+        :param conf_int: Confidence Interval for building the Prophet model. Default: 0.95
+        :type conf_int float
+        
+        :param model_type The type(s) of model to build. Default to building only statistical models
+        Can be a string or a list of models. Allowed values are: 
+        'best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
+        "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
+        "stats" will build statsmodels based ARIMA, SARIMAX and VAR models
+        "ML" will build a machine learning model using Random Forests provided explanatory vars are given
+        'best' will try to build all models and pick the best one
+        If a list is provided, then only those models will be built
+        WARNING: "best" might take some time for large data sets. We recommend that you
+        choose a small sample from your data set bedfore attempting to run entire data.
+        :type model_type: Union[str, List]
 
-
-
-
+        :param verbose Indicates the verbosity of printing (Default = 0)
+        :type verbose int
+        
         ####################################################################################
         ####                          Auto Time Series                                  ####
-        ####                           Version 0.0.19 Version                           ####
         ####                    Conceived and Developed by Ram Seshadri                 ####
         ####                        All Rights Reserved                                 ####
         ####################################################################################
@@ -105,39 +147,6 @@ class AutoTimeSeries:
         TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
         Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
         and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
-        It will return the best model and a dataframe containing predictions for forecast_period (default=2).
-        #####################################################################################################
-        INPUT:
-        #####################################################################################################
-        trainfile: name of the file along with its data path or a dataframe. It accepts both.
-        ts_column: name of the datetime column in your dataset (it could be name or number)
-        target: name of the column you are trying to predict. Target could also be the only column in your data
-        score_type: 'rmse' is the default. You can choose among "mae", "mse" and "rmse".
-        forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer
-        time_interval: default is "Month". What is the time period in your data set. Options are: "days",
-        model_type: default is "stats". Choice is between "stats", "prophet" and "ml". "All" will build all.
-            - "stats" will build statsmodels based ARIMA< SARIMAX and VAR models
-            - "ml" will build a machine learning model using Random Forests provided explanatory vars are given
-            - "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
-            - "best" will build three of the best models from above which might take some time for large data sets.
-        We recommend that you choose a small sample from your data set bedfore attempting to run entire data.
-        #####################################################################################################
-        and the evaluation metric so it can select the best model. Currently only 2 are supported: RMSE and
-        Normalized RMSE (ratio of RMSE to the standard deviation of actuals). Other eval metrics will be soon.
-        the target variable you are trying to predict (if there is more than one variable in your data set),
-        and the time interval that is in the data. If your data is in a different time interval than given,
-        Auto_Timeseries will automatically resample your data to the given time interval and learn to make
-        predictions. Notice that except for filename and ts_column which are required, all others are optional.
-        Note that optionally you can give a separator for the data in your file. Default is comman (",").
-        "time_interval" options are: 'Days', 'Weeks', 'Months', 'Qtr', 'Year', 'Minutes', 'Hours', 'Seconds'.
-        Optionally, you can give seasonal_period as any integer that measures the seasonality in the data.
-        If not, seasonal_period is assumed automatically as follows: Months = 12, Days = 30, Weeks = 52,
-        Qtr = 4, Year = 1, Hours = 24, Minutes = 60 and Seconds = 60.
-        If you want to give your own order, please input it as non_seasonal_pdq and seasonal_PDQ in the input
-        as tuples. For example, seasonal_PDQ = (2,1,2) and non_seasonal_pdq = (0,0,3). It will accept only tuples.
-        The defaul is None and Auto_Timeseries will automatically search for the best p,d,q (for Non Seasonal)
-        and P, D, Q (for Seasonal) orders by searching for all parameters from 0 to 12 for each value of
-        p,d,q and 0-3 for each P, Q and 0-1 for D.
         #####################################################################################################
         """
 
@@ -148,7 +157,6 @@ class AutoTimeSeries:
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
         self.seasonal_period = seasonal_period
-        self.seasonal_PDQ = seasonal_PDQ  # TODO: This is not being used anywhere. Check if this is needed.
         self.conf_int = conf_int
         if isinstance(model_type, str):
             model_type = [model_type]
@@ -166,6 +174,12 @@ class AutoTimeSeries:
         """
         Train the AutoTimeseries object
         # TODO: Complete docstring
+
+        traindata: name of the file along with its data path or a dataframe. It accepts both.
+        ts_column: name of the datetime column in your dataset (it could be name or number)
+        the target variable you are trying to predict (if there is more than one variable in your data set),
+        target: name of the column you are trying to predict. Target could also be the only column in your data
+        sep: Note that optionally you can give a separator for the data in your file. Default is comman (",").
         """
 
         print("Start of Fit.....")
@@ -251,11 +265,12 @@ class AutoTimeSeries:
         ## This will be helpful when finding the "future dataframe" especially for ARIMA, and ML.
         # https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
 
-        print("Start of figuring out the time interval.....")
+        
         ##################    IF TIME INTERVAL IS NOT GIVEN DO THIS   ########################
         #### This is where the program tries to tease out the time period in the data set ####
         ######################################################################################
-        if self.time_interval == '':
+        if self.time_interval is None:
+            print("Time Interval of obserations has not been provided. Program will try to figure this out now...")
             ts_index = pd.to_datetime(ts_df.index)
             diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
             diffdays = diff.days
@@ -268,22 +283,22 @@ class AutoTimeSeries:
             if diff_in_hours == 0 and diff_in_days >= 1:
                 print('Time series input in days = %s' % diff_in_days)
                 if diff_in_days == 7:
-                    print('it is a Weekly time series.')
+                    print('It is a Weekly time series.')
                     self.time_interval = 'weeks'
                 elif diff_in_days == 1:
-                    print('it is a Daily time series.')
+                    print('It is a Daily time series.')
                     self.time_interval = 'days'
                 elif 28 <= diff_in_days < 89:
-                    print('it is a Monthly time series.')
+                    print('It is a Monthly time series.')
                     self.time_interval = 'months'
                 elif 89 <= diff_in_days < 178:
-                    print('it is a Quarterly time series.')
+                    print('It is a Quarterly time series.')
                     self.time_interval = 'qtr'
                 elif 178 <= diff_in_days < 360:
-                    print('it is a Semi Annual time series.')
+                    print('It is a Semi Annual time series.')
                     self.time_interval = 'qtr'
                 elif diff_in_days >= 360:
-                    print('it is an Annual time series.')
+                    print('It is an Annual time series.')
                     self.time_interval = 'years'
                 else:
                     print('Time Series time delta is unknown')
@@ -291,10 +306,10 @@ class AutoTimeSeries:
             if diff_in_days == 0:
                 if diff_in_hours == 0:
                     print('Time series input in Minutes or Seconds = %s' % diff_in_hours)
-                    print('it is a Minute time series.')
+                    print('It is a Minute time series.')
                     self.time_interval = 'minutes'
                 elif diff_in_hours >= 1:
-                    print('it is an Hourly time series.')
+                    print('It is an Hourly time series.')
                     self.time_interval = 'hours'
                 else:
                     print('It is an Unknown Time Series delta')
@@ -306,33 +321,44 @@ class AutoTimeSeries:
         self.time_interval = self.time_interval.strip().lower()
         if self.time_interval in ['months', 'month', 'm']:
             self.time_interval = 'months'
-            self.seasonal_period = 12
         elif self.time_interval in ['days', 'daily', 'd']:
-            self.time_interval = 'days'
-            self.seasonal_period = 30
-            # Commented out b/c resample only works with DatetimeIndex, not Index
-            # ts_df = ts_df.resample('D').sum()
+            self.time_interval = 'days'            
         elif self.time_interval in ['weeks', 'weekly', 'w']:
             self.time_interval = 'weeks'
-            self.seasonal_period = 52
         elif self.time_interval in ['qtr', 'quarter', 'q']:
             self.time_interval = 'qtr'
-            self.seasonal_period = 4
         elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
             self.time_interval = 'years'
-            self.seasonal_period = 1
         elif self.time_interval in ['hours', 'hourly', 'h']:
             self.time_interval = 'hours'
-            self.seasonal_period = 24
         elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
             self.time_interval = 'minutes'
-            self.seasonal_period = 60
         elif self.time_interval in ['seconds', 'second', 'sec', 's']:
             self.time_interval = 'seconds'
-            self.seasonal_period = 60
         else:
-            self.time_interval = 'months'
-            self.seasonal_period = 12
+            self.time_interval = 'months' # Default is Monthly
+
+        # Impute seasonal_period if not provided by the user
+        if self.seasonal_period is None:
+            if self.time_interval == 'months':
+                self.seasonal_period = 12
+            elif self.time_interval == 'days':
+                self.seasonal_period = 30
+            elif self.time_interval in 'weeks':
+                self.seasonal_period = 52
+            elif self.time_interval in 'qtr':
+                self.seasonal_period = 4
+            elif self.time_interval in 'years':
+                self.seasonal_period = 1
+            elif self.time_interval in 'hours':
+                self.seasonal_period = 24
+            elif self.time_interval in 'minutes':
+                self.seasonal_period = 60
+            elif self.time_interval in 'seconds':
+                self.seasonal_period = 60
+            else:
+                self.seasonal_period = 12  # Default is Monthly
+
 
         ########################### This is where we store all models in a nested dictionary ##########
         mldict = lambda: defaultdict(mldict)
