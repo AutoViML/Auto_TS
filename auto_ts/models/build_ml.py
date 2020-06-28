@@ -177,6 +177,11 @@ class BuildML(BuildBase):
             self.original_target_col,
             n_in=self.lags, n_out=0, dropT=False
         )
+        # TODO: Call create_time_seties_features on dfxs along with the name of the time_series_index 
+        # (index has to be converted to a column befoere passing to this)
+        # This will retuen the same dataframe with 10 extra columns like day of week, weekend
+        # Make your ML model  run like a charm.
+        # Need to add new column names to the transformed pred_names.
         return dfxs, transformed_target_name, transformed_pred_names
 
     def refit(self, ts_df: pd.DataFrame) -> object:
