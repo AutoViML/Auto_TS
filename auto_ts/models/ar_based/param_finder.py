@@ -48,8 +48,9 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
     # Initialize a DataFrame to store the results
     iteration = 0
     results_dict = {}
+    seasonality_dict = {}
     for d_val in range(d_min, d_max+1):
-        print('\nDifferencing = %d' % d_val)
+        print(f"\nDifferencing = {d_val} with Seasonality = {seasonality}")
         results_bic = pd.DataFrame(index=['AR{}'.format(i) for i in range(p_min, p_max+1)],
                                    columns=['MA{}'.format(i) for i in range(q_min, q_max+1)])
         for p_val, q_val in itertools.product(range(p_min,p_max+1), range(q_min, q_max+1)):
@@ -63,6 +64,7 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                     # the start_params to be the same as ARIMA.
                     # That is the only way to ensure that the output of this
                     # model is comparable to other ARIMA models
+                    
                     model = SARIMAX(
                         ts_df,
                         order=(ns_p, ns_d, ns_q),
@@ -83,7 +85,7 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                         start_params=[0, 0, 0, 1],
                         simple_differencing=False
                     )
-                    
+
                 results = model.fit(disp=False)   
 
                 results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + scoring)
@@ -105,9 +107,13 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
         if results_bic.isnull().all().all():
             print('    D = %d results in an empty ARMA set. Setting Seasonality to False since model might overfit' %d_val)
             #### Set Seasonality to False if this empty condition happens repeatedly ####
-            seasonality = False
+            seasonality_dict[d_val] = False
+            # TODO: This should not be set to False for all future d values, but without this ARIMA is giving large errors (overfitting)
+            seasonality = False 
             continue
         else:
+            seasonality_dict[d_val] = True
+            # TODO: This should not be set to False for all future d values, but without this ARIMA is giving large errors (overfitting)
             seasonality = True
         interim_p, interim_q, interim_bic = find_lowest_pq(results_bic)
         if verbose == 1:
@@ -126,4 +132,7 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
         best_q = copy.deepcopy(q_val)
         best_d = copy.deepcopy(d_val)
         best_bic = 0
-    return best_p, best_d, best_q, best_bic, seasonality
+
+    print(f"Seasonal Dictionary: {seasonality_dict}")
+    # return best_p, best_d, best_q, best_bic, seasonality
+    return best_p, best_d, best_q, best_bic, seasonality_dict.get(best_d)

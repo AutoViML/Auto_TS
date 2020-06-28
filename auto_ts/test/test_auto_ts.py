@@ -366,11 +366,11 @@ class TestAutoTS(unittest.TestCase):
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[self.preds] # Not needed for best model (prophet) but sending anyway
         )  
-        print("Test Predictions from outside AutoML:")
+        print("\n\nBest Model Prediction (Test Set):")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
-        print("Final Dictionary...")
-        print(ml_dict)
+        # print("\n\nFinal Dictionary...")
+        # print(ml_dict)
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
@@ -513,10 +513,10 @@ class TestAutoTS(unittest.TestCase):
             # print("Train Multivar")
             # print(self.train_multivar)
 
-            # print("Test Multivar")
+            # print("\nTest Multivar (Actual)")
             # print(self.test_multivar)
 
-            # print("SARIMAX Predictions (test)")
+            # print("\nSARIMAX Predictions (test)")
             # print(test_predictions)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
             
@@ -731,11 +731,11 @@ class TestAutoTS(unittest.TestCase):
             verbose=0)
         automl_model.fit(self.train_univar, self.ts_column, self.target, self.sep)
         test_predictions = automl_model.predict(forecast_period=self.forecast_period)  
-        print("Test Predictions from outside AutoML:")
+        print("\n\nBest Model Prediction (Test Set):")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
-        print("Final Dictionary...")
-        print(ml_dict)
+        # print("\n\nFinal Dictionary...")
+        # print(ml_dict)
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
@@ -1061,11 +1061,11 @@ class TestAutoTS(unittest.TestCase):
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[self.preds] 
         )  
-        print("Test Predictions from outside AutoML:")
+        print("\n\nBest Model Prediction (Test Set):")
         print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
-        print("Final Dictionary...")
-        print(ml_dict)
+        # print("\n\nFinal Dictionary...")
+        # print(ml_dict)
 
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
@@ -1089,10 +1089,10 @@ class TestAutoTS(unittest.TestCase):
                 model="SARIMAX"                
             )
 
-            print("Test Multivar")
+            print("\nTest Multivar (Actual)")
             print(self.test_multivar)
 
-            print("SARIMAX Predictions (test)")
+            print("\nSARIMAX Predictions (test)")
             print(test_predictions)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s12)
             

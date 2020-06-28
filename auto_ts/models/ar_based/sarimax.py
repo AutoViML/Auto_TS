@@ -116,9 +116,9 @@ class BuildSarimax(BuildBase):
                 ts_df=ts_train[self.original_target_col],
                 scoring=self.scoring,
                 p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
-                non_seasonal_pdq=None,
+                non_seasonal_pdq=None,  # we need to figure this out ...
                 seasonal_period=None,
-                seasonality=False,
+                seasonality=False,  # setting seasonality = False for p, d, q
                 verbose=self.verbose
             )
             print(colorful.BOLD + '\n    Finding best Seasonal PDQ Model Parameters:' + colorful.END)
@@ -129,9 +129,9 @@ class BuildSarimax(BuildBase):
                 ts_df=ts_train[self.original_target_col],
                 scoring=self.scoring,
                 p_max=self.p_max, d_max=self.d_max, q_max=self.q_max,
-                non_seasonal_pdq=(self.best_p, self.best_d, self.best_q),
-                seasonal_period=self.seasonal_period,
-                seasonality=True,
+                non_seasonal_pdq=(self.best_p, self.best_d, self.best_q), # found previously ...
+                seasonal_period=self.seasonal_period,  # passing seasonal period
+                seasonality=True,  # setting seasonality = True for P, D, Q
                 verbose=self.verbose
             )            
                         

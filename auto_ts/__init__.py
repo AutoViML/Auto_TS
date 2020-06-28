@@ -370,8 +370,6 @@ class AutoTimeSeries:
             print('Check if your model type is a string or one of the available types of models')
         
 
-        print("Start of Prophet.....")
-
         ######### This is when you need to use FB Prophet ###################################
         ### When the time interval given does not match the tested_time_interval, then use FB.
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
@@ -416,7 +414,6 @@ class AutoTimeSeries:
             self.ml_dict[name]['model_build'] = model_build
         
 
-        print("Start of Stats.....")
         if self.__any_contained_in_list(what_list=['pyflux', 'stats', 'best'], in_list=self.model_type):
             print("\n")
             print("="*50)
@@ -424,8 +421,6 @@ class AutoTimeSeries:
             print("="*50)
             print("\n")
 
-
-            print("Start of PyFlux.....")
             ##### First let's try the following models in sequence #########################################
             nsims = 100   ### this is needed only for M-H models in PyFlux
             name = 'PyFlux'
@@ -458,7 +453,6 @@ class AutoTimeSeries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  # TODO: Add the right value here
 
-        print("Start of ARIMA.....")
         if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type): 
             ################### Let's build an ARIMA Model and add results #################
             print("\n")
@@ -496,7 +490,6 @@ class AutoTimeSeries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
         
-        print("Start of SARIMAX.....")
         if self.__any_contained_in_list(what_list=['SARIMAX', 'stats', 'best'], in_list=self.model_type):
             ############# Let's build a SARIMAX Model and get results ########################
             print("\n")
@@ -542,7 +535,7 @@ class AutoTimeSeries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
-        print("Start of VAR.....")
+        
         if self.__any_contained_in_list(what_list=['VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
@@ -592,7 +585,6 @@ class AutoTimeSeries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build  
         
-        print("Start of ML.....")
         if self.__any_contained_in_list(what_list=['ml', 'best'], in_list=self.model_type):
             ########## Let's build a Machine Learning Model now with Time Series Data ################
             
@@ -664,11 +656,12 @@ class AutoTimeSeries:
         
         ######## Selecting the best model based on the lowest rmse score ######
         best_model_name = self.get_best_model_name()    
-        print(colorful.BOLD + '\nBest Model is:' + colorful.END)
-        print('    %s' % best_model_name)
+        print(colorful.BOLD + '\nBest Model is: ' + colorful.END + best_model_name)
+        # print('    %s' % best_model_name)
+        print("    Best Model Score: %0.2f" % self.ml_dict[best_model_name][self.score_type])
+        print("    Best Model Forecasts (Validation Set):")
+        print(self.ml_dict[best_model_name]['forecast'])
         
-        print('    Best Model Forecasts: %s' %self.ml_dict[best_model_name]['forecast'])
-        print('    Best Model Score: %0.2f' % self.ml_dict[best_model_name][self.score_type])
         return self
 
         
