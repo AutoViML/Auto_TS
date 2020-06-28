@@ -83,15 +83,16 @@ def find_best_pdq_or_PDQ(ts_df, scoring, p_max, d_max, q_max, non_seasonal_pdq,
                         start_params=[0, 0, 0, 1],
                         simple_differencing=False
                     )
-                    results = model.fit(disp=False)   
+                    
+                results = model.fit(disp=False)   
 
-                    results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + scoring)
-                    if iteration % 10 == 0:
-                        print('    Iteration %d completed...' % iteration)
-                        iteration += 1
-                    elif iteration >= 100:
-                        print('    Ending Iterations at %d' % iteration)
-                        break
+                results_bic.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('results.' + scoring)
+                if iteration % 10 == 0:
+                    print('    Iteration %d completed...' % iteration)
+                    iteration += 1
+                elif iteration >= 100:
+                    print('    Ending Iterations at %d' % iteration)
+                    break
             except:
                 iteration += 1
                 continue
