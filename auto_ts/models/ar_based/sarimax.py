@@ -8,6 +8,8 @@ from pandas.core.generic import NDFrame # type:ignore
 
 import matplotlib.pyplot as plt # type: ignore
 
+from tscv import GapWalkForward
+
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 
@@ -60,9 +62,27 @@ class BuildSarimax(BuildBase):
         ts_train = ts_df.iloc[:-self.forecast_period]
         ts_test = ts_df.iloc[-self.forecast_period:]
 
+        #ts_df_no_index = ts_df.reset_index(drop=True)
+
+        print(f"Shape (manual split): {ts_train.shape} {ts_test.shape}")
+        # testing CV splits
+        NFOLDS=1
+        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        for train, test in cv.split(ts_df):
+            # print("train:", train, "test:", test)
+            data_train = ts_df.iloc[train]
+            data_test = ts_df.iloc[test]
+            print(f"Shape using CV: {data_train.shape} {data_test.shape}")
+
+
         if self.verbose == 1:
             print('Data Set split into train %s and test %s for Cross Validation Purposes'
                                 % (ts_train.shape, ts_test.shape))
+        
+        ##########################################
+        #### Find best pdq and PDQ parameters ####
+        ##########################################
+        
         ############# Now find the best pdq and PDQ parameters for the model #################
         if not self.seasonality:
             print('Building a Non Seasonal Model...')
@@ -81,31 +101,31 @@ class BuildSarimax(BuildBase):
             )
             print('\nBest model is: Non Seasonal SARIMAX(%d,%d,%d), %s = %0.3f' % (
                 self.best_p, self.best_d, self.best_q, self.scoring, best_bic))
-            #### In order to get forecasts to be in the same value ranges of the orig_endogs,
-            #### you must  set the simple_differencing = False and the start_params to be the
-            #### same as ARIMA.
-            #### THat is the only way to ensure that the output of this model is
-            #### comparable to other ARIMA models
-            if self.univariate:
-                bestmodel = SARIMAX(
-                    endog=ts_train[self.original_target_col],
-                    # exog=ts_train[self.original_preds],
-                    order=(self.best_p, self.best_d, self.best_q),
-                    enforce_stationarity=False,
-                    enforce_invertibility=False,
-                    trend='ct',
-                    start_params=[0, 0, 0, 1],
-                    simple_differencing=False)
-            else:
-                bestmodel = SARIMAX(
-                    endog=ts_train[self.original_target_col],
-                    exog=ts_train[self.original_preds],
-                    order=(self.best_p, self.best_d, self.best_q),
-                    enforce_stationarity=False,
-                    enforce_invertibility=False,
-                    trend='ct',
-                    start_params=[0, 0, 0, 1],
-                    simple_differencing=False)
+            # #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+            # #### you must  set the simple_differencing = False and the start_params to be the
+            # #### same as ARIMA.
+            # #### THat is the only way to ensure that the output of this model is
+            # #### comparable to other ARIMA models
+            # if self.univariate:
+            #     bestmodel = SARIMAX(
+            #         endog=ts_train[self.original_target_col],
+            #         # exog=ts_train[self.original_preds],
+            #         order=(self.best_p, self.best_d, self.best_q),
+            #         enforce_stationarity=False,
+            #         enforce_invertibility=False,
+            #         trend='ct',
+            #         start_params=[0, 0, 0, 1],
+            #         simple_differencing=False)
+            # else:
+            #     bestmodel = SARIMAX(
+            #         endog=ts_train[self.original_target_col],
+            #         exog=ts_train[self.original_preds],
+            #         order=(self.best_p, self.best_d, self.best_q),
+            #         enforce_stationarity=False,
+            #         enforce_invertibility=False,
+            #         trend='ct',
+            #         start_params=[0, 0, 0, 1],
+            #         simple_differencing=False)
         else:
             print(colorful.BOLD + 'Building a Seasonal Model...'+colorful.END)
             print(colorful.BOLD + '\n    Finding best Non-Seasonal pdq Parameters:' + colorful.END)
@@ -134,72 +154,142 @@ class BuildSarimax(BuildBase):
                 seasonality=True,  # setting seasonality = True for P, D, Q
                 verbose=self.verbose
             )            
-                        
+
             if self.seasonality:
                 print('\nBest model is a Seasonal SARIMAX(%d,%d,%d)*(%d,%d,%d,%d), %s = %0.3f' % (
                     self.best_p, self.best_d, self.best_q,
                     self.best_P, self.best_D, self.best_Q,
                     self.seasonal_period, self.scoring, best_bic))
-                #### In order to get forecasts to be in the same value ranges of the orig_endogs,
-                #### you must set the simple_differencing =False and the start_params to be
-                #### the same as ARIMA.
-                #### THat is the only way to ensure that the output of this model is
-                #### comparable to other ARIMA models
-                if self.univariate:
-                    bestmodel = SARIMAX(
-                        endog=ts_train[self.original_target_col],
-                        # exog=ts_train[self.original_preds],
-                        order=(self.best_p, self.best_d, self.best_q),
-                        seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
-                        enforce_stationarity=False,
-                        enforce_invertibility=False,
-                        trend='ct',
-                        start_params=[0, 0, 0, 1],
-                        simple_differencing=False
-                    )
-                else:
-                    bestmodel = SARIMAX(
-                        endog=ts_train[self.original_target_col],
-                        exog=ts_train[self.original_preds],
-                        order=(self.best_p, self.best_d, self.best_q),
-                        seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
-                        enforce_stationarity=False,
-                        enforce_invertibility=False,
-                        trend='ct',
-                        start_params=[0, 0, 0, 1],
-                        simple_differencing=False
-                    )
             else:
                 print('\nEven though seasonality has been set to True, the best model is a Non Seasonal SARIMAX(%d,%d,%d)' % (
                     self.best_p, self.best_d, self.best_q))
-                #### In order to get forecasts to be in the same value ranges of the orig_endogs,
-                #### you must set the simple_differencing =False and the start_params to be
-                #### the same as ARIMA.
-                #### THat is the only way to ensure that the output of this model is
-                #### comparable to other ARIMA models
-                if self.univariate:
-                    bestmodel = SARIMAX(
-                        endog=ts_train[self.original_target_col],
-                        # exog=ts_train[self.original_preds],
-                        order=(self.best_p, self.best_d, self.best_q),
-                        enforce_stationarity=False,
-                        enforce_invertibility=False,
-                        trend='ct',
-                        start_params=[0, 0, 0, 1],
-                        simple_differencing=False
-                    )
-                else:
-                    bestmodel = SARIMAX(
-                        endog=ts_train[self.original_target_col],
-                        exog=ts_train[self.original_preds],
-                        order=(self.best_p, self.best_d, self.best_q),
-                        enforce_stationarity=False,
-                        enforce_invertibility=False,
-                        trend='ct',
-                        start_params=[0, 0, 0, 1],
-                        simple_differencing=False
-                    )
+
+            ############# Now that we have found the best parameters, we can fit the folds and get metrics #################     
+            # if self.seasonality:
+            #     #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+            #     #### you must set the simple_differencing =False and the start_params to be
+            #     #### the same as ARIMA.
+            #     #### THat is the only way to ensure that the output of this model is
+            #     #### comparable to other ARIMA models
+            #     if self.univariate:
+            #         bestmodel = SARIMAX(
+            #             endog=ts_train[self.original_target_col],
+            #             # exog=ts_train[self.original_preds],
+            #             order=(self.best_p, self.best_d, self.best_q),
+            #             seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+            #             enforce_stationarity=False,
+            #             enforce_invertibility=False,
+            #             trend='ct',
+            #             start_params=[0, 0, 0, 1],
+            #             simple_differencing=False
+            #         )
+            #     else:
+            #         bestmodel = SARIMAX(
+            #             endog=ts_train[self.original_target_col],
+            #             exog=ts_train[self.original_preds],
+            #             order=(self.best_p, self.best_d, self.best_q),
+            #             seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+            #             enforce_stationarity=False,
+            #             enforce_invertibility=False,
+            #             trend='ct',
+            #             start_params=[0, 0, 0, 1],
+            #             simple_differencing=False
+            #         )
+            # else:
+            #     #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+            #     #### you must set the simple_differencing =False and the start_params to be
+            #     #### the same as ARIMA.
+            #     #### THat is the only way to ensure that the output of this model is
+            #     #### comparable to other ARIMA models
+            #     if self.univariate:
+            #         bestmodel = SARIMAX(
+            #             endog=ts_train[self.original_target_col],
+            #             # exog=ts_train[self.original_preds],
+            #             order=(self.best_p, self.best_d, self.best_q),
+            #             enforce_stationarity=False,
+            #             enforce_invertibility=False,
+            #             trend='ct',
+            #             start_params=[0, 0, 0, 1],
+            #             simple_differencing=False
+            #         )
+            #     else:
+            #         bestmodel = SARIMAX(
+            #             endog=ts_train[self.original_target_col],
+            #             exog=ts_train[self.original_preds],
+            #             order=(self.best_p, self.best_d, self.best_q),
+            #             enforce_stationarity=False,
+            #             enforce_invertibility=False,
+            #             trend='ct',
+            #             start_params=[0, 0, 0, 1],
+            #             simple_differencing=False
+            #         )
         
+        ###############################
+        #### Define the best model ####
+        ###############################
+
+        if not self.seasonality:
+            #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+            #### you must  set the simple_differencing = False and the start_params to be the
+            #### same as ARIMA.
+            #### THat is the only way to ensure that the output of this model is
+            #### comparable to other ARIMA models
+            if self.univariate:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    # exog=ts_train[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
+            else:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    exog=ts_train[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False)
+        else:
+            #### In order to get forecasts to be in the same value ranges of the orig_endogs,
+            #### you must set the simple_differencing =False and the start_params to be
+            #### the same as ARIMA.
+            #### THat is the only way to ensure that the output of this model is
+            #### comparable to other ARIMA models
+            if self.univariate:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    # exog=ts_train[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False
+                )
+            else:
+                bestmodel = SARIMAX(
+                    endog=ts_train[self.original_target_col],
+                    exog=ts_train[self.original_preds],
+                    order=(self.best_p, self.best_d, self.best_q),
+                    seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
+                    enforce_stationarity=False,
+                    enforce_invertibility=False,
+                    trend='ct',
+                    start_params=[0, 0, 0, 1],
+                    simple_differencing=False
+                )
+            
+
+        ############################
+        #### Fit the best model ####
+        ############################
+
         print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
         try:
             self.model = bestmodel.fit(disp=False)
