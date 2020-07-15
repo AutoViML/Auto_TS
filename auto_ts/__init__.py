@@ -3,14 +3,22 @@
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
 version_number = '0.0.22'
-# TODO: Fix based on new interface
-print("""Running Auto Timeseries version: %s...Call by using:
-        auto_ts.Auto_Timeseries(traindata, ts_column,
-                            target, sep,  score_type='rmse', forecast_period=5,
-                            time_interval='Month', non_seasonal_pdq=None, seasonality=False,
-                            seasonal_period=12, seasonal_PDQ=None, model_type='stats',
-                            verbose=1)
-    To run three models from Stats, ML and FB Prophet, set model_type='best'""" % version_number)
+print(f"""Running Auto Timeseries version: {version_number}... Call by using:
+        import auto_ts as AT
+        automl_model = AT.AutoTimeSeries(
+            score_type='rmse',
+            forecast_period=4,
+            time_interval='Week',
+            non_seasonal_pdq=None,
+            seasonality=True,
+            seasonal_period=52,
+            model_type=['SARIMAX','ML'],
+            verbose=0)
+    automl_model.fit(train, 'WeekDate', '9L Cases', ',')
+    automl_model.get_leaderboard()
+        
+    To run all models (Stats, ML, FB Prophet, etc.) set model_type='best'""")
+
 print("To remove previous versions, perform 'pip uninstall auto_ts'")
 print('To get the latest version, perform "pip install auto_ts --no-cache-dir --ignore-installed"')
 
@@ -25,7 +33,7 @@ import copy
 import pdb
 from collections import defaultdict
 import operator
-import time
+from time import time
 
 # Tabular Data 
 import pandas as pd  # type: ignore
@@ -182,6 +190,7 @@ class AutoTimeSeries:
         sep: Note that optionally you can give a separator for the data in your file. Default is comman (",").
         """
 
+        start = time()
         print("Start of Fit.....")
 
 
@@ -662,10 +671,15 @@ class AutoTimeSeries:
         print("    Best Model Forecasts (Validation Set):")
         print(self.ml_dict[best_model_name]['forecast'])
         
+        end = time()
+
+        print("\n\n" + "-"*50)
+        print(f"Total time taken: {end-start} seconds.")
+        print("-"*50 + "\n\n")
+
         return self
 
         
-
     def get_best_model_name(self) -> str:
         """
         Returns the best model name
