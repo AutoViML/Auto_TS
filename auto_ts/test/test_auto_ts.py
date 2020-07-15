@@ -327,7 +327,7 @@ class TestAutoTS(unittest.TestCase):
             509.64, 485.24, 479.72, 483.98, 
             482.78, 455.04, 518.62, 524.08
         ]
-        index = np.arange(0, 8)
+        index = pd.RangeIndex(start=40, stop=48, step=1) 
 
         self.forecast_gold_ml_multivar_external_test = pd.Series(
                 data = results,
@@ -717,7 +717,7 @@ class TestAutoTS(unittest.TestCase):
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
 
-    # @unittest.skip
+    @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1042,7 +1042,7 @@ class TestAutoTS(unittest.TestCase):
         )
        
 
-    # @unittest.skip
+    @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1162,7 +1162,7 @@ class TestAutoTS(unittest.TestCase):
         
 
 
-    # @unittest.skip
+    @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1210,7 +1210,7 @@ class TestAutoTS(unittest.TestCase):
         status = automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
         self.assertIsNone(status)
 
-    # @unittest.skip
+    @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
@@ -1230,7 +1230,7 @@ class TestAutoTS(unittest.TestCase):
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
                         
 
-    # @unittest.skip
+    @unittest.skip
     def test_simple_testing_no_checks(self):
         """
         TODO: Add docstring
@@ -1243,6 +1243,24 @@ class TestAutoTS(unittest.TestCase):
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['ARIMA'],
+            verbose=0)
+        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        print(automl_model.get_leaderboard())
+
+
+    # @unittest.skip
+    def test_ml_standalone(self):
+        """
+        Testing ML Stansalone
+        """
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['ML'],
             verbose=0)
         automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
         print(automl_model.get_leaderboard())
