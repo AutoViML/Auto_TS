@@ -361,7 +361,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False,
             model_type='best',
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[self.preds] # Not needed for best model (prophet) but sending anyway
@@ -675,14 +680,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 6),
+                np.round(ml_dict.get('SARIMAX').get('forecast')[0]['mean'].values.astype(np.double), 6),
                 self.forecast_gold_sarimax_multivar_internal_val
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
         
         self.assertEqual(
-            round(ml_dict.get('SARIMAX').get('rmse'), 6), self.rmse_gold_sarimax_multivar,
+            round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
                
         ##############################
@@ -717,7 +722,7 @@ class TestAutoTS(unittest.TestCase):
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
 
-    @unittest.skip
+    # @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -729,7 +734,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type='best',
             verbose=0)
-        automl_model.fit(self.train_univar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_univar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
         test_predictions = automl_model.predict(forecast_period=self.forecast_period)  
         print("\n\nBest Model Prediction (Test Set):")
         print(test_predictions)
@@ -1005,14 +1015,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 8),
+                np.round(ml_dict.get('SARIMAX').get('forecast')[0]['mean'].values.astype(np.double), 8),
                 self.forecast_gold_sarimax_univar_internal_val
             ),
             "(Univar Test) SARIMAX Forecast does not match up with expected values."
         )
         
         self.assertEqual(
-            round(ml_dict.get('SARIMAX').get('rmse'),8), self.rmse_gold_sarimax_univar,
+            round(ml_dict.get('SARIMAX').get('rmse')[0],8), self.rmse_gold_sarimax_univar,
             "(Univar Test) SARIMAX RMSE does not match up with expected values.")
                
         ##############################
@@ -1042,11 +1052,16 @@ class TestAutoTS(unittest.TestCase):
         )
        
 
-    @unittest.skip
+    # # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
         """
+
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_auto_ts_multivar_seasonal_SARIMAX'")
+        print("*"*50 + "\n\n")
+
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
         # TODO: seasonal_period argument does not make a difference. Commenting out for now.
@@ -1056,18 +1071,25 @@ class TestAutoTS(unittest.TestCase):
             # non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
             model_type='SARIMAX',
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
+        
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[self.preds] 
         )  
-        print("\n\nBest Model Prediction (Test Set):")
-        print(test_predictions)
+        # print("\n\nBest Model Prediction (Test Set):")
+        # print(test_predictions)
         ml_dict = automl_model.get_ml_dict()
         # print("\n\nFinal Dictionary...")
         # print(ml_dict)
 
-        print(automl_model.get_leaderboard())
+        # print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['SARIMAX'],
@@ -1149,20 +1171,20 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('SARIMAX').get('forecast')['mean'].values.astype(np.double), 6),
+                np.round(ml_dict.get('SARIMAX').get('forecast')[0]['mean'].values.astype(np.double), 6),
                 self.forecast_gold_sarimax_multivar_internal_val_s12
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
         
         self.assertEqual(
-            round(ml_dict.get('SARIMAX').get('rmse'), 6), self.rmse_gold_sarimax_multivar_s12,
+            round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
                
         
 
 
-    @unittest.skip
+    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1176,7 +1198,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'ML'],
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
         print(automl_model.get_leaderboard())
         leaderboard_gold = pd.DataFrame(
             {
@@ -1191,7 +1218,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'bogus', 'ML'],
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
         print(automl_model.get_leaderboard())
         
         leaderboard_gold = pd.DataFrame(
@@ -1207,14 +1239,24 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['bogus'],
             verbose=0)
-        status = automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        status = automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)
         self.assertIsNone(status)
 
-    @unittest.skip
+    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
         """
+        
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_passing_list_instead_of_str'")
+        print("*"*50 + "\n\n")
+
         import numpy as np  # type: ignore
         from auto_ts import AutoTimeSeries as ATS
 
@@ -1223,14 +1265,19 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['SARIMAX', 'ML'],
             verbose=0)
-        automl_model.fit(self.train_multivar, [self.ts_column], [self.target], self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=[self.ts_column],
+            target=[self.target],
+            cv=None,
+            sep=self.sep)
         print(automl_model.get_leaderboard())
         leaderboard_models = np.array(['ML', 'SARIMAX'])
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
                         
 
-    @unittest.skip
+    # @unittest.skip
     def test_simple_testing_no_checks(self):
         """
         TODO: Add docstring
@@ -1244,7 +1291,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['ARIMA'],
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep)        
         print(automl_model.get_leaderboard())
 
 
@@ -1262,7 +1314,12 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
             model_type=['ML'],
             verbose=0)
-        automl_model.fit(self.train_multivar, self.ts_column, self.target, self.sep)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep) 
         print(automl_model.get_leaderboard())
         
      
