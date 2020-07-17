@@ -19,14 +19,22 @@ class BuildBase(ABC):
 
  
     @abstractmethod
-    def fit(self, ts_df: pd.DataFrame, target_col: str) -> object:
+    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]) -> object:
         """
         Fits the model to the data
+        
         :param ts_df The time series data to be used for fitting the model
         :type ts_df pd.DataFrame
+        
         :param target_col The column name of the target time series that needs to be modeled.
         All other columns will be considered as exogenous variables (if applicable to method)
         :type target_col str
+        
+        :param cv: Number of folds to use for cross validation. 
+        Number of observations in the Validation set for each fold = forecast period
+        If None, a single fold is used
+        :type cv Optional[int]
+        
         :rtype object
         """
         
@@ -65,4 +73,12 @@ class BuildBase(ABC):
                 "You have trying to perform an operation that requires the model to have been fit."+
                 "However the model has not been fit yet. Please fit the model once before you try this operation."
             )
+
+    def get_num_folds_from_cv(self, cv):
+        if cv is None:
+            NFOLDS = 1
+        else:
+            NFOLDS = cv
+
+        return NFOLDS
 
