@@ -178,26 +178,33 @@ class AutoTimeSeries:
         traindata: Union[str, pd.DataFrame],
         ts_column: Union[str, int, List[str]],
         target: Union[str, List[str]],
+        cv: Optional[int]=None,
         sep: str = ','):
         """
         Train the AutoTimeseries object
         # TODO: Complete docstring
 
         traindata: name of the file along with its data path or a dataframe. It accepts both.
+        
         ts_column: name of the datetime column in your dataset (it could be name or number)
         the target variable you are trying to predict (if there is more than one variable in your data set),
+        
         target: name of the column you are trying to predict. Target could also be the only column in your data
+        
+        :param cv: Number of folds to use for cross validation. 
+        Number of observations in the Validation set for each fold = forecast period
+        If None, a single fold is used
+        :type cv Optional[int]
+        
         sep: Note that optionally you can give a separator for the data in your file. Default is comman (",").
         """
 
         start = time()
         print("Start of Fit.....")
 
-
-        ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
+                ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
         stats_scoring = 'aic'
-        # seed = 99  # Unused
-
+        
         ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
         lag = copy.deepcopy(self.forecast_period)-1
         if type(self.non_seasonal_pdq) == tuple:
@@ -217,7 +224,7 @@ class AutoTimeSeries:
             # If it is of type List, just pick the first one
             print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
             ts_column = ts_column[0]
-        
+
         # Check 'target' type
         if isinstance(target, list):
             target = target[0]
@@ -232,7 +239,7 @@ class AutoTimeSeries:
                 try:
                     ts_df = load_ts_data(traindata, ts_column, sep, target)
                     if isinstance(ts_df, str):
-                        print("""Time Series column %s could not be converted to a Pandas date time column.
+                        print("""Time Series column '%s' could not be converted to a Pandas date time column.
                             Please convert your input into a date-time column  and try again""" %ts_column)
                         return None
                     else:
@@ -242,9 +249,10 @@ class AutoTimeSeries:
                     return None
         elif isinstance(traindata, pd.DataFrame):
             print('Input is data frame. Performing Time Series Analysis')
+            print(f"ts_column: {ts_column} sep: {sep} target: {target}")
             ts_df = load_ts_data(traindata, ts_column, sep, target)
             if isinstance(ts_df, str):
-                print("""Time Series column %s could not be converted to a Pandas date time column.
+                print("""Time Series column '%s' could not be converted to a Pandas date time column.
                     Please convert your input into a date-time column  and try again""" %ts_column)
                 return None
             else: 
@@ -252,6 +260,9 @@ class AutoTimeSeries:
         else:
             print('File name is an empty string. Please check your input and try again')
             return None
+
+        
+
         df_orig = copy.deepcopy(ts_df)
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
@@ -512,7 +523,7 @@ class AutoTimeSeries:
             score_val = np.inf 
             model_build = None 
             model = None
-            forecasts = None
+            forecast_df_folds = None
 
             print(colorful.BOLD + '\nRunning Seasonal SARIMAX Model...' + colorful.END)
             try:
@@ -524,23 +535,23 @@ class AutoTimeSeries:
                     forecast_period=self.forecast_period,
                     verbose=self.verbose
                 )
-                # TODO: https://github.com/AutoViML/Auto_TS/issues/10
-                model, forecasts, rmse, norm_rmse = model_build.fit(
+                model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
                     ts_df=ts_df[[target]+preds],  
-                    target_col=target                    
+                    target_col=target,
+                    cv = cv                    
                 )
 
                 if self.score_type == 'rmse':
-                    score_val = rmse
+                    score_val = rmse_folds
                 else:
-                    score_val = norm_rmse
+                    score_val = norm_rmse_folds
             except Exception as e:  
                 print("Exception occured while building SARIMAX model...")
                 print(e)
                 print('    SARIMAX model error: predictions not available.')
                 
             self.ml_dict[name]['model'] = model
-            self.ml_dict[name]['forecast'] = forecasts
+            self.ml_dict[name]['forecast'] = forecast_df_folds
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
@@ -666,8 +677,12 @@ class AutoTimeSeries:
         ######## Selecting the best model based on the lowest rmse score ######
         best_model_name = self.get_best_model_name()    
         print(colorful.BOLD + '\nBest Model is: ' + colorful.END + best_model_name)
-        # print('    %s' % best_model_name)
-        print("    Best Model Score: %0.2f" % self.ml_dict[best_model_name][self.score_type])
+        
+        loBestModelDict = self.ml_dict[best_model_name]
+        if loBestModelDict is not None:
+            cv_scores = loBestModelDict.get(self.score_type)
+            mean_cv_score = self.__get_mean_cv_scores(cv_scores)
+        print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
         print("    Best Model Forecasts (Validation Set):")
         print(self.ml_dict[best_model_name]['forecast'])
         
@@ -757,19 +772,47 @@ class AutoTimeSeries:
 
         return predictions
 
-    def get_leaderboard(self, ascending=True) -> pd.DataFrame:
+    def get_leaderboard(self, ascending=True) -> Optional[pd.DataFrame]:
         """
         Returns the leaderboard after fitting
         """
         names = []
-        rmses = []
-        for model_name in list(self.ml_dict.keys()):
-            names.append(model_name)
-            rmses.append(self.ml_dict.get(model_name).get(self.score_type))
-            
-        results = pd.DataFrame({"name": names, self.score_type: rmses})
-        results.sort_values(self.score_type, ascending=ascending, inplace=True)
-        return results
+        mean_cv_scores = []
+        # std_cv_scores = [] # TODO: Add later
+        loMlDict = self.ml_dict
+        if loMlDict is not None:
+            model_names = list(loMlDict.keys())
+            if model_names is not None:
+                for model_name in model_names:
+                    names.append(model_name)
+                    loModelDictSingleModel = loMlDict.get(model_name)
+                    if loModelDictSingleModel is not None:
+                        cv_scores = loModelDictSingleModel.get(self.score_type)
+                        mean_cv_score = self.__get_mean_cv_scores(cv_scores)
+                        # if isinstance(cv_scores, float):
+                        #     mean_cv_score = cv_scores
+                        # else: # Assuming List
+                        #     mean_cv_score = sum(cv_scores)/len(cv_scores)
+                        mean_cv_scores.append(mean_cv_score)
+                    
+                results = pd.DataFrame({"name": names, self.score_type: mean_cv_scores})
+                results.sort_values(self.score_type, ascending=ascending, inplace=True)
+                return results
+            else:
+                return None
+        else:
+            return None
+
+    def __get_mean_cv_scores(self, cv_scores: Union[float, List]):
+        """
+        If gives a list fo cv scores, this will return the mean cv score
+        If cv_score is a float (single value), it simply returns that
+        """
+        if isinstance(cv_scores, float):
+            mean_cv_score = cv_scores
+        else: # Assuming List
+            mean_cv_score = sum(cv_scores)/len(cv_scores)
+        return mean_cv_score        
 
     def __any_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
         """
