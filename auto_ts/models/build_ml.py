@@ -80,6 +80,9 @@ class BuildML(BuildBase):
         # print(f"Forecast Period: {self.forecast_period}")
         # print(f"Train Shape: {X_train.shape}")
         # print(f"Test Shape: {X_test.shape}")
+        # print(f"X_train Info: {X_train.info()}")
+        # print(f"X_test Info: {X_test.info()}")
+
 
         seed = 99
         if len(X_train) <= 100000 or X_train.shape[1] < 50:
@@ -234,6 +237,9 @@ class BuildML(BuildBase):
         # Placebholder for forecasted results
         y_forecasted: List[float] = [] 
 
+        ts_index = X_exogen.index
+        # print(f"Datatime Index: {ts_index}")
+
         # STEP 1:       
         # self.df_prepend has the y column as well, but X_exogen does not. 
         # Need to add a dummy column to X_exogen before appending the 2 dataframes
@@ -262,7 +268,7 @@ class BuildML(BuildBase):
         # Make prediction for each row. Then use the prediction for the next row.
 
         # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
-        ## When this is fixed in the AutoML module, we can shify and get the future index
+        ## When this is fixed in the AutoML module, we can shift and get the future index
         ## to be in a proper time series format.        
         # print("Train Prepend")
         # print(self.df_train_prepend)
@@ -309,6 +315,7 @@ class BuildML(BuildBase):
 
         # y_forecasted = np.array(y_forecasted)
         res_frame = pd.DataFrame({'mean': y_forecasted})
+        res_frame.index = ts_index
         res_frame['mean_se'] = np.nan
         res_frame['mean_ci_lower'] = np.nan
         res_frame['mean_ci_upper'] = np.nan
