@@ -234,10 +234,23 @@ class TestAutoTS(unittest.TestCase):
         self.rmse_gold_sarimax_multivar_s12 = 197.18894
 
         ## External Test Set results (With Multivariate columns accepted) (with seasonality = True, Seasonal Period = 12)
+        
+        # Below: Best params computed on only train set (no CV)
+        # results = [
+        #     1044.155690, 545.915184, 798.401786, 575.422700,
+        #      451.474245, 165.615416, 434.389006, 392.163033
+        # ]
+
+        # Below: Best params computed on only full data set
+        # This was needed since we introduced CV folds so we
+        # can not train on different folds with different parameters.
+        # Hence we use the entire dataset to find best parameters,
+        # then use those best parameters on individual folds to compute performance
         results = [
-            1044.155690, 545.915184, 798.401786, 575.422700,
-             451.474245, 165.615416, 434.389006, 392.163033
+            1006.134134, 779.874076, 420.461804, 724.042104,
+            1827.304601, 1204.070838, -2216.439611, -1278.974132
         ]
+
         index = pd.to_datetime([
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'

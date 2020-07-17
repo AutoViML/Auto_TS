@@ -67,10 +67,10 @@ class BuildSarimax(BuildBase):
         # Then we use the selected "best" parameters to check how well it 
         # generalizes across the various folds (which may even be 1)
 
-        ## Added temporarily
-        ts_train = ts_df.iloc[:-self.forecast_period]
-        self.find_best_parameters(data = ts_train)
-        # self.find_best_parameters(data = ts_df)
+        # ## Added temporarily
+        # ts_train = ts_df.iloc[:-self.forecast_period]
+        # self.find_best_parameters(data = ts_train)
+        self.find_best_parameters(data = ts_df)
 
         print(f"\n\nBest Parameters:")
         print(f"p: {self.best_p}, d: {self.best_d}, q: {self.best_q}")
