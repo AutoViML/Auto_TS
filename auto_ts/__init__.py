@@ -639,7 +639,8 @@ class AutoTimeSeries:
                     model, forecasts, rmse, norm_rmse = model_build.fit(
                         ts_df=ts_df,
                         target_col=target,
-                        lags=lag
+                        cv = cv,
+                        lags=lag                         
                     )
 
                     if self.score_type == 'rmse':
@@ -701,8 +702,17 @@ class AutoTimeSeries:
         """
         f1_stats = {}
         for key, _ in self.ml_dict.items():
-            f1_stats[key] = self.ml_dict[key][self.score_type]
-        best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]
+            cv_scores = self.ml_dict[key][self.score_type]
+            
+            # Standardize to a list
+            if isinstance(cv_scores, np.ndarray):
+                cv_scores = cv_scores.tolist()            
+            if not isinstance(cv_scores, List):
+                cv_scores = [cv_scores]            
+
+            f1_stats[key] = sum(cv_scores)/len(cv_scores)
+        
+        best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]        
         return best_model_name
 
     def get_best_model(self):

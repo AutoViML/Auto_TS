@@ -386,20 +386,34 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_univar_series = None
         self.forecast_gold_ml_univar_series_10 = None
 
-        #### MULTIVARIATE ####
+        ##################################
+        #### MULTIVARIATE (CV = None) ####
+        ##################################
 
         ## Internal (to AutoML) validation set results
-        results = [
-            509.64, 447.34, 438.2 , 456.98,
-            453.04, 449.36, 530.02, 626.8
-        ]
-        self.forecast_gold_ml_multivar_internal_val = np.array(results)
-        self.rmse_gold_ml_multivar = 74.133644
+        # Initially only this was using rolling window
+        # results = [
+        #     509.64, 447.34, 438.2 , 456.98,
+        #     453.04, 449.36, 530.02, 626.8
+        # ]
+        # Converted to using same as other model (no rolling window), but unable to return since
+        # no internal test set (only validation sets in CV)
+        results = [] 
+        self.forecast_gold_ml_multivar_internal_val = results # np.array(results)
+        # self.rmse_gold_ml_multivar = 74.133644 # Initially only this was using rolling window
+        self.rmse_gold_ml_multivar = 67.304009 # Converted to using same as other model (no rolling window)
                 
         ## External Test Set results (With Multivariate columns accepted)
+        # # Initially only this was using rolling window
+        # results = [
+        #     509.64, 485.24, 479.72, 483.98, 
+        #     482.78, 455.04, 518.62, 524.08
+        # ]
+
+        # Converted to using same as other model (no rolling window)
         results = [
-            509.64, 485.24, 479.72, 483.98, 
-            482.78, 455.04, 518.62, 524.08
+            677.0, 652.85, 652.85, 652.85,
+            640.458333, 505.043478, 494.571429, 494.571429            
         ]
         index = pd.RangeIndex(start=40, stop=48, step=1) 
 
@@ -411,13 +425,39 @@ class TestAutoTS(unittest.TestCase):
 
         results = results[0:6] 
         index = index[0:6]            
+        self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
+
+        ###############################
+        #### MULTIVARIATE (CV = 2) ####
+        ###############################
+
+        self.rmse_gold_ml_multivar_cv = 80.167235
+        self.rmse_gold_ml_multivar_cv_fold1 = 93.03046227
+        self.rmse_gold_ml_multivar_cv_fold2 = 67.30400862
+
+        results = [
+            677.000000, 652.850000, 652.850000, 652.850000,
+            640.458333, 505.043478, 494.571429, 494.571429
+        ]
+        index = pd.RangeIndex(start=40, stop=48, step=1) 
+
+        self.forecast_gold_ml_multivar_external_test_cv = pd.Series(
+                data = results,
+                index = index
+            )
+        self.forecast_gold_ml_multivar_external_test_cv.name = 'mean'
+
+        results = results[0:6] 
+        index = index[0:6]            
         self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
-
-        
 
 
     def test_auto_ts_multivar_ns_SARIMAX(self):
@@ -786,20 +826,15 @@ class TestAutoTS(unittest.TestCase):
         #############################
         #### Checking ML Results ####
         #############################
-        
-        self.assertIsNone(
-            np.testing.assert_array_equal(
-                np.round(ml_dict.get('ML').get('forecast').astype(np.double), 2),
-                self.forecast_gold_ml_multivar_internal_val
-            ),
-            "(Multivar Test) ML Forecast does not match up with expected values."
-        )
+
+        self.assertListEqual(
+            ml_dict.get('ML').get('forecast'), self.forecast_gold_ml_multivar_internal_val,
+            "(Multivar Test) ML Forecast does not match up with expected values.")
         
         self.assertEqual(
-            round(ml_dict.get('ML').get('rmse'), 6), self.rmse_gold_ml_multivar,
+            round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
-    # @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1132,8 +1167,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse'),8), self.rmse_gold_ml_univar,
             "(Univar Test) ML RMSE does not match up with expected values."
         )
-       
-    # @unittest.skip
+    
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1262,7 +1296,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
-    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1404,8 +1437,6 @@ class TestAutoTS(unittest.TestCase):
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
                
         
-
-    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1472,7 +1503,6 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
-    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
@@ -1500,8 +1530,7 @@ class TestAutoTS(unittest.TestCase):
         leaderboard_models = np.array(['ML', 'SARIMAX'])
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
-                        
-    # @unittest.skip
+
     def test_simple_testing_no_checks(self):
         """
         TODO: Add docstring
@@ -1528,7 +1557,6 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)        
         print(automl_model.get_leaderboard())
 
-
     def test_ml_standalone(self):
         """
         Testing ML Standalone
@@ -1553,6 +1581,90 @@ class TestAutoTS(unittest.TestCase):
             cv=None,
             sep=self.sep) 
         print(automl_model.get_leaderboard())
+
+
+    def test_ml_standalone_withCV(self):
+        """
+        test to check functionality ML with CV
+        """
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_ml_standalone_withCV'")
+        print("*"*50 + "\n\n")
+
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['ML'],
+            verbose=0)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=2,
+            sep=self.sep) 
+        
+        ml_dict = automl_model.get_ml_dict()
+       
+        leaderboard_gold = pd.DataFrame(
+            {
+                'name':['ML'],
+                'rmse':[self.rmse_gold_ml_multivar_cv]
+            }
+        )
+        assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
+
+        if automl_model.get_model_build('ML') is not None:
+            # Simple forecast with forecast window = one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_cv)
+            
+            # Simple forecast with forecast window != one used in training
+            # Using named model
+            test_predictions = automl_model.predict(
+                forecast_period=6,
+                X_exogen=self.test_multivar.iloc[0:6][self.preds],
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_10_cv)
+
+            # Complex forecasts (returns confidence intervals, etc.)
+            test_predictions = automl_model.predict(
+                forecast_period=self.forecast_period,
+                X_exogen=self.test_multivar[self.preds],
+                model="ML",
+                simple=False                
+            )
+            self.assertIsNone(
+                np.testing.assert_array_equal(
+                    test_predictions.columns.values, self.expected_pred_col_names
+                )
+            )
+
+            # For ML forecast window is ignored (horizon only depends on the length of X_exogen)
+            # Hence even though we specify forecast_period of 10, it only takes 8 here
+            test_predictions = automl_model.predict(
+                forecast_period=10,
+                X_exogen=self.test_multivar[self.preds],
+                model="ML"                
+            )
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_cv)
+
+        # RMSE check for each fold
+        self.assertEqual(
+            round(ml_dict.get('ML').get('rmse')[0], 8), self.rmse_gold_ml_multivar_cv_fold1,
+            "(Multivar Test) ML RMSE does not match up with expected values --> Fold 1.")
+        self.assertEqual(
+            round(ml_dict.get('ML').get('rmse')[1], 8), self.rmse_gold_ml_multivar_cv_fold2,
+            "(Multivar Test) ML RMSE does not match up with expected values --> Fold 2.")
+
         
      
 if __name__ == '__main__':
