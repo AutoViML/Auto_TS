@@ -43,9 +43,9 @@ class BuildSarimax(BuildBase):
         self.best_P = None
         self.best_D = None
         self.best_Q = None
-       
 
-    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]):
+
+    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]=None):
         """
         Build a Time Series Model using SARIMAX from statsmodels.
         """

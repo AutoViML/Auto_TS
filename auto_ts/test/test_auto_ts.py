@@ -799,7 +799,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse'), 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
-
+    # @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1133,7 +1133,7 @@ class TestAutoTS(unittest.TestCase):
             "(Univar Test) ML RMSE does not match up with expected values."
         )
        
-
+    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1262,7 +1262,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
-
+    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1405,7 +1405,7 @@ class TestAutoTS(unittest.TestCase):
                
         
 
-
+    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1472,6 +1472,7 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
+    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
@@ -1500,7 +1501,7 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
                         
-
+    # @unittest.skip
     def test_simple_testing_no_checks(self):
         """
         TODO: Add docstring
