@@ -123,7 +123,7 @@ class BuildSarimax(BuildBase):
             
             ### this is needed for static forecasts ####################
             # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
-            y_truth = ts_train[:]  # Note that this is only univariate analysis
+            y_truth = ts_train[:]  #  TODO: Note that this is only univariate analysis
 
             if self.univariate:
                 y_forecasted = self.model.predict(dynamic=False)
@@ -182,6 +182,17 @@ class BuildSarimax(BuildBase):
             # TODO: Add gettes and seters for these class attributes.
             # This will ensure consistency across various model build types.
 
+
+        # This is taking the std of entire dataset and using that to normalize
+        # vs. other approach that was using std of individual folds to stansardize.
+        # Technically this is not correct, but in order to do Apples:Aples compatison with ML
+        # (sklearn) based cross_val_score, we need to do this since we dont get indicidual folds
+        # back for cross_val_score. If at a later point in time, we can get this, then,
+        # we can revert back to dividing by individual fold std values.
+        norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+
+        # print(f"SARIMAX Norm RMSE (Original): {norm_rmse_folds}")
+        # print(f"SARIMAX Norm RMSE (New): {norm_rmse_folds2}")
         
         ###############################################
         #### Refit the model on the entire dataset ####
@@ -191,7 +202,8 @@ class BuildSarimax(BuildBase):
         if self.verbose >= 1:
             print(self.model.summary())
         
-        return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
+        # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
+        return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2
 
     def refit(self, ts_df: pd.DataFrame) -> object:
         """
