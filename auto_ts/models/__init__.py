@@ -1,3 +1,4 @@
+from .build_base import BuildBase
 from .ar_based import BuildArima, BuildSarimax, BuildVAR
 from .build_ml import BuildML
 from .build_prophet import BuildProphet

@@ -51,7 +51,31 @@ class BuildProphet():
         ##### For most Financial time series data, 80% conf interval is enough...
         print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
-        # model = Prophet(interval_width=self.conf_int) # moved to init
+        
+
+        #### TODO: Start from Monday evening (7/20)
+        # *** Needs to inherit the base class ***
+        # Add seasonality components to Prophet call (in init)
+        # Add regressors
+        # Only then train
+
+        # m = Prophet(yearly_seasonality=True
+        #     ,weekly_seasonality=True
+        #     ,daily_seasonality=False
+        #     #,seasonality_mode='multiplicative'
+        #     ,seasonality_prior_scale=25
+        #     ,changepoint_range=0.95
+        #    )
+        # m.add_regressor('0')
+        # m.add_regressor('1')
+        # m.add_regressor('2')
+        # m.fit(train)
+
+        ####
+
+
+
+
         self.model.fit(dft)
         forecast = self.predict(simple=False, return_train_preds=True)
 

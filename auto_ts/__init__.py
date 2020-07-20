@@ -60,7 +60,7 @@ sns.set(style="white", color_codes=True)
 #######################################
 # Models
 from .models import build_pyflux_model
-from .models import BuildArima, BuildSarimax, BuildVAR, BuildML
+from .models import BuildBase, BuildArima, BuildSarimax, BuildVAR, BuildML
 from .models.build_prophet import BuildProphet
 
 
@@ -209,7 +209,9 @@ class AutoTimeSeries:
         
         ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
         lag = copy.deepcopy(self.forecast_period)-1
-        if type(self.non_seasonal_pdq) == tuple:
+
+        # if type(self.non_seasonal_pdq) == tuple:
+        if isinstance(self.non_seasonal_pdq, tuple):
             p_max = self.non_seasonal_pdq[0]
             d_max = self.non_seasonal_pdq[1]
             q_max = self.non_seasonal_pdq[2]
@@ -265,7 +267,8 @@ class AutoTimeSeries:
 
         
 
-        df_orig = copy.deepcopy(ts_df)
+        # df_orig = copy.deepcopy(ts_df)
+
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
             target = list(ts_df)[0]
@@ -280,7 +283,7 @@ class AutoTimeSeries:
         ##################################################################################################
         if ts_df.index.dtype=='int' or ts_df.index.dtype=='float':
             ### You must convert the ts_df index into a date-time series using the ts_column given ####
-            ts_df = ts_df.set_index(ts_column)
+            ts_df = ts_df.set_index(ts_column)  
         ts_index = ts_df.index
 
         ## TODO: Be sure to also assign a frequency to the index column
@@ -297,11 +300,13 @@ class AutoTimeSeries:
             diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
             diffdays = diff.days
             diffsecs = diff.seconds
+            
             if diffsecs == 0:
                 diff_in_hours = 0
                 diff_in_days = abs(diffdays)
             else:
                 diff_in_hours = abs(diffdays*24*3600 + diffsecs)/3600
+            
             if diff_in_hours == 0 and diff_in_days >= 1:
                 print('Time series input in days = %s' % diff_in_days)
                 if diff_in_days == 7:
@@ -340,25 +345,29 @@ class AutoTimeSeries:
             print('Time Interval is given as %s' % self.time_interval)
 
         ################# This is where you test the data and find the time interval #######
-        self.time_interval = self.time_interval.strip().lower()
-        if self.time_interval in ['months', 'month', 'm']:
-            self.time_interval = 'months'
-        elif self.time_interval in ['days', 'daily', 'd']:
-            self.time_interval = 'days'            
-        elif self.time_interval in ['weeks', 'weekly', 'w']:
-            self.time_interval = 'weeks'
-        elif self.time_interval in ['qtr', 'quarter', 'q']:
-            self.time_interval = 'qtr'
-        elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
-            self.time_interval = 'years'
-        elif self.time_interval in ['hours', 'hourly', 'h']:
-            self.time_interval = 'hours'
-        elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
-            self.time_interval = 'minutes'
-        elif self.time_interval in ['seconds', 'second', 'sec', 's']:
-            self.time_interval = 'seconds'
+        if self.time_interval is not None:
+            self.time_interval = self.time_interval.strip().lower()
+            if self.time_interval in ['months', 'month', 'm']:
+                self.time_interval = 'months'
+            elif self.time_interval in ['days', 'daily', 'd']:
+                self.time_interval = 'days'            
+            elif self.time_interval in ['weeks', 'weekly', 'w']:
+                self.time_interval = 'weeks'
+            elif self.time_interval in ['qtr', 'quarter', 'q']:
+                self.time_interval = 'qtr'
+            elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
+                self.time_interval = 'years'
+            elif self.time_interval in ['hours', 'hourly', 'h']:
+                self.time_interval = 'hours'
+            elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
+                self.time_interval = 'minutes'
+            elif self.time_interval in ['seconds', 'second', 'sec', 's']:
+                self.time_interval = 'seconds'
+            else:
+                self.time_interval = 'months' # Default is Monthly
         else:
-            self.time_interval = 'months' # Default is Monthly
+            print("(Error: 'self.time_interval' is None. This condition should not have occured.")
+            return
 
         # Impute seasonal_period if not provided by the user
         if self.seasonal_period is None:
@@ -407,7 +416,7 @@ class AutoTimeSeries:
             name = 'FB_Prophet'
             # Placeholder for cases when model can not be built
             score_val = np.inf 
-            model_build = None 
+            model_build: Optional[BuildBase] = None 
             model = None
             forecasts = None
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
@@ -416,7 +425,7 @@ class AutoTimeSeries:
                 model_build = BuildProphet(self.forecast_period, self.time_interval,
                                             self.score_type, self.verbose, self.conf_int)
                 model, forecast_df, rmse, norm_rmse = model_build.fit(
-                                            ts_df, ts_column, target)
+                    ts_df, ts_column, target)
 
                 forecasts = forecast_df['yhat'].values
                 
