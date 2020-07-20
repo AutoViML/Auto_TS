@@ -45,6 +45,8 @@ from sklearn.exceptions import DataConversionWarning # type: ignore
 warnings.filterwarnings("ignore")
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
 
+# Plotting
+import seaborn as sns  # type: ignore
 
 def warn(*args, **kwargs):
     pass
@@ -812,6 +814,30 @@ class AutoTimeSeries:
                 return None
         else:
             return None
+
+    def plot_cv_scores(self, **kwargs):
+        """
+        Plots a boxplot of the cross validation scores for the various models.
+        **kwargs: Keyword arguments to be passed to the seaborn boxplot call
+        """
+        cv_df = self.get_cv_scores()
+        ax = sns.boxplot(x="Model", y="CV Scores", data=cv_df, **kwargs)
+        return ax
+
+    def get_cv_scores(self) -> pd.DataFrame:
+        """
+        Return a tidy data frame with the CV scores across all models
+        :rtype pandas.DataFrame
+        """
+        cv_df = df = pd.DataFrame(columns=['Model', 'CV Scores'])
+        for model in self.ml_dict.keys():
+            rmses = self.ml_dict.get(model).get("rmse")
+            new_row = {'Model':model, 'CV Scores':rmses}
+            cv_df = cv_df.append(new_row, ignore_index=True)        
+            # print(f"Model: {model} RMSEs: {rmses}")
+        cv_df = cv_df.explode('CV Scores').reset_index(drop=True)
+        cv_df = cv_df.astype({"CV Scores": float})
+        return cv_df
 
     def __get_mean_cv_scores(self, cv_scores: Union[float, List]):
         """

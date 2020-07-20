@@ -1531,13 +1531,13 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
-    def test_simple_testing_no_checks(self):
+    def test_cv_retreival_plotting(self):
         """
-        TODO: Add docstring
+        Tests CV Scores retreival and plotting
         """
 
         print("\n\n" + "*"*50)
-        print("Performing Unit Test: 'test_simple_testing_no_checks'")
+        print("Performing Unit Test: 'test_cv_retreival_plotting'")
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
@@ -1547,15 +1547,27 @@ class TestAutoTS(unittest.TestCase):
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['ARIMA'],
+            model_type=['ML', 'SARIMAX'],
             verbose=0)
         automl_model.fit(
             traindata=self.train_multivar,
             ts_column=self.ts_column,
             target=self.target,
-            cv=None,
+            cv=2,
             sep=self.sep)        
-        print(automl_model.get_leaderboard())
+        # print(automl_model.get_leaderboard())
+
+        cv_scores_gold = pd.DataFrame(
+            {
+                'Model': ['SARIMAX', 'SARIMAX', 'ML', 'ML'],
+                'CV Scores': [73.2824, 185.705, 93.0305, 67.304]
+            }
+        )
+        cv_scores = automl_model.get_cv_scores()
+        assert_frame_equal(cv_scores, cv_scores_gold)   
+        
+        automl_model.plot_cv_scores()
+
 
     def test_ml_standalone(self):
         """
