@@ -106,16 +106,19 @@ class BuildSarimax(BuildBase):
             #### Fit the model with fold data ####
             ######################################
 
-            print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
+            if self.verbose >= 1:
+                print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
+            
             try:
                 self.model = bestmodel.fit(disp=False)
-                print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
+                if self.verbose >= 1:
+                    print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
             except Exception as e:
                 print(e)
                 print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
                 return bestmodel, None, np.inf, np.inf
             
-            if self.verbose == 1:
+            if self.verbose >= 1:
                 try:
                     self.model.plot_diagnostics(figsize=(16, 12))
                 except:
@@ -133,7 +136,7 @@ class BuildSarimax(BuildBase):
             concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
 
             ### for SARIMAX, you don't have to restore differences since it predicts like actuals.###
-            if self.verbose == 1:
+            if self.verbose >= 1:
                 print('Static Forecasts:')
                 # Since you are differencing the data, some original data points will not be available
                 # Hence taking from first available value.
@@ -151,7 +154,7 @@ class BuildSarimax(BuildBase):
             #################################################################################
             # Now do dynamic forecast plotting for the last X steps of the data set ######
 
-            if self.verbose == 1:
+            if self.verbose >= 1:
                 ax = concatenated[['original', 'predicted']][self.best_d:].plot(figsize=(16, 12))
                 startdate = ts_df.index[-self.forecast_period-1]
                 pred_dynamic = self.model.get_prediction(start=startdate, dynamic=True, full_results=True)
@@ -173,8 +176,10 @@ class BuildSarimax(BuildBase):
             forecast_df_folds.append(forecast_df)
 
             # Extract Metrics
-            print('Dynamic %d-Period Forecast:' % (self.forecast_period))
-            rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], forecast_df['mean'].values, ts_train[self.original_target_col])
+            if self.verbose >= 1:
+                print('Dynamic %d-Period Forecast:' % (self.forecast_period))
+                
+            rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], forecast_df['mean'].values, ts_train[self.original_target_col], toprint=self.verbose)
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
 
