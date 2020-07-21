@@ -422,10 +422,14 @@ class AutoTimeSeries:
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
-                model_build = BuildProphet(self.forecast_period, self.time_interval,
-                                            self.score_type, self.verbose, self.conf_int)
+                model_build = BuildProphet(
+                    self.forecast_period, self.time_interval,
+                    self.score_type, self.verbose, self.conf_int)
                 model, forecast_df, rmse, norm_rmse = model_build.fit(
-                    ts_df, ts_column, target)
+                    ts_df=ts_df,
+                    target_col=target,
+                    cv = cv,
+                    time_col=ts_column)
 
                 forecasts = forecast_df['yhat'].values
                 
