@@ -214,27 +214,9 @@ class BuildProphet(BuildBase):
         ##   1. Create a dataframe with datetime index of past and future dates
         print('Building Forecast dataframe. Forecast Period = %d' % self.forecast_period)
         # Next we ask Prophet to make predictions for those dates in the dataframe along with predn intervals
-        if self.time_interval in ['months', 'month', 'm']:
-            time_int = 'M'
-        elif self.time_interval in ['days', 'daily', 'd']:
-            time_int = 'D'
-        elif self.time_interval in ['weeks', 'weekly', 'w']:
-            time_int = 'W'
-            # seasonal_period = 52  # TODO: #7 Unused - Check if this is needed or somethig is missing
-        elif self.time_interval in ['qtr', 'quarter', 'q']:
-            time_int = 'Q'
-        elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
-            time_int = 'Y'
-        elif self.time_interval in ['hours', 'hourly', 'h']:
-            time_int = 'H'
-        elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
-            time_int = 'M'
-        elif self.time_interval in ['seconds', 'second', 'sec', 's']:
-            time_int = 'S'
-            # time_interval = 'S'  # TODO: I think this should be time_int
-        else:
-            time_int = 'W'
-
+        
+        time_int = self.get_prophet_time_interval(for_cv=False)
+        
         if forecast_period is None:
             forecast_period = self.forecast_period
         
