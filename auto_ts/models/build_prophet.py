@@ -32,7 +32,11 @@ class BuildProphet(BuildBase):
 
         self.time_interval = time_interval
         self.conf_int = conf_int
-        self.model = Prophet(interval_width=self.conf_int)
+        self.model = Prophet(
+            # yearly_seasonality=False,
+            # weekly_seasonality=False,
+            # daily_seasonality=False,
+            interval_width=self.conf_int)
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
         """
@@ -100,44 +104,68 @@ class BuildProphet(BuildBase):
 
         ####
 
-
+        
         self.model.fit(dft)
 
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
-        window_size = int(num_obs/NFOLDS)
+
+        print(f"Min Time = {dft['ds'].min()}")
+        print(f"Max Time = {dft['ds'].max()}")
+        total_days = (dft['ds'].max() - dft['ds'].min()).days
+        horizon_days = (dft['ds'].max() - dft.iloc[-self.forecast_period]['ds']).days 
+        initial_days = total_days - NFOLDS * horizon_days
+        period_days = horizon_days
+        print(f"Total Days: {total_days}")
+        print(f"Horizon Days: {horizon_days}")
+        print(f"Initial Days: {initial_days}")
+        print(f"Period Days: {period_days}")
         
-        time_int_cv = self.get_prophet_time_interval(for_cv=True)
-        initial = str(window_size - self.forecast_period) + " " + time_int_cv
-        period = str(window_size) + " " + time_int_cv
-        horizon = self.forecast_period
+        # time_int_cv = self.get_prophet_time_interval(for_cv=True)
+        OFFSET = 5  # 5 days  # adjusting some days to take into account uneven months.
+        initial = str(initial_days-OFFSET) + " D"  
+        period = str(period_days) + " D" 
+        horizon = str(horizon_days+OFFSET) + " D" 
 
         print("Prophet CV Diagnostics:")
         print(f"NumObs: {num_obs}")
         print(f"NFOLDS: {NFOLDS}")
-        print(f"window_size: {window_size}")
         print(f"initial: {initial}")
         print(f"period: {period}")
         print(f"horizon: {horizon}")
 
 
-        # df_cv = cross_validation(
-        #     self.model,
-        #     initial=initial,  # '65 W', #M for months
-        #     period=period,  # '26 W',
-        #     horizon=horizon #'52 W'
-        # ) 
+        df_cv = cross_validation(
+            self.model,
+            initial=initial,   # '850 D', 
+            period=period,   # '100 D', 
+            horizon=horizon   #'300 D' 
+        ) 
         
-        # # first: train: 0 to 64 Test 65 to 65+52
-        # # second: train: 0+26 to 65+26 Test 65+26 to 65+26+52
-        # # next: train: 0+26+26. to 65+26+26. Test 65+26+26.. to 65+26+26+52
+        # first: train: 0 to 64 Test 65 to 65+52
+        # second: train: 0+26 to 65+26 Test 65+26 to 65+26+52
+        # next: train: 0+26+26. to 65+26+26. Test 65+26+26.. to 65+26+26+52
         
-        # print("Prophet CV DataFrame")
-        # print(df_cv)
+        print("Prophet CV DataFrame")
+        print(df_cv)
 
-        # print("Prophet Num Obs Per fold")
-        # print(df_cv.groupby('cutoff')['ds'].count())
-        
+        print("Prophet Num Obs Per fold")
+        print(df_cv.groupby('cutoff')['ds'].count())
+
+        rmse_folds = []
+        norm_rmse_folds = []
+        forecast_df_folds = [] 
+
+        df_cv_grouped = df_cv.groupby('cutoff')
+        for (_, lpDf) in df_cv_grouped:
+            rmse, norm_rmse = print_dynamic_rmse(lpDf['y'], lpDf['yhat'], dft['y'])
+            rmse_folds.append(rmse)
+            norm_rmse_folds.append(norm_rmse)
+            forecast_df_folds.append(lpDf)
+
+        print(f"RMSE Folds: {rmse_folds}")
+        print(f"Norm RMSE Folds: {norm_rmse_folds}")
+        print(f"Forecast DF folds: {forecast_df_folds}")
 
         forecast = self.predict(simple=False, return_train_preds=True)
 
@@ -152,8 +180,10 @@ class BuildProphet(BuildBase):
         except:
             print('Error in FB Prophet components forecast. Continuing...')
         
-        rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
-        return self.model, forecast, rmse, norm_rmse
+        #rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
+
+        #return self.model, forecast, rmse, norm_rmse
+        return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
 
     def refit(self, ts_df: pd.DataFrame) -> object:
         """
@@ -238,6 +268,8 @@ class BuildProphet(BuildBase):
             
         return forecast
 
+    # TODO: Update: This method will not be used in CV since it is in D always.
+    # Hence Remove the 'for_cv' argument
     def get_prophet_time_interval(self, for_cv: bool =False) -> str:
         """
         Returns the time interval in Prophet compatible format

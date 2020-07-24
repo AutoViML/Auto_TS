@@ -45,14 +45,21 @@ class TestAutoTS(unittest.TestCase):
 
         #### UNIVARIATE ####
 
+        # # Old one returned for all data
+        # self.forecast_gold_prophet_univar = np.array([
+        #     397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
+        #     507.50617922, 428.91362082, 394.42162318, 460.58145002, 414.11761317, 411.79136617, 513.90686713, 548.44630982,
+        #     625.04519821, 601.93200453, 692.72711895, 713.80546701, 509.75238742, 452.27192698, 417.23842764, 489.43692325,
+        #     464.33630331, 463.7618856 , 554.96050385, 607.84174268, 680.80447392, 665.27454447, 751.95122103, 769.70733192,
+        #     583.80971329, 520.80174673, 487.2960147 , 558.92329098, 527.98407913, 528.04537126, 615.77231537, 682.98205328,
+        #     749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
+        #     ])
+
+        # New one only internal validation set
         self.forecast_gold_prophet_univar = np.array([
-            397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
-            507.50617922, 428.91362082, 394.42162318, 460.58145002, 414.11761317, 411.79136617, 513.90686713, 548.44630982,
-            625.04519821, 601.93200453, 692.72711895, 713.80546701, 509.75238742, 452.27192698, 417.23842764, 489.43692325,
-            464.33630331, 463.7618856 , 554.96050385, 607.84174268, 680.80447392, 665.27454447, 751.95122103, 769.70733192,
-            583.80971329, 520.80174673, 487.2960147 , 558.92329098, 527.98407913, 528.04537126, 615.77231537, 682.98205328,
-            749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
-            ])
+            614.482071, 562.050462, 534.810663, 605.566298,  
+            580.899233, 585.676464, 686.480721, 732.167184
+        ])
 
         results = [
             749.061242, 751.077262, 796.892366, 783.206733,
@@ -75,19 +82,26 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_prophet_univar_series_10.name = 'yhat'
 
-        self.rmse_gold_prophet_univar = 27.01794672
+        # self.rmse_gold_prophet_univar = 27.01794672  # This had leakage in metric (included train data)
+        self.rmse_gold_prophet_univar = 56.5751      # This is with proper CV calculation
 
 
         #### MULTIVARIATE ####
         # TODO: Change multivariate model results after adding capability for multivariate models
+        # self.forecast_gold_prophet_multivar = np.array([
+        #     397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
+        #     507.50617922, 428.91362082, 394.42162318, 460.58145002, 414.11761317, 411.79136617, 513.90686713, 548.44630982,
+        #     625.04519821, 601.93200453, 692.72711895, 713.80546701, 509.75238742, 452.27192698, 417.23842764, 489.43692325,
+        #     464.33630331, 463.7618856 , 554.96050385, 607.84174268, 680.80447392, 665.27454447, 751.95122103, 769.70733192,
+        #     583.80971329, 520.80174673, 487.2960147 , 558.92329098, 527.98407913, 528.04537126, 615.77231537, 682.98205328,
+        #     749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
+        #     ])
+
+        # New one only internal validation set
         self.forecast_gold_prophet_multivar = np.array([
-            397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
-            507.50617922, 428.91362082, 394.42162318, 460.58145002, 414.11761317, 411.79136617, 513.90686713, 548.44630982,
-            625.04519821, 601.93200453, 692.72711895, 713.80546701, 509.75238742, 452.27192698, 417.23842764, 489.43692325,
-            464.33630331, 463.7618856 , 554.96050385, 607.84174268, 680.80447392, 665.27454447, 751.95122103, 769.70733192,
-            583.80971329, 520.80174673, 487.2960147 , 558.92329098, 527.98407913, 528.04537126, 615.77231537, 682.98205328,
-            749.06124155, 751.07726213, 796.89236612, 783.20673348,689.69812976, 595.71342586, 569.48660003, 635.88437079
-            ])
+            614.482071, 562.050462, 534.810663, 605.566298,  
+            580.899233, 585.676464, 686.480721, 732.167184
+        ])
 
         results = [
             749.061242, 751.077262, 796.892366, 783.206733,
@@ -110,7 +124,8 @@ class TestAutoTS(unittest.TestCase):
             )
         self.forecast_gold_prophet_multivar_series_10.name = 'yhat'
 
-        self.rmse_gold_prophet_multivar = 27.01794672
+        # self.rmse_gold_prophet_multivar = 27.01794672  # This had leakage in metric (included train data)
+        self.rmse_gold_prophet_multivar = 56.5751      # This is with proper CV calculation
 
 
         ##############################
@@ -460,6 +475,7 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
 
 
+     
     def test_auto_ts_multivar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with non seasonal SARIMAX)
@@ -766,14 +782,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast'),8),
+                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_multivar
             ),
             "(Multivar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse'),8), self.rmse_gold_prophet_multivar,
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar,
             "(Multivar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -835,6 +851,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
+     
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1100,14 +1117,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast'),8),
+                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_univar
             ),
             "(Univar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse'),8), self.rmse_gold_prophet_univar,
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_univar,
             "(Univar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -1168,6 +1185,7 @@ class TestAutoTS(unittest.TestCase):
             "(Univar Test) ML RMSE does not match up with expected values."
         )
     
+     
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1296,6 +1314,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
+      
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1436,6 +1455,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[1], 6), self.rmse_gold_sarimax_multivar_s3_cv_fold2,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
                
+
         
     def test_subset_of_models(self):
         """
@@ -1503,6 +1523,7 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
+      
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
@@ -1531,6 +1552,7 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
+      
     def test_cv_retreival_plotting(self):
         """
         Tests CV Scores retreival and plotting
@@ -1569,6 +1591,8 @@ class TestAutoTS(unittest.TestCase):
         automl_model.plot_cv_scores()
 
 
+    
+      
     def test_ml_standalone(self):
         """
         Testing ML Standalone
@@ -1594,7 +1618,63 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep) 
         print(automl_model.get_leaderboard())
 
+     
+    def test_prophet_standalone_noCV(self):
+        """
+        test to check functionality Prophet with CV
+        """
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_prophet_standalone_noCV'")
+        print("*"*50 + "\n\n")
 
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['prophet'],
+            verbose=0)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep) 
+        
+        ml_dict = automl_model.get_ml_dict()
+        print(ml_dict)
+        print(automl_model.get_leaderboard())
+
+     
+    def test_prophet_standalone_withCV(self):
+        """
+        test to check functionality Prophet with CV
+        """
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_prophet_standalone_withCV'")
+        print("*"*50 + "\n\n")
+
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['prophet'],
+            verbose=0)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=2,
+            sep=self.sep) 
+        
+        ml_dict = automl_model.get_ml_dict()
+        print(ml_dict)
+        print(automl_model.get_leaderboard())
+
+      
     def test_ml_standalone_withCV(self):
         """
         test to check functionality ML with CV

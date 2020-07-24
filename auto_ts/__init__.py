@@ -425,26 +425,26 @@ class AutoTimeSeries:
                 model_build = BuildProphet(
                     self.forecast_period, self.time_interval,
                     self.score_type, self.verbose, self.conf_int)
-                model, forecast_df, rmse, norm_rmse = model_build.fit(
+                model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
                     ts_df=ts_df,
                     target_col=target,
                     cv = cv,
                     time_col=ts_column)
 
-                forecasts = forecast_df['yhat'].values
+                # forecasts = forecast_df['yhat'].values
                 
                 ##### Make sure that RMSE works, if not set it to np.inf  #########
                 if self.score_type == 'rmse':
-                    score_val = rmse
+                    score_val = rmse_folds
                 else:
-                    score_val = norm_rmse
+                    score_val = norm_rmse_folds
             except Exception as e:  
                 print("Exception occured while building Prophet model...")
                 print(e)
                 print('    FB Prophet may not be installed or Model is not running...')
                 
             self.ml_dict[name]['model'] = model
-            self.ml_dict[name]['forecast'] = forecasts
+            self.ml_dict[name]['forecast'] = forecast_df_folds
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
         
