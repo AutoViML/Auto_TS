@@ -43,8 +43,11 @@ class TestAutoTS(unittest.TestCase):
         #### Prophet Golden Results ####
         ################################
 
-        #### UNIVARIATE ####
-
+       
+        #########################################################
+        #### UNIVARIATE [Both No CV (uses fold2) and CV = 2] ####
+        #########################################################
+        
         # # Old one returned for all data
         # self.forecast_gold_prophet_univar = np.array([
         #     397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
@@ -56,39 +59,52 @@ class TestAutoTS(unittest.TestCase):
         #     ])
 
         # New one only internal validation set
-        self.forecast_gold_prophet_univar = np.array([
+        self.forecast_gold_prophet_univar_internal_val_cv_fold1 = np.array([            
+            447.733878, 510.152411, 536.119254, 599.663702,
+            592.020981, 657.844486, 667.245238, 485.989273
+        ])
+
+        self.forecast_gold_prophet_univar_internal_val_cv_fold2 = np.array([            
             614.482071, 562.050462, 534.810663, 605.566298,  
             580.899233, 585.676464, 686.480721, 732.167184
         ])
 
+        # self.rmse_gold_prophet_univar = 27.01794672  # This had leakage in metric (included train data)
+        # This is with proper CV calculation
+        self.rmse_gold_prophet_univar_cv = 71.4617
+        self.rmse_gold_prophet_univar_cv_fold1 = 86.34827037
+        self.rmse_gold_prophet_univar_cv_fold2 = 56.5751 # Without CV gets this result
+
+
+        ## External Test Set results 
         results = [
             749.061242, 751.077262, 796.892366, 783.206733,
             689.698130, 595.713426, 569.486600, 635.884371           
             ]
         index = np.arange(40, 48)
 
-        self.forecast_gold_prophet_univar_series = pd.Series(
+        self.forecast_gold_prophet_univar_external_test_cv = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_prophet_univar_series.name = 'yhat'
+        self.forecast_gold_prophet_univar_external_test_cv.name = 'yhat'
 
         results = results + [576.473786, 581.275889]
         index = np.arange(40, 50)
             
-        self.forecast_gold_prophet_univar_series_10 = pd.Series(
+        self.forecast_gold_prophet_univar_external_test_10_cv = pd.Series(
                 data = results, 
                 index = index
             )
-        self.forecast_gold_prophet_univar_series_10.name = 'yhat'
+        self.forecast_gold_prophet_univar_external_test_10_cv.name = 'yhat'
 
-        # self.rmse_gold_prophet_univar = 27.01794672  # This had leakage in metric (included train data)
-        self.rmse_gold_prophet_univar = 56.5751      # This is with proper CV calculation
-
-
-        #### MULTIVARIATE ####
+        
+        ###########################################################
+        #### MULTIVARIATE [Both No CV (uses fold2) and CV = 2] ####
+        ###########################################################
+        
         # TODO: Change multivariate model results after adding capability for multivariate models
-        # self.forecast_gold_prophet_multivar = np.array([
+        # self.forecast_gold_prophet_multivar_internal_val_cv_fold2 = np.array([
         #     397.43339084, 394.26439651, 475.13957452, 552.65076563, 606.16644019, 593.80751381, 660.50017734, 660.71231806,
         #     507.50617922, 428.91362082, 394.42162318, 460.58145002, 414.11761317, 411.79136617, 513.90686713, 548.44630982,
         #     625.04519821, 601.93200453, 692.72711895, 713.80546701, 509.75238742, 452.27192698, 417.23842764, 489.43692325,
@@ -98,36 +114,46 @@ class TestAutoTS(unittest.TestCase):
         #     ])
 
         # New one only internal validation set
-        self.forecast_gold_prophet_multivar = np.array([
+        self.forecast_gold_prophet_multivar_internal_val_cv_fold1 = np.array([            
+            447.733878, 510.152411, 536.119254, 599.663702,
+            592.020981, 657.844486, 667.245238, 485.989273
+        ])
+
+        self.forecast_gold_prophet_multivar_internal_val_cv_fold2 = np.array([            
             614.482071, 562.050462, 534.810663, 605.566298,  
             580.899233, 585.676464, 686.480721, 732.167184
         ])
 
+        # self.rmse_gold_prophet_multivar = 27.01794672  # This had leakage in metric (included train data)
+        # This is with proper CV calculation
+        self.rmse_gold_sarimax_multivar_cv = 71.4617
+        self.rmse_gold_prophet_multivar_cv_fold1 = 86.34827037
+        self.rmse_gold_prophet_multivar_cv_fold2 = 56.5751 # Without CV gets this result
+
+
+        ## External Test Set results 
         results = [
             749.061242, 751.077262, 796.892366, 783.206733,
             689.698130, 595.713426, 569.486600, 635.884371           
             ]
         index = np.arange(40, 48)
 
-        self.forecast_gold_prophet_multivar_series = pd.Series(
+        self.forecast_gold_prophet_multivar_external_test_cv = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_prophet_multivar_series.name = 'yhat'
+        self.forecast_gold_prophet_multivar_external_test_cv.name = 'yhat'
 
         results = results + [576.473786, 581.275889]
         index = np.arange(40, 50)
             
-        self.forecast_gold_prophet_multivar_series_10 = pd.Series(
+        self.forecast_gold_prophet_multivar_external_test_10_cv = pd.Series(
                 data = results, 
                 index = index
             )
-        self.forecast_gold_prophet_multivar_series_10.name = 'yhat'
+        self.forecast_gold_prophet_multivar_external_test_10_cv.name = 'yhat'
 
-        # self.rmse_gold_prophet_multivar = 27.01794672  # This had leakage in metric (included train data)
-        self.rmse_gold_prophet_multivar = 56.5751      # This is with proper CV calculation
-
-
+        
         ##############################
         #### ARIMA Golden Results ####
         ##############################
@@ -516,7 +542,7 @@ class TestAutoTS(unittest.TestCase):
             {
                 'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
                 'rmse':[
-                    self.rmse_gold_prophet_multivar,
+                    self.rmse_gold_prophet_multivar_cv_fold2,
                     self.rmse_gold_ml_multivar,
                     self.rmse_gold_var_multivar,
                     self.rmse_gold_arima_uni_multivar,
@@ -566,12 +592,12 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[self.preds]    
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
 
             # Simple forecast with forecast window != one used in training
             # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=10)
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)   
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)   
 
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -579,14 +605,14 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="FB_Prophet"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
 
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="FB_Prophet")
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_series_10)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -649,14 +675,6 @@ class TestAutoTS(unittest.TestCase):
                 model="SARIMAX"                
             )
 
-            # print("Train Multivar")
-            # print(self.train_multivar)
-
-            # print("\nTest Multivar (Actual)")
-            # print(self.test_multivar)
-
-            # print("\nSARIMAX Predictions (test)")
-            # print(test_predictions)
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
             
             # Simple forecast with forecast window != one used in training
@@ -783,13 +801,13 @@ class TestAutoTS(unittest.TestCase):
         self.assertIsNone(
             np.testing.assert_array_equal(
                 np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
-                self.forecast_gold_prophet_multivar
+                self.forecast_gold_prophet_multivar_internal_val_cv_fold2
             ),
             "(Multivar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar,
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2,
             "(Multivar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -886,7 +904,7 @@ class TestAutoTS(unittest.TestCase):
             {
                 'name': ['FB_Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
                 'rmse':[
-                    self.rmse_gold_prophet_univar,
+                    self.rmse_gold_prophet_univar_cv_fold2,
                     self.rmse_gold_arima_uni_multivar,
                     self.rmse_gold_sarimax_univar,
                     math.inf,
@@ -934,12 +952,12 @@ class TestAutoTS(unittest.TestCase):
             # Simple forecast with forecast window = one used in training
             # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=self.forecast_period)
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)        
 
             # Simple forecast with forecast window != one used in training
             # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=10)
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series_10)   
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)   
 
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -947,14 +965,14 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="FB_Prophet"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)        
 
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="FB_Prophet")
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_series_10)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)        
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -1118,13 +1136,13 @@ class TestAutoTS(unittest.TestCase):
         self.assertIsNone(
             np.testing.assert_array_equal(
                 np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
-                self.forecast_gold_prophet_univar
+                self.forecast_gold_prophet_univar_internal_val_cv_fold2
             ),
             "(Univar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_univar,
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_univar_cv_fold2,
             "(Univar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -1591,6 +1609,143 @@ class TestAutoTS(unittest.TestCase):
         automl_model.plot_cv_scores()
 
 
+     
+    def test_prophet_multivar_standalone_noCV(self):
+        """
+        test to check functionality Prophet with CV
+        """
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_prophet_multivar_standalone_noCV'")
+        print("*"*50 + "\n\n")
+
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['prophet'],
+            verbose=0)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=None,
+            sep=self.sep) 
+        
+        ml_dict = automl_model.get_ml_dict()
+        # print(ml_dict)
+        # print(automl_model.get_leaderboard())
+
+        ####################################
+        #### Internal Validation Checks ####
+        ####################################
+
+        ## Validation Forecast
+        self.assertIsNone(
+            np.testing.assert_array_equal(
+                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                self.forecast_gold_prophet_multivar_internal_val_cv_fold2
+            )
+        )
+
+        # Validation RMSE
+        self.assertEqual(
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2
+        )
+        
+        ##############################
+        #### Extarnal Test Checks ####
+        ##############################
+
+        # Simple forecast with forecast window = one used in training
+        # Using named model
+        test_predictions = automl_model.predict(
+            forecast_period=self.forecast_period,
+            model="FB_Prophet"
+        )
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+
+        # Simple forecast with forecast window != one used in training
+        # Using named model
+        test_predictions = automl_model.predict(
+            forecast_period=10,
+            model="FB_Prophet")
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
+
+        
+     
+    def test_prophet_multivar_standalone_withCV(self):
+        """
+        test to check functionality Prophet with CV
+        """
+        print("\n\n" + "*"*50)
+        print("Performing Unit Test: 'test_prophet_multivar_standalone_withCV'")
+        print("*"*50 + "\n\n")
+
+        import numpy as np  # type: ignore
+        from auto_ts import AutoTimeSeries as ATS
+
+        automl_model = ATS(
+            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+            model_type=['prophet'],
+            verbose=0)
+        automl_model.fit(
+            traindata=self.train_multivar,
+            ts_column=self.ts_column,
+            target=self.target,
+            cv=2,
+            sep=self.sep) 
+        
+        ml_dict = automl_model.get_ml_dict()
+        # print(ml_dict)
+        # print(automl_model.get_leaderboard())
+
+        ####################################
+        #### Internal Validation Checks ####
+        ####################################
+
+        ## Validation Forecast
+        self.assertIsNone(
+            np.testing.assert_array_equal(
+                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                self.forecast_gold_prophet_multivar_internal_val_cv_fold1
+            )
+        )
+        self.assertIsNone(
+            np.testing.assert_array_equal(
+                np.round(ml_dict.get('FB_Prophet').get('forecast')[1]['yhat'],6),
+                self.forecast_gold_prophet_multivar_internal_val_cv_fold2
+            )
+        )
+
+        # Validation RMSE
+        self.assertEqual(
+            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold1
+        )
+        self.assertEqual(
+            round(ml_dict.get('FB_Prophet').get('rmse')[1],8), self.rmse_gold_prophet_multivar_cv_fold2
+        )
+        
+        ##############################
+        #### Extarnal Test Checks ####
+        ##############################
+
+        # Simple forecast with forecast window = one used in training
+        # Using named model
+        test_predictions = automl_model.predict(
+            forecast_period=self.forecast_period,
+            model="FB_Prophet"
+        )
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+
+        # Simple forecast with forecast window != one used in training
+        # Using named model
+        test_predictions = automl_model.predict(
+            forecast_period=10,
+            model="FB_Prophet")
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
     
       
     def test_ml_standalone(self):
@@ -1616,62 +1771,6 @@ class TestAutoTS(unittest.TestCase):
             target=self.target,
             cv=None,
             sep=self.sep) 
-        print(automl_model.get_leaderboard())
-
-     
-    def test_prophet_standalone_noCV(self):
-        """
-        test to check functionality Prophet with CV
-        """
-        print("\n\n" + "*"*50)
-        print("Performing Unit Test: 'test_prophet_standalone_noCV'")
-        print("*"*50 + "\n\n")
-
-        import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
-
-        automl_model = ATS(
-            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['prophet'],
-            verbose=0)
-        automl_model.fit(
-            traindata=self.train_multivar,
-            ts_column=self.ts_column,
-            target=self.target,
-            cv=None,
-            sep=self.sep) 
-        
-        ml_dict = automl_model.get_ml_dict()
-        print(ml_dict)
-        print(automl_model.get_leaderboard())
-
-     
-    def test_prophet_standalone_withCV(self):
-        """
-        test to check functionality Prophet with CV
-        """
-        print("\n\n" + "*"*50)
-        print("Performing Unit Test: 'test_prophet_standalone_withCV'")
-        print("*"*50 + "\n\n")
-
-        import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
-
-        automl_model = ATS(
-            score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
-            non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['prophet'],
-            verbose=0)
-        automl_model.fit(
-            traindata=self.train_multivar,
-            ts_column=self.ts_column,
-            target=self.target,
-            cv=2,
-            sep=self.sep) 
-        
-        ml_dict = automl_model.get_ml_dict()
-        print(ml_dict)
         print(automl_model.get_leaderboard())
 
       

@@ -1,7 +1,10 @@
 from typing import Optional
 import warnings
+
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
+from pandas.core.generic import NDFrame # type:ignore
+
 import copy
 import matplotlib.pyplot as plt # type: ignore
 
@@ -121,7 +124,6 @@ class BuildProphet(BuildBase):
         print(f"Initial Days: {initial_days}")
         print(f"Period Days: {period_days}")
         
-        # time_int_cv = self.get_prophet_time_interval(for_cv=True)
         OFFSET = 5  # 5 days  # adjusting some days to take into account uneven months.
         initial = str(initial_days-OFFSET) + " D"  
         period = str(period_days) + " D" 
@@ -146,11 +148,11 @@ class BuildProphet(BuildBase):
         # second: train: 0+26 to 65+26 Test 65+26 to 65+26+52
         # next: train: 0+26+26. to 65+26+26. Test 65+26+26.. to 65+26+26+52
         
-        print("Prophet CV DataFrame")
-        print(df_cv)
+        # print("Prophet CV DataFrame")
+        # print(df_cv)
 
-        print("Prophet Num Obs Per fold")
-        print(df_cv.groupby('cutoff')['ds'].count())
+        # print("Prophet Num Obs Per fold")
+        # print(df_cv.groupby('cutoff')['ds'].count())
 
         rmse_folds = []
         norm_rmse_folds = []
@@ -194,31 +196,34 @@ class BuildProphet(BuildBase):
         :rtype object
         """
 
-    #  def predict(
-    #     self,
-    #     X_exogen: Optional[pd.DataFrame]=None,
-    #     forecast_period: Optional[int] = None,
-    #     simple: bool = True) -> NDFrame:
-    #     """
-    #     Return the predictions
-    #     :param X_exogen The test dataframe containing the exogenous varaiables to be used for predicton.
-    #     :type X_exogen Optional[pd.DataFrame]
-    #     :param forecast_period The number of periods to make a prediction for.
-    #     :type forecast_period Optional[int]
-    #     :param simple If True, this method just returns the predictions. 
-    #     If False, it will return the standard error, lower and upper confidence interval (if available)
-    #     :type simple bool
-    #     :rtype NDFrame
-    #     """
-
-
     def predict(
         self,
         X_exogen: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = True,
-        return_train_preds: bool = False
-        ):
+        return_train_preds: bool = False) -> NDFrame:
+        """
+        Return the predictions
+        :param X_exogen The test dataframe containing the exogenous varaiables to be used for predicton.
+        :type X_exogen Optional[pd.DataFrame]
+        :param forecast_period The number of periods to make a prediction for.
+        :type forecast_period Optional[int]
+        :param simple If True, this method just returns the predictions. 
+        If False, it will return the standard error, lower and upper confidence interval (if available)
+        :type simple bool
+        :param return_train_preds If True, this method just returns the train predictions along with test predictions. 
+        If False, it will return only test predictions
+        :type return_train_preds bool
+        :rtype NDFrame
+        """
+
+    # def predict(
+    #     self,
+    #     X_exogen: Optional[pd.DataFrame]=None,
+    #     forecast_period: Optional[int] = None,
+    #     simple: bool = True,
+    #     return_train_preds: bool = False
+    #     ):
         """
         Return the predictions
         # TODO: What about future exogenous variables?
