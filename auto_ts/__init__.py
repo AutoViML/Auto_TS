@@ -426,7 +426,7 @@ class AutoTimeSeries:
                     self.forecast_period, self.time_interval,
                     self.score_type, self.verbose, self.conf_int)
                 model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
-                    ts_df=ts_df,
+                    ts_df=ts_df[[target]+preds],
                     target_col=target,
                     cv = cv,
                     time_col=ts_column)
@@ -509,7 +509,9 @@ class AutoTimeSeries:
                     stats_scoring, p_max, d_max, q_max,
                     forecast_period=self.forecast_period, method='mle', verbose=self.verbose
                 )
-                model, forecasts, rmse, norm_rmse = model_build.fit(ts_df[target])
+                model, forecasts, rmse, norm_rmse = model_build.fit(
+                    ts_df[target]
+                )
 
                 if self.score_type == 'rmse':
                     score_val = rmse
@@ -710,7 +712,6 @@ class AutoTimeSeries:
 
         return self
 
-        
     def get_best_model_name(self) -> str:
         """
         Returns the best model name

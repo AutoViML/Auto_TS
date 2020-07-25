@@ -64,49 +64,57 @@ class BuildProphet(BuildBase):
         :rtype object
         """
 
+        self.time_col = time_col
+        self.original_target_col = target_col
+        self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+
+        if len(self.original_preds) == 0:
+            self.univariate = True
+        else:
+            self.univariate = False
+
+        print(f"Prophet Is Univariate: {self.univariate}")
+
         ts_df = copy.deepcopy(ts_df)
 
         ##### if you are going to use matplotlib with prophet data, it gives an error unless you do this.
         pd.plotting.register_matplotlib_converters()
         
         #### You have to import Prophet if you are going to build a Prophet model #############
-        try:
-            print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[time_col].head(1))
-            df = ts_df.rename(columns={time_col: 'ds', target_col: 'y'})
-            print('Time Series data: sample row after transformation\n', df.head(1))
-        except:
-            #### This happens when time_col is not found but it's actually the index. In that case, reset index
-            print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
-            df = ts_df.reset_index()
-            df = df.rename(columns={time_col: 'ds', target_col: 'y'})
-            print('Time Series data: sample row after transformation\n', df.head(1))
+
+
         actual = 'y'
         timecol = 'ds'
-        dft = df[[timecol, actual]]
+
+
+        print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
+        df = self.prep_col_names_for_prophet(ts_df=ts_df, test=False)
+        print('Time Series data: sample row after transformation\n', df.head(1))
+
+
+        # try:
+        #     print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[time_col].head(1))
+        #     df = ts_df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+        #     print('Time Series data: sample row after transformation\n', df.head(1))
+        # except:
+        #     #### This happens when time_col is not found but it's actually the index. In that case, reset index
+        #     print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
+        #     df = ts_df.reset_index()
+        #     df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+        #     print('Time Series data: sample row after transformation\n', df.head(1))
         
+        if self.univariate:
+            dft = df[[timecol, actual]]
+        else:
+            dft = df[[timecol, actual] + self.original_preds]
+
         ##### For most Financial time series data, 80% conf interval is enough...
         print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
         
-        #### TODO: Start from Monday evening (7/20)
-        # Add seasonality components to Prophet call (in init)
-        # Add regressors
-        # Only then train
-
-        # m = Prophet(yearly_seasonality=True
-        #     ,weekly_seasonality=True
-        #     ,daily_seasonality=False
-        #     #,seasonality_mode='multiplicative'
-        #     ,seasonality_prior_scale=25
-        #     ,changepoint_range=0.95
-        #    )
-        # m.add_regressor('0')
-        # m.add_regressor('1')
-        # m.add_regressor('2')
-        # m.fit(train)
-
-        ####
-
+        if self.univariate is False:
+            for name in self.original_preds:
+                self.model.add_regressor(name)
         
         self.model.fit(dft)
 
@@ -169,18 +177,18 @@ class BuildProphet(BuildBase):
         print(f"Norm RMSE Folds: {norm_rmse_folds}")
         print(f"Forecast DF folds: {forecast_df_folds}")
 
-        forecast = self.predict(simple=False, return_train_preds=True)
+        # forecast = self.predict(simple=False, return_train_preds=True)
 
-        ####  We are going to plot Prophet's forecasts differently since it is better
-        dfa = plot_prophet(dft, forecast);
-        # Prophet makes Incredible Predictions Charts!
-        ###  There can't be anything simpler than this to make Forecasts!
-        #self.model.plot(forecast);  # make sure to add semi-colon in the end to avoid plotting twice
-        # Also their Trend, Seasonality Charts are Spot On!
-        try:
-            self.model.plot_components(forecast)
-        except:
-            print('Error in FB Prophet components forecast. Continuing...')
+        # ####  We are going to plot Prophet's forecasts differently since it is better
+        # dfa = plot_prophet(dft, forecast);
+        # # Prophet makes Incredible Predictions Charts!
+        # ###  There can't be anything simpler than this to make Forecasts!
+        # #self.model.plot(forecast);  # make sure to add semi-colon in the end to avoid plotting twice
+        # # Also their Trend, Seasonality Charts are Spot On!
+        # try:
+        #     self.model.plot_components(forecast)
+        # except:
+        #     print('Error in FB Prophet components forecast. Continuing...')
         
         #rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
 
@@ -217,24 +225,17 @@ class BuildProphet(BuildBase):
         :rtype NDFrame
         """
 
-    # def predict(
-    #     self,
-    #     X_exogen: Optional[pd.DataFrame]=None,
-    #     forecast_period: Optional[int] = None,
-    #     simple: bool = True,
-    #     return_train_preds: bool = False
-    #     ):
         """
         Return the predictions
         # TODO: What about future exogenous variables?
         # https://towardsdatascience.com/forecast-model-tuning-with-additional-regressors-in-prophet-ffcbf1777dda
         """
 
-        if X_exogen is not None:
-            warnings.warn(
-                "Multivariate models are not supported by the AutoML prophet module." +  
-                "Univariate predictions will be returned for now."                
-            )
+        # if X_exogen is not None:
+        #     warnings.warn(
+        #         "Multivariate models are not supported by the AutoML prophet module." +  
+        #         "Univariate predictions will be returned for now."                
+        #     )
 
         # Prophet is a Little Complicated - You need 2 steps to Forecast
         ## 1. You need to create a dataframe to hold the predictions which specifies datetime
@@ -252,10 +253,15 @@ class BuildProphet(BuildBase):
         
         time_int = self.get_prophet_time_interval(for_cv=False)
         
-        if forecast_period is None:
-            forecast_period = self.forecast_period
-        
-        future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
+        if self.univariate:
+            if forecast_period is None:
+                forecast_period = self.forecast_period
+            
+            future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
+        else:
+            future = self.prep_col_names_for_prophet(ts_df=X_exogen, test=True)
+            
+                    
         forecast = self.model.predict(future)
 
         # Return values for the forecast period only
@@ -312,6 +318,63 @@ class BuildProphet(BuildBase):
             time_int = 'W'
 
         return time_int
+
+    def prep_col_names_for_prophet(self, ts_df: pd.DataFrame, test: bool=False) -> pd.DataFrame:
+        """
+        Renames the columns of the input dataframe to the right format needed by Prophet
+        Target is renamed to 'y' and the time column is renamed to 'ds'
+        # TODO: Complete docstring
+        """
+
+        # print(f"Prophet Predict ts_df: {ts_df.info()}")
+
+        if self.time_col not in ts_df.columns:
+            #### This happens when time_col is not found but it's actually the index. In that case, reset index
+            df = ts_df.reset_index()
+        else:
+            df = ts_df.copy(deep=True)
+
+        if self.time_col not in df.columns:
+            print("(Error): You have not provided the time_column values. This will result in an error")
+
+        if test is False:
+            print("333")
+            df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+        else:
+            print("444")
+            df = df.rename(columns={self.time_col: 'ds'})
+
+        # print(f"Prophet Predict df: {df.info()}")
+
+
+        #     try:
+        #         print("111")
+        #         print(f"Time Col Exists: {self.time_col in ts_df.columns}")
+        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[self.time_col].head(1))
+        #         df = ts_df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+        #         # print('Time Series data: sample row after transformation\n', df.head(1))
+        #     except:
+        #         print("222")
+        #         #### This happens when time_col is not found but it's actually the index. In that case, reset index
+        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
+        #         df = ts_df.reset_index()
+        #         df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+        #         # print('Time Series data: sample row after transformation\n', df.head(1))
+        # else:
+        #     try:
+        #         print("333")
+        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[self.time_col].head(1))
+        #         df = ts_df.rename(columns={self.time_col: 'ds'})
+        #         # print('Time Series data: sample row after transformation\n', df.head(1))
+        #     except:
+        #         print("444")
+        #         #### This happens when time_col is not found but it's actually the index. In that case, reset index
+        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
+        #         df = ts_df.reset_index()
+        #         df = df.rename(columns={self.time_col: 'ds'})
+        #         # print('Time Series data: sample row after transformation\n', df.head(1))
+        
+        return df
 
 def plot_prophet(dft, forecastdf):
     """
