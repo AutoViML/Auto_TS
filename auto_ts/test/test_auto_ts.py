@@ -497,7 +497,7 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['FB_Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
+                'name':['Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
                 'rmse':[
                     self.rmse_gold_prophet_multivar_cv_fold2,
                     self.rmse_gold_ml_multivar,
@@ -511,7 +511,7 @@ class TestAutoTS(unittest.TestCase):
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
-            automl_model.get_best_model_name(), "FB_Prophet",
+            automl_model.get_best_model_name(), "Prophet",
             "Best model name does not match expected value."
         )
         self.assertTrue(
@@ -559,7 +559,7 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=self.forecast_period,
-                model="FB_Prophet"
+                model="Prophet"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
 
@@ -568,14 +568,14 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=10,
-                model="FB_Prophet")
+                model="Prophet")
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=self.forecast_period,
-                model="FB_Prophet",
+                model="Prophet",
                 simple=False
             )
             # print(test_predictions)
@@ -747,14 +747,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                np.round(ml_dict.get('Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_multivar_internal_val_cv_fold2
             ),
             "(Multivar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2,
+            round(ml_dict.get('Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2,
             "(Multivar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -845,7 +845,7 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['FB_Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
+                'name': ['Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
                 'rmse':[
                     self.rmse_gold_prophet_univar_cv_fold2,
                     self.rmse_gold_arima_uni_multivar,
@@ -859,7 +859,7 @@ class TestAutoTS(unittest.TestCase):
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
-            automl_model.get_best_model_name(), "FB_Prophet",
+            automl_model.get_best_model_name(), "Prophet",
             "Best model name does not match expected value."
         )
         self.assertTrue(
@@ -901,7 +901,7 @@ class TestAutoTS(unittest.TestCase):
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
-                model="FB_Prophet"
+                model="Prophet"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)        
 
@@ -909,13 +909,13 @@ class TestAutoTS(unittest.TestCase):
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
-                model="FB_Prophet")
+                model="Prophet")
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)        
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
-                model="FB_Prophet",
+                model="Prophet",
                 simple=False
             )
             # print(test_predictions)
@@ -1057,14 +1057,14 @@ class TestAutoTS(unittest.TestCase):
         ##################################
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                np.round(ml_dict.get('Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_univar_internal_val_cv_fold2
             ),
             "(Univar Test) Prophet Forecast does not match up with expected values."
         )
 
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_univar_cv_fold2,
+            round(ml_dict.get('Prophet').get('rmse')[0],8), self.rmse_gold_prophet_univar_cv_fold2,
             "(Univar Test) Prophet RMSE does not match up with expected values.")
 
         ################################
@@ -1535,14 +1535,14 @@ class TestAutoTS(unittest.TestCase):
         ## Validation Forecast
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                np.round(ml_dict.get('Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_multivar_internal_val_cv_fold2
             )
         )
 
         # Validation RMSE
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2
+            round(ml_dict.get('Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2
         )
         
         ##############################
@@ -1554,7 +1554,7 @@ class TestAutoTS(unittest.TestCase):
         test_predictions = automl_model.predict(
             X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
             forecast_period=self.forecast_period,
-            model="FB_Prophet"
+            model="Prophet"
         )
 
         print(f"FB Prophet Predictions: {test_predictions}")
@@ -1566,7 +1566,7 @@ class TestAutoTS(unittest.TestCase):
         test_predictions = automl_model.predict(
             X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
             forecast_period=10,
-            model="FB_Prophet")
+            model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
         
@@ -1603,23 +1603,23 @@ class TestAutoTS(unittest.TestCase):
         ## Validation Forecast
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast')[0]['yhat'],6),
+                np.round(ml_dict.get('Prophet').get('forecast')[0]['yhat'],6),
                 self.forecast_gold_prophet_multivar_internal_val_cv_fold1
             )
         )
         self.assertIsNone(
             np.testing.assert_array_equal(
-                np.round(ml_dict.get('FB_Prophet').get('forecast')[1]['yhat'],6),
+                np.round(ml_dict.get('Prophet').get('forecast')[1]['yhat'],6),
                 self.forecast_gold_prophet_multivar_internal_val_cv_fold2
             )
         )
 
         # Validation RMSE
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold1
+            round(ml_dict.get('Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold1
         )
         self.assertEqual(
-            round(ml_dict.get('FB_Prophet').get('rmse')[1],8), self.rmse_gold_prophet_multivar_cv_fold2
+            round(ml_dict.get('Prophet').get('rmse')[1],8), self.rmse_gold_prophet_multivar_cv_fold2
         )
         
         ##############################
@@ -1631,7 +1631,7 @@ class TestAutoTS(unittest.TestCase):
         test_predictions = automl_model.predict(
             X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
             forecast_period=self.forecast_period,
-            model="FB_Prophet"
+            model="Prophet"
         )
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
 
@@ -1640,7 +1640,7 @@ class TestAutoTS(unittest.TestCase):
         test_predictions = automl_model.predict(
             X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
             forecast_period=10,
-            model="FB_Prophet")
+            model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
     
     # @unittest.skip  

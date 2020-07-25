@@ -72,10 +72,11 @@ class BuildSarimax(BuildBase):
         # self.find_best_parameters(data = ts_train)
         self.find_best_parameters(data = ts_df)
 
-        print(f"\n\nBest Parameters:")
-        print(f"p: {self.best_p}, d: {self.best_d}, q: {self.best_q}")
-        print(f"P: {self.best_P}, D: {self.best_D}, Q: {self.best_Q}")
-        print(f"Seasonality: {self.seasonality} Seasonal Period: {self.seasonal_period}")
+        if self.verbose >= 1:
+            print(f"\n\nBest Parameters:")
+            print(f"p: {self.best_p}, d: {self.best_d}, q: {self.best_q}")
+            print(f"P: {self.best_P}, D: {self.best_D}, Q: {self.best_Q}")
+            print(f"Seasonality: {self.seasonality} Seasonal Period: {self.seasonal_period}")
 
         
         #######################################

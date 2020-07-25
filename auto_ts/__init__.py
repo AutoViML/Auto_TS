@@ -2,25 +2,27 @@
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.22'
-print(f"""Running Auto Timeseries version: {version_number}... Call by using:
-        import auto_ts as AT
-        automl_model = AT.AutoTimeSeries(
-            score_type='rmse',
-            forecast_period=4,
-            time_interval='Week',
-            non_seasonal_pdq=None,
-            seasonality=True,
-            seasonal_period=52,
-            model_type=['SARIMAX','ML'],
-            verbose=0)
-    automl_model.fit(train, 'WeekDate', '9L Cases', ',')
-    automl_model.get_leaderboard()
-        
-    To run all models (Stats, ML, FB Prophet, etc.) set model_type='best'""")
+version_number = '0.0.23'
+print(f"Running Auto Timeseries version: {version_number}...")
 
-print("To remove previous versions, perform 'pip uninstall auto_ts'")
-print('To get the latest version, perform "pip install auto_ts --no-cache-dir --ignore-installed"')
+# Call by using:
+#     import auto_ts as AT
+#     automl_model = AT.AutoTimeSeries(
+#         score_type='rmse',
+#         forecast_period=4,
+#         time_interval='Week',
+#         non_seasonal_pdq=None,
+#         seasonality=True,
+#         seasonal_period=52,
+#         model_type=['SARIMAX','ML'],
+#         verbose=0)
+# automl_model.fit(train, 'WeekDate', '9L Cases', ',')
+# automl_model.get_leaderboard()
+    
+# To run all models (Stats, ML, FB Prophet, etc.) set model_type='best'""")
+
+# print("To remove previous versions, perform 'pip uninstall auto_ts'")
+# print('To get the latest version, perform "pip install auto_ts --no-cache-dir --ignore-installed"')
 
 
 
@@ -413,7 +415,7 @@ class AutoTimeSeries:
             print("="*50)
             print("\n")
 
-            name = 'FB_Prophet'
+            name = 'Prophet'
             # Placeholder for cases when model can not be built
             score_val = np.inf 
             model_build: Optional[BuildBase] = None 
@@ -699,10 +701,10 @@ class AutoTimeSeries:
         loBestModelDict = self.ml_dict[best_model_name]
         if loBestModelDict is not None:
             cv_scores = loBestModelDict.get(self.score_type)
-            mean_cv_score = self.__get_mean_cv_scores(cv_scores)
+            mean_cv_score = self.__get_mean_cv_score(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
-        print("    Best Model Forecasts (Validation Set):")
-        print(self.ml_dict[best_model_name]['forecast'])
+        # print("    Best Model Forecasts (Validation Set):")
+        # print(self.ml_dict[best_model_name]['forecast'])
         
         end = time()
 
@@ -814,7 +816,7 @@ class AutoTimeSeries:
                     loModelDictSingleModel = loMlDict.get(model_name)
                     if loModelDictSingleModel is not None:
                         cv_scores = loModelDictSingleModel.get(self.score_type)
-                        mean_cv_score = self.__get_mean_cv_scores(cv_scores)
+                        mean_cv_score = self.__get_mean_cv_score(cv_scores)
                         # if isinstance(cv_scores, float):
                         #     mean_cv_score = cv_scores
                         # else: # Assuming List
@@ -853,7 +855,7 @@ class AutoTimeSeries:
         cv_df = cv_df.astype({"CV Scores": float})
         return cv_df
 
-    def __get_mean_cv_scores(self, cv_scores: Union[float, List]):
+    def __get_mean_cv_score(self, cv_scores: Union[float, List]):
         """
         If gives a list fo cv scores, this will return the mean cv score
         If cv_score is a float (single value), it simply returns that

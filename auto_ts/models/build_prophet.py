@@ -73,7 +73,7 @@ class BuildProphet(BuildBase):
         else:
             self.univariate = False
 
-        print(f"Prophet Is Univariate: {self.univariate}")
+        # print(f"Prophet Is Univariate: {self.univariate}")
 
         ts_df = copy.deepcopy(ts_df)
 
@@ -81,27 +81,10 @@ class BuildProphet(BuildBase):
         pd.plotting.register_matplotlib_converters()
         
         #### You have to import Prophet if you are going to build a Prophet model #############
-
-
         actual = 'y'
         timecol = 'ds'
 
-
-        print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
         df = self.prep_col_names_for_prophet(ts_df=ts_df, test=False)
-        print('Time Series data: sample row after transformation\n', df.head(1))
-
-
-        # try:
-        #     print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[time_col].head(1))
-        #     df = ts_df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
-        #     print('Time Series data: sample row after transformation\n', df.head(1))
-        # except:
-        #     #### This happens when time_col is not found but it's actually the index. In that case, reset index
-        #     print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
-        #     df = ts_df.reset_index()
-        #     df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
-        #     print('Time Series data: sample row after transformation\n', df.head(1))
         
         if self.univariate:
             dft = df[[timecol, actual]]
@@ -109,7 +92,8 @@ class BuildProphet(BuildBase):
             dft = df[[timecol, actual] + self.original_preds]
 
         ##### For most Financial time series data, 80% conf interval is enough...
-        print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
+        if self.verbose >= 1:
+            print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
         
         if self.univariate is False:
@@ -121,28 +105,28 @@ class BuildProphet(BuildBase):
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
 
-        print(f"Min Time = {dft['ds'].min()}")
-        print(f"Max Time = {dft['ds'].max()}")
+        # print(f"Min Time = {dft['ds'].min()}")
+        # print(f"Max Time = {dft['ds'].max()}")
         total_days = (dft['ds'].max() - dft['ds'].min()).days
         horizon_days = (dft['ds'].max() - dft.iloc[-self.forecast_period]['ds']).days 
         initial_days = total_days - NFOLDS * horizon_days
         period_days = horizon_days
-        print(f"Total Days: {total_days}")
-        print(f"Horizon Days: {horizon_days}")
-        print(f"Initial Days: {initial_days}")
-        print(f"Period Days: {period_days}")
+        # print(f"Total Days: {total_days}")
+        # print(f"Horizon Days: {horizon_days}")
+        # print(f"Initial Days: {initial_days}")
+        # print(f"Period Days: {period_days}")
         
         OFFSET = 5  # 5 days  # adjusting some days to take into account uneven months.
         initial = str(initial_days-OFFSET) + " D"  
         period = str(period_days) + " D" 
         horizon = str(horizon_days+OFFSET) + " D" 
 
-        print("Prophet CV Diagnostics:")
-        print(f"NumObs: {num_obs}")
-        print(f"NFOLDS: {NFOLDS}")
-        print(f"initial: {initial}")
-        print(f"period: {period}")
-        print(f"horizon: {horizon}")
+        # print("Prophet CV Diagnostics:")
+        # print(f"NumObs: {num_obs}")
+        # print(f"NFOLDS: {NFOLDS}")
+        # print(f"initial: {initial}")
+        # print(f"period: {period}")
+        # print(f"horizon: {horizon}")
 
 
         df_cv = cross_validation(
@@ -173,9 +157,9 @@ class BuildProphet(BuildBase):
             norm_rmse_folds.append(norm_rmse)
             forecast_df_folds.append(lpDf)
 
-        print(f"RMSE Folds: {rmse_folds}")
-        print(f"Norm RMSE Folds: {norm_rmse_folds}")
-        print(f"Forecast DF folds: {forecast_df_folds}")
+        # print(f"RMSE Folds: {rmse_folds}")
+        # print(f"Norm RMSE Folds: {norm_rmse_folds}")
+        # print(f"Forecast DF folds: {forecast_df_folds}")
 
         # forecast = self.predict(simple=False, return_train_preds=True)
 
@@ -326,8 +310,6 @@ class BuildProphet(BuildBase):
         # TODO: Complete docstring
         """
 
-        # print(f"Prophet Predict ts_df: {ts_df.info()}")
-
         if self.time_col not in ts_df.columns:
             #### This happens when time_col is not found but it's actually the index. In that case, reset index
             df = ts_df.reset_index()
@@ -338,42 +320,10 @@ class BuildProphet(BuildBase):
             print("(Error): You have not provided the time_column values. This will result in an error")
 
         if test is False:
-            print("333")
             df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
         else:
-            print("444")
             df = df.rename(columns={self.time_col: 'ds'})
 
-        # print(f"Prophet Predict df: {df.info()}")
-
-
-        #     try:
-        #         print("111")
-        #         print(f"Time Col Exists: {self.time_col in ts_df.columns}")
-        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[self.time_col].head(1))
-        #         df = ts_df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
-        #         # print('Time Series data: sample row after transformation\n', df.head(1))
-        #     except:
-        #         print("222")
-        #         #### This happens when time_col is not found but it's actually the index. In that case, reset index
-        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
-        #         df = ts_df.reset_index()
-        #         df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
-        #         # print('Time Series data: sample row after transformation\n', df.head(1))
-        # else:
-        #     try:
-        #         print("333")
-        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df[self.time_col].head(1))
-        #         df = ts_df.rename(columns={self.time_col: 'ds'})
-        #         # print('Time Series data: sample row after transformation\n', df.head(1))
-        #     except:
-        #         print("444")
-        #         #### This happens when time_col is not found but it's actually the index. In that case, reset index
-        #         # print('Preparing Time Series data for FB Prophet: sample row before\n', ts_df.head(1))
-        #         df = ts_df.reset_index()
-        #         df = df.rename(columns={self.time_col: 'ds'})
-        #         # print('Time Series data: sample row after transformation\n', df.head(1))
-        
         return df
 
 def plot_prophet(dft, forecastdf):
