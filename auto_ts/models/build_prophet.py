@@ -100,51 +100,70 @@ class BuildProphet(BuildBase):
             for name in self.original_preds:
                 self.model.add_regressor(name)
         
+
         self.model.fit(dft)
 
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
 
-        # print(f"Min Time = {dft['ds'].min()}")
-        # print(f"Max Time = {dft['ds'].max()}")
+        if self.verbose >= 2:
+            print(f"NumObs: {num_obs}")
+            print(f"NFOLDS: {NFOLDS}")
+
         total_days = (dft['ds'].max() - dft['ds'].min()).days
-        horizon_days = (dft['ds'].max() - dft.iloc[-self.forecast_period]['ds']).days 
+        if self.verbose >= 2:
+            print("Variables used for calculating initial, horizon, period...")
+            print(f"Forcast Period: {self.forecast_period}")
+            print(f"Max Date: {dft['ds'].max()}")
+            print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
+
+        #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days 
+        horizon_days = (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days 
+        
         initial_days = total_days - NFOLDS * horizon_days
         period_days = horizon_days
-        # print(f"Total Days: {total_days}")
-        # print(f"Horizon Days: {horizon_days}")
-        # print(f"Initial Days: {initial_days}")
-        # print(f"Period Days: {period_days}")
+
+        if self.verbose >= 2:
+            print("Unadjusted Prophet CV Diagnostics:")
+            print(f"Total Days: {total_days}")
+            print(f"Initial Days: {initial_days}")
+            print(f"Period Days: {period_days}")
+            print(f"Horizon Days: {horizon_days}")
         
-        OFFSET = 5  # 5 days  # adjusting some days to take into account uneven months.
+        OFFSET = 0  # 5 days  # adjusting some days to take into account uneven months.
         initial = str(initial_days-OFFSET) + " D"  
         period = str(period_days) + " D" 
         horizon = str(horizon_days+OFFSET) + " D" 
 
-        # print("Prophet CV Diagnostics:")
-        # print(f"NumObs: {num_obs}")
-        # print(f"NFOLDS: {NFOLDS}")
-        # print(f"initial: {initial}")
-        # print(f"period: {period}")
-        # print(f"horizon: {horizon}")
+        if self.verbose >= 2:
+            print(f"OFFSET: {OFFSET}")
+            print(f"initial: {initial}")
+            print(f"period: {period}")
+            print(f"horizon: {horizon}")
 
-
-        df_cv = cross_validation(
-            self.model,
-            initial=initial,   # '850 D', 
-            period=period,   # '100 D', 
-            horizon=horizon   #'300 D' 
-        ) 
+        # First  Fold --> 
+        #   Train Set: 0:initial
+        #   Test Set: initial:(initial+horizon)
+        # Second Fold --> 
+        #   Train Set: (period):(initial+period)
+        #   Test Set: (initial+period):(initial+horizon+ period)
+        # Format: '850 D'
+        df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon) 
         
-        # first: train: 0 to 64 Test 65 to 65+52
-        # second: train: 0+26 to 65+26 Test 65+26 to 65+26+52
-        # next: train: 0+26+26. to 65+26+26. Test 65+26+26.. to 65+26+26+52
-        
-        # print("Prophet CV DataFrame")
-        # print(df_cv)
+        if self.verbose >= 2:
+            print("Prophet CV DataFrame")
+            print(df_cv)
 
-        # print("Prophet Num Obs Per fold")
-        # print(df_cv.groupby('cutoff')['ds'].count())
+        num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
+
+        # https://stackoverflow.com/questions/54405704/check-if-all-values-in-dataframe-column-are-the-same
+        a = num_obs_folds.to_numpy() 
+        all_equal = (a[0] == a).all()
+
+        if not all_equal:
+            print("WARNING: All folds did not have the same number of observations in the validation sets.")
+            print("Num Test Obs Per fold")
+            print(num_obs_folds)
 
         rmse_folds = []
         norm_rmse_folds = []

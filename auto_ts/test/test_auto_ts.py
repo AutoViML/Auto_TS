@@ -61,7 +61,7 @@ class TestAutoTS(unittest.TestCase):
 
         self.rmse_gold_prophet_univar_cv_fold1 = 86.34827037
         self.rmse_gold_prophet_univar_cv_fold2 = 56.5751 # Without CV gets this result
-
+        
 
         ## External Test Set results 
         results = [
@@ -92,8 +92,8 @@ class TestAutoTS(unittest.TestCase):
         
         # Internal (to AutoML) validation set results
         self.forecast_gold_prophet_multivar_internal_val_cv_fold1 = np.array([            
-            408.247213, 496.038917, 556.120951, 604.455571,
-            584.852771, 653.133907, 648.77597 , 487.54389
+            502.111972, 569.181958, 578.128706, 576.069791,
+            663.258686, 677.851419, 750.972617, 781.269791
         ])
 
         self.forecast_gold_prophet_multivar_internal_val_cv_fold2 = np.array([            
@@ -101,10 +101,10 @@ class TestAutoTS(unittest.TestCase):
             584.936717, 605.940656, 702.652641, 736.639273
         ])
 
-        self.rmse_gold_prophet_multivar_cv_fold1 = 91.15254417  
+        self.rmse_gold_prophet_multivar_cv_fold1 = 48.70419901 
         self.rmse_gold_prophet_multivar_cv_fold2 = 63.24631835 # Without CV gets this result 
-
-
+        
+        
         ## External Test Set results 
         results = [
             747.964093, 736.512241, 814.840792, 825.152970,
@@ -462,7 +462,6 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
 
 
-    # @unittest.skip    
     def test_auto_ts_multivar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with non seasonal SARIMAX)
@@ -816,7 +815,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
-    # @unittest.skip    
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1125,7 +1123,6 @@ class TestAutoTS(unittest.TestCase):
             "(Univar Test) ML RMSE does not match up with expected values."
         )
     
-    # @unittest.skip 
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1241,7 +1238,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
-    # @unittest.skip  
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1368,7 +1364,6 @@ class TestAutoTS(unittest.TestCase):
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
                
 
-    # @unittest.skip    
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1435,7 +1430,6 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
-    # @unittest.skip  
     def test_passing_list_instead_of_str(self):
         """
         TODO: Add docstring
@@ -1464,7 +1458,6 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
-    # @unittest.skip  
     def test_cv_retreival_plotting(self):
         """
         Tests CV Scores retreival and plotting
@@ -1502,7 +1495,6 @@ class TestAutoTS(unittest.TestCase):
         automl_model.plot_cv_scores()
 
 
-    # @unittest.skip
     def test_prophet_multivar_standalone_noCV(self):
         """
         test to check functionality Prophet with CV
@@ -1570,7 +1562,6 @@ class TestAutoTS(unittest.TestCase):
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
         
-    # @unittest.skip 
     def test_prophet_multivar_standalone_withCV(self):
         """
         test to check functionality Prophet with CV
@@ -1643,7 +1634,6 @@ class TestAutoTS(unittest.TestCase):
             model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
     
-    # @unittest.skip  
     def test_ml_standalone(self):
         """
         Testing ML Standalone
@@ -1669,7 +1659,6 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep) 
         print(automl_model.get_leaderboard())
 
-    # @unittest.skip  
     def test_ml_standalone_withCV(self):
         """
         test to check functionality ML with CV
