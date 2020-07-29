@@ -2,8 +2,8 @@
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.23.b2'
-print(f"Running Auto Timeseries version: {version_number}...")
+version_number = '0.0.23.b3'
+print(f"Running Auto Timeseries version: {version_number}")
 
 # Call by using:
 #     import auto_ts as AT

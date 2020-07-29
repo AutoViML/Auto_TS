@@ -403,7 +403,8 @@ class TestAutoTS(unittest.TestCase):
         results = [] 
         self.forecast_gold_ml_multivar_internal_val = results # np.array(results)
         # self.rmse_gold_ml_multivar = 74.133644 # Initially only this was using rolling window
-        self.rmse_gold_ml_multivar = 67.304009 # Converted to using same as other model (no rolling window)
+        # self.rmse_gold_ml_multivar = 67.304009 # Converted to using same as other model (no rolling window)
+        self.rmse_gold_ml_multivar = 71.824585 # With more engineered features (AutoViML)
                 
         ## External Test Set results (With Multivariate columns accepted)
         # # Initially only this was using rolling window
@@ -414,8 +415,12 @@ class TestAutoTS(unittest.TestCase):
 
         # Converted to using same as other model (no rolling window)
         results = [
-            677.0, 652.85, 652.85, 652.85,
-            640.458333, 505.043478, 494.571429, 494.571429            
+            # 677.0, 652.85, 652.85, 652.85,
+            # 640.458333, 505.043478, 494.571429, 494.571429
+
+            # With more engineered features (AutoViML)
+            733.293931, 627.633457, 621.182141, 614.128809,
+            600.902623, 451.565462, 330.694427, 348.744604            
         ]
         index = pd.RangeIndex(start=40, stop=48, step=1) 
 
@@ -427,23 +432,34 @@ class TestAutoTS(unittest.TestCase):
 
         results = results[0:6] 
         index = index[0:6]            
-        self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
+        #self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
+        self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
+        # self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
 
         ###############################
         #### MULTIVARIATE (CV = 2) ####
         ###############################
 
-        self.rmse_gold_ml_multivar_cv = 80.167235
-        self.rmse_gold_ml_multivar_cv_fold1 = 93.03046227
-        self.rmse_gold_ml_multivar_cv_fold2 = 67.30400862
+        # self.rmse_gold_ml_multivar_cv = 80.167235
+        # self.rmse_gold_ml_multivar_cv_fold1 = 93.03046227
+        # self.rmse_gold_ml_multivar_cv_fold2 = 67.30400862
+
+        # With more engineered features (AutoViML)
+        self.rmse_gold_ml_multivar_cv = 94.472165   
+        self.rmse_gold_ml_multivar_cv_fold1 = 107.20370095
+        self.rmse_gold_ml_multivar_cv_fold2 = 81.740629
 
         results = [
-            677.000000, 652.850000, 652.850000, 652.850000,
-            640.458333, 505.043478, 494.571429, 494.571429
+            # 677.000000, 652.850000, 652.850000, 652.850000,
+            # 640.458333, 505.043478, 494.571429, 494.571429
+
+            # With more engineered features (AutoViML)
+            652.85, 640.458333, 640.458333, 640.458333,
+            559.583333, 494.571429, 494.571429, 494.571429
         ]
         index = pd.RangeIndex(start=40, stop=48, step=1) 
 
@@ -455,13 +471,15 @@ class TestAutoTS(unittest.TestCase):
 
         results = results[0:6] 
         index = index[0:6]            
-        self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
+        # self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
+        self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
                 data = results,
                 index = index
             )
-        self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
+        # self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
 
-
+    # @unittest.skip
     def test_auto_ts_multivar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with non seasonal SARIMAX)
@@ -815,6 +833,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
+    # @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -1123,6 +1142,7 @@ class TestAutoTS(unittest.TestCase):
             "(Univar Test) ML RMSE does not match up with expected values."
         )
     
+    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1238,6 +1258,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
+    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1363,7 +1384,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[1], 6), self.rmse_gold_sarimax_multivar_s3_cv_fold2,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
                
-
+    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1430,9 +1451,10 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
+    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
-        TODO: Add docstring
+        Tests passing models as a list insteasd of a string
         """
         
         print("\n\n" + "*"*50)
@@ -1458,6 +1480,7 @@ class TestAutoTS(unittest.TestCase):
 
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
+    # @unittest.skip
     def test_cv_retreival_plotting(self):
         """
         Tests CV Scores retreival and plotting
@@ -1486,7 +1509,8 @@ class TestAutoTS(unittest.TestCase):
         cv_scores_gold = pd.DataFrame(
             {
                 'Model': ['SARIMAX', 'SARIMAX', 'ML', 'ML'],
-                'CV Scores': [73.2824, 185.705, 93.0305, 67.304]
+                # 'CV Scores': [73.2824, 185.705, 93.0305, 67.304]
+                'CV Scores': [73.2824, 185.705, 107.2037, 81.7406]  # With more engineered features (AutoViML)
             }
         )
         cv_scores = automl_model.get_cv_scores()
@@ -1494,7 +1518,7 @@ class TestAutoTS(unittest.TestCase):
         
         automl_model.plot_cv_scores()
 
-
+    # @unittest.skip
     def test_prophet_multivar_standalone_noCV(self):
         """
         test to check functionality Prophet with CV
@@ -1561,7 +1585,7 @@ class TestAutoTS(unittest.TestCase):
             model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
-        
+    # @unittest.skip
     def test_prophet_multivar_standalone_withCV(self):
         """
         test to check functionality Prophet with CV
@@ -1634,13 +1658,13 @@ class TestAutoTS(unittest.TestCase):
             model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
     
-    def test_ml_standalone(self):
+    def test_ml_standalone_noCV(self):
         """
-        Testing ML Standalone
+        Testing ML Standalone without CV
         """
 
         print("\n\n" + "*"*50)
-        print("Performing Unit Test: 'test_ml_standalone'")
+        print("Performing Unit Test: 'test_ml_standalone_noCV'")
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
@@ -1661,7 +1685,7 @@ class TestAutoTS(unittest.TestCase):
 
     def test_ml_standalone_withCV(self):
         """
-        test to check functionality ML with CV
+        Testing ML Standalone with CV
         """
         print("\n\n" + "*"*50)
         print("Performing Unit Test: 'test_ml_standalone_withCV'")

@@ -1,4 +1,5 @@
 import warnings
+import copy
 from typing import List, Optional, Tuple
 
 import numpy as np  # type: ignore
@@ -62,8 +63,17 @@ class BuildML(BuildBase):
         ts_df = self.order_df(ts_df)
         
         # Convert to supervised learning problem
-        dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(ts_df)
-                
+        dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
+            ts_df=ts_df, drop_zero_var = True)
+
+        
+        print("Fitting ML model") 
+        print(f"Transformed DataFrame:")
+        print(dfxs.info())
+        print(f"Transformed Target: {self.transformed_target}")
+        print(f"Transformed Predictors: {self.transformed_preds}")
+
+        
         ## create Voting models
         estimators = []
 
@@ -175,23 +185,30 @@ class BuildML(BuildBase):
         return ts_df[[self.original_target_col] + self.original_preds]
 
 
-    def df_to_supervised(self, ts_df: pd.DataFrame) -> Tuple[pd.DataFrame, str, List[str]]:
+    def df_to_supervised(
+        self,
+        ts_df: pd.DataFrame,
+        drop_zero_var: bool = False) -> Tuple[pd.DataFrame, str, List[str]]:
         """
         :param ts_df: The time series dataframe that needs to be converted
         into a supervised learning problem.
         rtype: pd.DataFrame, str, List[str]
         """
-        dfxs, transformed_target_name, transformed_pred_names = convert_timeseries_dataframe_to_supervised(
+        dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
             ts_df[self.original_preds+[self.original_target_col]], 
             self.original_preds+[self.original_target_col],
             self.original_target_col,
             n_in=self.lags, n_out=0, dropT=False
         )
-        # TODO: Call create_time_seties_features on dfxs along with the name of the time_series_index 
-        # (index has to be converted to a column befoere passing to this)
-        # This will retuen the same dataframe with 10 extra columns like day of week, weekend
-        # Make your ML model  run like a charm.
-        # Need to add new column names to the transformed pred_names.
+        
+        # Append the time series features (derived from the time series index)
+        # None ts_column will use the index
+        dfxs = create_time_series_features(dtf=dfxs, ts_column=None, drop_zero_var=drop_zero_var)
+        
+        # Overwrite with new ones
+        # transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
+        transformed_pred_names = [x for x in list(dfxs) if x not in [transformed_target_name]]
+
         return dfxs, transformed_target_name, transformed_pred_names
 
     def refit(self, ts_df: pd.DataFrame) -> object:
@@ -204,7 +221,11 @@ class BuildML(BuildBase):
         
         self.check_model_built()
         
-        dfxs, _, _  = self.df_to_supervised(ts_df)
+        dfxs, _, _  = self.df_to_supervised(ts_df=ts_df, drop_zero_var=False)
+
+        print("Refit dfxs")
+        print(dfxs.info())
+
 
         y_train = dfxs[self.transformed_target]
         X_train = dfxs[self.transformed_preds]
@@ -299,8 +320,8 @@ class BuildML(BuildBase):
             # print(df_prepend)
 
             # Convert the appended dataframe to supervised learning problem
-            dfxs, _, _  = self.df_to_supervised(df_prepend)
-
+            dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
+            
             # Select only the predictors (transformed) from here
             X_test = dfxs[self.transformed_preds]    
             # print("X_test")
@@ -331,3 +352,134 @@ class BuildML(BuildBase):
             return res_frame['mean']
         else:
             return res_frame
+
+
+def create_time_series_features(dtf, ts_column: Optional[str]=None, drop_zero_var: bool = False):
+    """
+    This creates between 8 and 10 date time features for each date variable.
+    The number of features depends on whether it is just a year variable
+    or a year+month+day and whether it has hours and mins+secs. So this can
+    create all these features using just the date time column that you send in.
+    It returns the entire dataframe with added variables as output.
+    """
+    dtf = copy.deepcopy(dtf)
+    
+    try:
+        # ts_column = None assumes that that index is the time series index
+        reset_index = False
+        if ts_column is None:
+            reset_index = True
+            ts_column = dtf.index.name
+            dtf.reset_index(inplace=True)    
+        
+        ### In some extreme cases, date time vars are not processed yet and hence we must fill missing values here!
+        if dtf[ts_column].isnull().sum() > 0:
+            # missing_flag = True
+            new_missing_col = ts_column + '_Missing_Flag'
+            dtf[new_missing_col] = 0
+            dtf.loc[dtf[ts_column].isnull(),new_missing_col]=1
+            dtf[ts_column] = dtf[ts_column].fillna(method='ffill')
+        
+        if dtf[ts_column].dtype == float:
+            dtf[ts_column] = dtf[ts_column].astype(int)
+        
+        ### if we have already found that it was a date time var, then leave it as it is. Thats good enough!
+        
+        items = dtf[ts_column].apply(str).apply(len).values
+        #### In some extreme cases,
+        if all(items[0] == item for item in items):
+            if items[0] == 4:
+                ### If it is just a year variable alone, you should leave it as just a year!
+                dtf[ts_column] = pd.to_datetime(dtf[ts_column],format='%Y')
+            else:
+                ### if it is not a year alone, then convert it into a date time variable
+                dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
+        else:
+            dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
+        
+        dtf = create_ts_features(df=dtf, tscol=ts_column, drop_zero_var=drop_zero_var, return_original=True)
+        
+        # If you had reset the index earlier, set it back before returning
+        # to  make it consistent with the dataframe that was sent as input
+        if reset_index:
+            dtf.set_index(ts_column, inplace=True)
+
+    except Exception as e:
+        print(e)
+        print('Error in Processing %s column for date time features. Continuing...' %ts_column)
+    
+    return dtf
+
+
+def create_ts_features(
+    df,
+    tscol,
+    drop_zero_var: bool = True,
+    return_original: bool = True) -> pd.DataFrame:
+    """
+    This takes in input a dataframe and a date variable.
+    It then creates time series features using the pandas .dt.weekday kind of syntax.
+    It also returns the data frame of added features with each variable as an integer variable.
+
+    :param drop_zero_var If True, it will drop any features that have zero variance
+    :type drop_zero_var bool
+
+    :param return_original If True, it will return the original dataframe concatenated with the derived features
+    else, it will just return the derived features
+    :type return_original bool
+    
+    :rtype pd.DataFrame
+    """
+    df_org = copy.deepcopy(df)
+    dt_adds = []
+    try:
+        df[tscol+'_hour'] = df[tscol].dt.hour.astype(int)
+        df[tscol+'_minute'] = df[tscol].dt.minute.astype(int)
+        dt_adds.append(tscol+'_hour')
+        dt_adds.append(tscol+'_minute')
+    except:
+        print('    Error in creating hour-second derived features. Continuing...')
+    try:
+        df[tscol+'_dayofweek'] = df[tscol].dt.dayofweek.astype(int)
+        dt_adds.append(tscol+'_dayofweek')
+        df[tscol+'_quarter'] = df[tscol].dt.quarter.astype(int)
+        dt_adds.append(tscol+'_quarter')
+        df[tscol+'_month'] = df[tscol].dt.month.astype(int)
+        dt_adds.append(tscol+'_month')
+        df[tscol+'_year'] = df[tscol].dt.year.astype(int)
+        dt_adds.append(tscol+'_year')
+        df[tscol+'_dayofyear'] = df[tscol].dt.dayofyear.astype(int)
+        dt_adds.append(tscol+'_dayofyear')
+        df[tscol+'_dayofmonth'] = df[tscol].dt.day.astype(int)
+        dt_adds.append(tscol+'_dayofmonth')
+        df[tscol+'_weekofyear'] = df[tscol].dt.weekofyear.astype(int)
+        dt_adds.append(tscol+'_weekofyear')
+        weekends = (df[tscol+'_dayofweek'] == 5) | (df[tscol+'_dayofweek'] == 6)
+        df[tscol+'_weekend'] = 0
+        df.loc[weekends, tscol+'_weekend'] = 1
+        df[tscol+'_weekend'] = df[tscol+'_weekend'].astype(int)
+        dt_adds.append(tscol+'_weekend')
+    except:
+        print('    Error in creating date time derived features. Continuing...')
+    
+    derived = df[dt_adds].fillna(0).astype(int)
+
+    if drop_zero_var:
+        derived = derived[derived.columns[derived.describe().loc['std'] != 0]]
+
+    # print("==========AAA============")
+    # print("Derived")
+    # print(derived)
+
+    if return_original:
+        df = pd.concat([df_org, derived], axis=1)
+    else:
+        df = derived
+    
+    # print("==========BBB============")
+    # print("DF")
+    # print(df)
+
+    return df
+
+

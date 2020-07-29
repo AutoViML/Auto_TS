@@ -1,0 +1,18 @@
+-------------------------------
+version_number = '0.0.23.b3'
+-------------------------------
+More time series engineered features included in ML models
+Example, 'dayofweek', 'quarter', 'month', 'year', 'dayofyear', 'weekofyear', 'weekend', etc.
+
+
+-------------------------------
+version_number = '0.0.23.b2'
+-------------------------------
+Fixed bug in Propher rolling window horizon calculation
+
+
+-------------------------------
+version_number = '0.0.23'
+-------------------------------
+Prophet now includes multivariate modeling capability with rolling window
+SARIMAX also includes multivaroate modeling capability with rolling window
