@@ -2,7 +2,7 @@
 #Defining AUTO_TIMESERIES here
 ##########################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.23.b3'
+version_number = '0.0.23.b4'
 print(f"Running Auto Timeseries version: {version_number}")
 
 # Call by using:
@@ -183,24 +183,34 @@ class AutoTimeSeries:
         ts_column: Union[str, int, List[str]],
         target: Union[str, List[str]],
         cv: Optional[int]=None,
-        sep: str = ','):
+        sep: Optional[str]=None):
         """
         Train the AutoTimeseries object
         # TODO: Complete docstring
 
-        traindata: name of the file along with its data path or a dataframe. It accepts both.
+        :param traindata Path for the data file or a dataframe. It accepts both.
+        :type traindata Union[str, pd.DataFrame]
         
-        ts_column: name of the datetime column in your dataset (it could be name or number)
-        the target variable you are trying to predict (if there is more than one variable in your data set),
+        :param ts_column Name of the datetime column in your dataset.
+            If it is of type 'str', it will be treated as a column name.
+            If it is of type 'int', it will be treated as the column number.
+            If it is of type 'List', the first one will be picked and will be treated as the column name.
+        :type ts_column Union[str, int, List[str]]
         
-        target: name of the column you are trying to predict. Target could also be the only column in your data
-        
-        :param cv: Number of folds to use for cross validation. 
-        Number of observations in the Validation set for each fold = forecast period
-        If None, a single fold is used
+        :param target: Name of the column you are trying to predict. Target could also be the only column in your data
+
+        :type target Union[str, List[str]] 
+            If it is of type 'str', it will be treated as a column name.
+            If it is of type 'List', the first one will be picked and will be treated as the column name.
+                
+        :param cv Number of folds to use for cross validation. 
+            Number of observations in the Validation set for each fold = forecast period
+            If None, a single fold is used
         :type cv Optional[int]
         
-        sep: Note that optionally you can give a separator for the data in your file. Default is comman (",").
+        :param sep: Note that optionally you can give a separator for the data in your file. 
+            Default is None which treats the sep as a comma (datafile as a 'csv').
+        :type sep Optional[str]
         """
 
         start = time()
@@ -231,6 +241,9 @@ class AutoTimeSeries:
             print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
             ts_column = ts_column[0]
 
+
+        self.ts_column = ts_column
+
         # Check 'target' type
         if isinstance(target, list):
             target = target[0]
@@ -239,14 +252,18 @@ class AutoTimeSeries:
             print('    Target variable = %s' %target)
 
         print("Start of loading of data.....")
+
+        if sep is None:
+            sep = ','
+
         ########## This is where we start the loading of the data file ######################
         if isinstance(traindata, str):
             if traindata != '':
                 try:
-                    ts_df = load_ts_data(traindata, ts_column, sep, target)
+                    ts_df = load_ts_data(traindata, self.ts_column, sep, target)
                     if isinstance(ts_df, str):
                         print("""Time Series column '%s' could not be converted to a Pandas date time column.
-                            Please convert your input into a date-time column  and try again""" %ts_column)
+                            Please convert your input into a date-time column  and try again""" %self.ts_column)
                         return None
                     else:
                         print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
@@ -255,11 +272,11 @@ class AutoTimeSeries:
                     return None
         elif isinstance(traindata, pd.DataFrame):
             print('Input is data frame. Performing Time Series Analysis')
-            print(f"ts_column: {ts_column} sep: {sep} target: {target}")
-            ts_df = load_ts_data(traindata, ts_column, sep, target)
+            print(f"ts_column: {self.ts_column} sep: {sep} target: {target}")
+            ts_df = load_ts_data(traindata, self.ts_column, sep, target)
             if isinstance(ts_df, str):
                 print("""Time Series column '%s' could not be converted to a Pandas date time column.
-                    Please convert your input into a date-time column  and try again""" %ts_column)
+                    Please convert your input into a date-time column  and try again""" %self.ts_column)
                 return None
             else: 
                 print('    Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
@@ -267,16 +284,13 @@ class AutoTimeSeries:
             print('File name is an empty string. Please check your input and try again')
             return None
 
-        
-
-        # df_orig = copy.deepcopy(ts_df)
 
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
             target = list(ts_df)[0]
                 
                 
-        preds = [x for x in list(ts_df) if x not in [ts_column, target]]
+        preds = [x for x in list(ts_df) if x not in [self.ts_column, target]]
 
         ##################################################################################################
         ### Turn the time series index into a variable and calculate the difference.
@@ -285,7 +299,7 @@ class AutoTimeSeries:
         ##################################################################################################
         if ts_df.index.dtype=='int' or ts_df.index.dtype=='float':
             ### You must convert the ts_df index into a date-time series using the ts_column given ####
-            ts_df = ts_df.set_index(ts_column)  
+            ts_df = ts_df.set_index(self.ts_column)  
         ts_index = ts_df.index
 
         ## TODO: Be sure to also assign a frequency to the index column
@@ -431,7 +445,7 @@ class AutoTimeSeries:
                     ts_df=ts_df[[target]+preds],
                     target_col=target,
                     cv = cv,
-                    time_col=ts_column)
+                    time_col=self.ts_column)
 
                 # forecasts = forecast_df['yhat'].values
                 
@@ -782,6 +796,20 @@ class AutoTimeSeries:
         """
         Predict the results
         """
+
+        if X_exogen is not None:
+            # During training, we internally converted a column datetime index to the dataframe date time index
+            # We need to do the same while predicing for consistence
+            
+            if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
+                if self.ts_column in X_exogen.columns:
+                    X_exogen.set_index(self.ts_column, inplace=True)
+                elif self.ts_column in X_exogen.index.name:
+                    pass
+                else:
+                    print(f"(Error) Model to be used for prediction 'ML'. Hence, X_egogen' must have a column (or index) called '{self.ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
+                    return None
+        
         if model.lower() == 'best': 
             predictions = self.get_best_model_build().predict(
                 X_exogen = X_exogen,
@@ -795,7 +823,7 @@ class AutoTimeSeries:
                 simple=simple
             )
         else:
-            warnings.warn(f"Model of type '{model}' does not exist. No predictions will be made.")
+            print(f"(Error) Model of type '{model}' does not exist. No predictions will be made.")
             predictions = None 
 
         return predictions

@@ -503,8 +503,9 @@ class TestAutoTS(unittest.TestCase):
             traindata=self.train_multivar,
             ts_column=self.ts_column,
             target=self.target,
-            cv=None,
-            sep=self.sep)
+            cv=None # ,
+            #sep=self.sep
+            )
         test_predictions = automl_model.predict(
             X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
             forecast_period=self.forecast_period
@@ -854,8 +855,9 @@ class TestAutoTS(unittest.TestCase):
             traindata=self.train_univar,
             ts_column=self.ts_column,
             target=self.target,
-            cv=None,
-            sep=self.sep)
+            cv=None # ,
+            #sep=self.sep
+            )
         test_predictions = automl_model.predict(forecast_period=self.forecast_period)  
         
         ml_dict = automl_model.get_ml_dict()
@@ -1166,8 +1168,9 @@ class TestAutoTS(unittest.TestCase):
             traindata=self.train_multivar,
             ts_column=self.ts_column,
             target=self.target,
-            cv=None,
-            sep=self.sep)
+            cv=None #,
+            # sep=self.sep
+            )
         
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,
@@ -1282,8 +1285,9 @@ class TestAutoTS(unittest.TestCase):
             traindata=self.train_multivar,
             ts_column=self.ts_column,
             target=self.target,
-            cv=2,
-            sep=self.sep)
+            cv=2 #,
+            # sep=self.sep
+            )
         
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,

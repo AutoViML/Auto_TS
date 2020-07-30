@@ -68,10 +68,10 @@ class BuildML(BuildBase):
 
         
         print("Fitting ML model") 
-        print(f"Transformed DataFrame:")
-        print(dfxs.info())
-        print(f"Transformed Target: {self.transformed_target}")
-        print(f"Transformed Predictors: {self.transformed_preds}")
+        # print(f"Transformed DataFrame:")
+        # print(dfxs.info())
+        # print(f"Transformed Target: {self.transformed_target}")
+        # print(f"Transformed Predictors: {self.transformed_preds}")
 
         
         ## create Voting models
@@ -223,10 +223,6 @@ class BuildML(BuildBase):
         
         dfxs, _, _  = self.df_to_supervised(ts_df=ts_df, drop_zero_var=False)
 
-        print("Refit dfxs")
-        print(dfxs.info())
-
-
         y_train = dfxs[self.transformed_target]
         X_train = dfxs[self.transformed_preds]
 
@@ -252,7 +248,7 @@ class BuildML(BuildBase):
         """
 
         self.check_model_built()
-        
+
         if X_exogen is None:
             warnings.warn(
                 "You have not provided the exogenous variable in order to make the prediction. " + 
