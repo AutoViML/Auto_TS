@@ -419,16 +419,24 @@ class TestAutoTS(unittest.TestCase):
             # 640.458333, 505.043478, 494.571429, 494.571429
 
             # With more engineered features (AutoViML)
-            733.293931, 627.633457, 621.182141, 614.128809,
-            600.902623, 451.565462, 330.694427, 348.744604            
+            # 733.293931, 627.633457, 621.182141, 614.128809,
+            # 600.902623, 451.565462, 330.694427, 348.744604    
+            715.997991, 592.578743, 569.592338, 547.625097,
+            513.972428, 334.603163, 188.705675, 180.323713        
         ]
-        index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.to_datetime([
+        index = [
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+            ]
 
         self.forecast_gold_ml_multivar_external_test = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_ml_multivar_external_test.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test.index.name = 'Time Period'
 
         results = results[0:6] 
         index = index[0:6]            
@@ -439,6 +447,8 @@ class TestAutoTS(unittest.TestCase):
             )
         # self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
         self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_10.index.name = 'Time Period'
+
 
         ###############################
         #### MULTIVARIATE (CV = 2) ####
@@ -458,16 +468,24 @@ class TestAutoTS(unittest.TestCase):
             # 640.458333, 505.043478, 494.571429, 494.571429
 
             # With more engineered features (AutoViML)
-            652.85, 640.458333, 640.458333, 640.458333,
-            559.583333, 494.571429, 494.571429, 494.571429
+            # 652.85, 640.458333, 640.458333, 640.458333,
+            # 559.583333, 494.571429, 494.571429, 494.571429
+            652.85, 645.0, 645.0, 645.0,
+            640.458333, 505.043478, 485.444444, 485.444444
         ]
-        index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.to_datetime([
+        index = [
+            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+            ]
 
         self.forecast_gold_ml_multivar_external_test_cv = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_ml_multivar_external_test_cv.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_cv.index.name = 'Time Period'
 
         results = results[0:6] 
         index = index[0:6]            
@@ -478,8 +496,8 @@ class TestAutoTS(unittest.TestCase):
             )
         # self.forecast_gold_ml_multivar_external_test_10.name = 'mean'
         self.forecast_gold_ml_multivar_external_test_10_cv.name = 'mean'
+        self.forecast_gold_ml_multivar_external_test_10_cv.index.name = 'Time Period'
 
-    # @unittest.skip
     def test_auto_ts_multivar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with non seasonal SARIMAX)
