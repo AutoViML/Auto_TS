@@ -62,7 +62,7 @@ sns.set(style="white", color_codes=True)
 #######################################
 # Models
 from .models import build_pyflux_model
-from .models import BuildBase, BuildArima, BuildSarimax, BuildVAR, BuildML
+from .models import BuildBase, BuildArima, BuildSarimax, BuildAutoSarimax, BuildVAR, BuildML
 from .models.build_prophet import BuildProphet
 
 
@@ -175,7 +175,7 @@ class AutoTimeSeries:
         self.model_type = model_type
         self.verbose = verbose
 
-        self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML']
+        self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'auto_SARIMAX', 'VAR', 'ML']
 
     def fit(
         self,
@@ -589,6 +589,71 @@ class AutoTimeSeries:
             self.ml_dict[name]['model_build'] = model_build
 
         
+
+
+
+
+        if self.__any_contained_in_list(what_list=['auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
+            ############# Let's build a SARIMAX Model and get results ########################
+            print("\n")
+            print("="*50)
+            print("Building Auto SARIMAX Model")
+            print("="*50)
+            print("\n")
+
+            name = 'auto_SARIMAX'
+            # Placeholder for cases when model can not be built
+            score_val = np.inf 
+            model_build = None 
+            model = None
+            forecast_df_folds = None
+
+            print(colorful.BOLD + '\nRunning Auto SARIMAX Model...' + colorful.END)
+            try:
+                model_build = BuildAutoSarimax(
+                    scoring=stats_scoring,
+                    seasonality=self.seasonality,
+                    seasonal_period=self.seasonal_period,
+                    p_max=p_max, d_max=d_max, q_max=q_max,
+                    forecast_period=self.forecast_period,
+                    verbose=self.verbose
+                )
+                model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
+                    ts_df=ts_df[[target]+preds],  
+                    target_col=target,
+                    cv = cv                    
+                )
+
+                if self.score_type == 'rmse':
+                    score_val = rmse_folds
+                else:
+                    score_val = norm_rmse_folds
+            except Exception as e:  
+                print("Exception occured while building Auto SARIMAX model...")
+                print(e)
+                print('    Auto SARIMAX model error: predictions not available.')
+
+                                
+            self.ml_dict[name]['model'] = model
+            self.ml_dict[name]['forecast'] = forecast_df_folds
+            self.ml_dict[name][self.score_type] = score_val
+            self.ml_dict[name]['model_build'] = model_build
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         if self.__any_contained_in_list(what_list=['VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 

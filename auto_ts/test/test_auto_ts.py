@@ -331,6 +331,189 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_sarimax_multivar_external_test_10_s3_cv.name = 'mean'
 
 
+
+
+
+        #######################################################################################################
+
+        #####################################
+        #### Auto SARIMAX Golden Results ####
+        #####################################
+
+        #### UNIVARIATE ####
+
+        ## Internal (to AutoML) validation set results
+        # results = [
+        #     803.31673726, 762.46093997, 718.3581931,  711.42130506,
+        #     719.36254603, 732.70981867, 747.57645435, 762.47349398            
+        #     ]
+        # self.forecast_gold_sarimax_univar_internal_val = np.array(results)
+        self.rmse_gold_auto_sarimax_univar = 128.034697
+
+        ## External Test Set results
+        # results=[
+        #     737.281499, 718.144765, 672.007487, 618.321458,
+        #     578.990868, 567.799468, 586.467414, 625.619993
+        # ]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+        
+        # self.forecast_gold_sarimax_univar_external_test = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_univar_external_test.name = 'mean'
+
+        # results = results + [669.666326, 703.29552]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
+        #     '2015-01-01', '2015-02-01'
+        #     ])
+            
+        # self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
+
+        
+        #######################################
+        #### MULTIVARIATE (no seasonality) ####
+        #######################################
+                        
+        # ## Internal (to AutoML) validation set results
+        # results = [
+        #     772.268886, 716.337431, 686.167231, 739.269047,
+        #     704.280567, 757.450733, 767.711055, 785.960125
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
+        self.rmse_gold_auto_sarimax_multivar = 147.703077  
+
+        ## External Test Set results (With Multivariate columns accepted)
+        # results = [
+        #     750.135204, 806.821297, 780.232195, 743.309074,
+        #     724.400616, 683.117893, 673.696113, 686.807075
+        # ]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+        
+        # self.forecast_gold_sarimax_multivar_external_test = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
+
+        # results = results[0:6] 
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test_10.name = 'mean'
+
+        ################################################################################
+        #### MULTIVARIATE (with seasonality = True, Seasonal Period = 12 CV = None) ####
+        ################################################################################
+
+        ## Internal (to AutoML) validation set results (with seasonality = True, Seasonal Period = 12)
+        # # Without CV
+        # results = [
+        #     726.115602, 646.028979, 657.249936, 746.752393,
+        #     732.813245, 749.435178, 863.356789, 903.168728 
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
+        self.rmse_gold_auto_sarimax_multivar_s12 = 90.083682
+
+        ## External Test Set results (With Multivariate columns accepted) (with seasonality = True, Seasonal Period = 12)
+        
+        # results = [
+        #     1006.134134, 779.874076, 420.461804, 724.042104,
+        #     1827.304601, 1204.070838, -2216.439611, -1278.974132
+        # ]
+
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+                
+        # self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
+
+        # results = results[0:6] 
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test_10_s12.name = 'mean'
+
+        #############################################################################
+        #### MULTIVARIATE (with seasonality = True, Seasonal Period = 3, CV = 2) ####
+        #############################################################################
+
+        ## Internal (to AutoML) validation set results 
+        
+        # results = [
+        #     119.260686, 540.623654, 230.040446, 364.088969,
+        #     470.581971, 105.559723, 84.335069, 110.757574 
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold1 = np.array(results)
+
+        # results = [
+        #     551.736392, 502.232401, 440.047123, 521.382176,
+        #     496.012325, 501.563083, 634.825011, 674.975611
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold2 = np.array(results)
+
+        self.rmse_gold_auto_sarimax_multivar_s12_cv = 268.191766
+        # self.rmse_gold_auto_sarimax_multivar_s3_cv_fold1 = 443.839435
+        # self.rmse_gold_auto_sarimax_multivar_s3_cv_fold2 = 34.542769
+
+
+        # ## External Test Set results 
+        # results = [
+        #     770.447134, 784.881945, 857.496478, 918.626627,
+        #     689.107408, 599.827292, 608.747367, 634.957579
+        # ]
+
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+                
+        # self.forecast_gold_sarimax_multivar_external_test_s3_cv = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test_s3_cv.name = 'mean'
+
+        # results = results[0:6] 
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10_s3_cv = pd.Series(
+        #         data = results,
+        #         index = index
+        #     )
+        # self.forecast_gold_sarimax_multivar_external_test_10_s3_cv.name = 'mean'
+
+
+
+
+
+
+
+
+
+
+
+
         #######################################################################################################
 
         ############################
@@ -533,11 +716,12 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['Prophet', 'ML', 'VAR', 'ARIMA', 'SARIMAX', 'PyFlux'],
+                'name':['Prophet', 'ML', 'VAR', 'auto_SARIMAX', 'ARIMA', 'SARIMAX', 'PyFlux'],
                 'rmse':[
                     self.rmse_gold_prophet_multivar_cv_fold2,
                     self.rmse_gold_ml_multivar,
                     self.rmse_gold_var_multivar,
+                    self.rmse_gold_auto_sarimax_multivar,
                     self.rmse_gold_arima_uni_multivar,
                     self.rmse_gold_sarimax_multivar,
                     math.inf
@@ -852,7 +1036,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
 
-    # @unittest.skip
     def test_auto_ts_univar_ns_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (univariate models with non seasonal SARIMAX)
@@ -882,9 +1065,10 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['Prophet', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
+                'name': ['Prophet', 'auto_SARIMAX', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
                 'rmse':[
                     self.rmse_gold_prophet_univar_cv_fold2,
+                    self.rmse_gold_auto_sarimax_univar,
                     self.rmse_gold_arima_uni_multivar,
                     self.rmse_gold_sarimax_univar,
                     math.inf,
@@ -1162,7 +1346,6 @@ class TestAutoTS(unittest.TestCase):
             "(Univar Test) ML RMSE does not match up with expected values."
         )
     
-    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1179,7 +1362,7 @@ class TestAutoTS(unittest.TestCase):
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=True, seasonal_period=12,
             # non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
-            model_type='SARIMAX',
+            model_type=['SARIMAX', 'auto_SARIMAX'],
             verbose=0)
         
         automl_model.fit(
@@ -1199,8 +1382,11 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['SARIMAX'],
-                'rmse':[self.rmse_gold_sarimax_multivar_s12]
+                'name':['auto_SARIMAX', 'SARIMAX'],
+                'rmse':[
+                    self.rmse_gold_auto_sarimax_multivar_s12,
+                    self.rmse_gold_sarimax_multivar_s12
+                ]
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -1279,7 +1465,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
-    # @unittest.skip
     def test_auto_ts_multivar_seasonal_SARIMAX_withCV(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1296,7 +1481,7 @@ class TestAutoTS(unittest.TestCase):
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
-            model_type='SARIMAX',
+            model_type=['SARIMAX', 'auto_SARIMAX'],
             verbose=0)
         
         automl_model.fit(
@@ -1316,8 +1501,11 @@ class TestAutoTS(unittest.TestCase):
         
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['SARIMAX'],
-                'rmse':[self.rmse_gold_sarimax_multivar_s12_cv]
+                'name':['SARIMAX', 'auto_SARIMAX'],
+                'rmse':[
+                    self.rmse_gold_sarimax_multivar_s12_cv,
+                    self.rmse_gold_auto_sarimax_multivar_s12_cv
+                ]
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -1406,7 +1594,6 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('SARIMAX').get('rmse')[1], 6), self.rmse_gold_sarimax_multivar_s3_cv_fold2,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
                
-    # @unittest.skip
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1422,19 +1609,24 @@ class TestAutoTS(unittest.TestCase):
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['SARIMAX', 'ML'],
+            model_type=['SARIMAX', 'auto_SARIMAX', 'ML'],
             verbose=0)
         automl_model.fit(
             traindata=self.train_multivar,
             ts_column=self.ts_column,
             target=self.target,
             cv=None,
-            sep=self.sep)
-        print(automl_model.get_leaderboard())
+            sep=self.sep
+        )
+        
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['ML', 'SARIMAX'],
-                'rmse': [self.rmse_gold_ml_multivar, self.rmse_gold_sarimax_multivar] 
+                'name': ['ML', 'auto_SARIMAX', 'SARIMAX'],
+                'rmse': [
+                    self.rmse_gold_ml_multivar,
+                    self.rmse_gold_auto_sarimax_multivar,
+                    self.rmse_gold_sarimax_multivar
+                ] 
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -1450,7 +1642,6 @@ class TestAutoTS(unittest.TestCase):
             target=self.target,
             cv=None,
             sep=self.sep)
-        print(automl_model.get_leaderboard())
         
         leaderboard_gold = pd.DataFrame(
             {
@@ -1473,7 +1664,6 @@ class TestAutoTS(unittest.TestCase):
             sep=self.sep)
         self.assertIsNone(status)
 
-    # @unittest.skip
     def test_passing_list_instead_of_str(self):
         """
         Tests passing models as a list insteasd of a string
@@ -1497,12 +1687,10 @@ class TestAutoTS(unittest.TestCase):
             target=[self.target],
             cv=None,
             sep=self.sep)
-        print(automl_model.get_leaderboard())
+        
         leaderboard_models = np.array(['ML', 'SARIMAX'])
-
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
-    # @unittest.skip
     def test_cv_retreival_plotting(self):
         """
         Tests CV Scores retreival and plotting
@@ -1540,7 +1728,6 @@ class TestAutoTS(unittest.TestCase):
         
         automl_model.plot_cv_scores()
 
-    # @unittest.skip
     def test_prophet_multivar_standalone_noCV(self):
         """
         test to check functionality Prophet with CV
@@ -1595,8 +1782,6 @@ class TestAutoTS(unittest.TestCase):
             model="Prophet"
         )
 
-        print(f"FB Prophet Predictions: {test_predictions}")
-
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
 
         # Simple forecast with forecast window != one used in training
@@ -1607,7 +1792,6 @@ class TestAutoTS(unittest.TestCase):
             model="Prophet")
         assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
 
-    # @unittest.skip
     def test_prophet_multivar_standalone_withCV(self):
         """
         test to check functionality Prophet with CV
@@ -1703,7 +1887,7 @@ class TestAutoTS(unittest.TestCase):
             target=self.target,
             cv=None,
             sep=self.sep) 
-        print(automl_model.get_leaderboard())
+        
 
     def test_ml_standalone_withCV(self):
         """
