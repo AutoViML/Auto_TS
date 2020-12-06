@@ -17,7 +17,7 @@ setuptools.setup(
     install_requires=[
         "ipython",
         "jupyter",
-        "pyflux",
+        "pmdarima",
         "pandas",
         "matplotlib",
         "seaborn",
