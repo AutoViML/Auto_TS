@@ -1,32 +1,6 @@
 ##########################################################
 #Defining AUTO_TIMESERIES here
 ##########################################################
-module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.24'
-print(f"Running Auto Timeseries version: {version_number}")
-
-# Call by using:
-#     import auto_ts as AT
-#     automl_model = AT.AutoTimeSeries(
-#         score_type='rmse',
-#         forecast_period=4,
-#         time_interval='Week',
-#         non_seasonal_pdq=None,
-#         seasonality=True,
-#         seasonal_period=52,
-#         model_type=['SARIMAX','ML'],
-#         verbose=0)
-# automl_model.fit(train, 'WeekDate', '9L Cases', ',')
-# automl_model.get_leaderboard()
-
-# To run all models (Stats, ML, FB Prophet, etc.) set model_type='best'""")
-
-# print("To remove previous versions, perform 'pip uninstall auto_ts'")
-# print('To get the latest version, perform "pip install auto_ts --no-cache-dir --ignore-installed"')
-
-
-
-
 import warnings
 from typing import List, Dict, Optional, Tuple, Union
 
@@ -70,7 +44,7 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
                    time_series_plot, print_static_rmse, print_dynamic_rmse
 
 
-class AutoTimeSeries:
+class auto_timeseries:
     def __init__(
         self,
         forecast_period: int,
@@ -81,10 +55,17 @@ class AutoTimeSeries:
         seasonal_period: int = 12,
         conf_int: float = 0.95,
         model_type: Union[str, List] = "stats",
-        verbose: int = 0
+        verbose: int = 0,
+        *args,
+        **kwargs
     ):
         """
-        Initialize an AutoTimeSeries object
+        ####################################################################################
+        ####                          Auto Time Series                                  ####
+        ####         Developed by Ram Seshadri & Expanded by Nikhil Gupta               ####
+        ####                        Python 3: 2018-2020                                 ####
+        ####################################################################################
+        Initialize an auto_timeseries object
 
         :forecast_period The number of time intervals ahead that you want to forecast
         :type forecast_period int
@@ -148,11 +129,6 @@ class AutoTimeSeries:
         :param verbose Indicates the verbosity of printing (Default = 0)
         :type verbose int
 
-        ####################################################################################
-        ####                          Auto Time Series                                  ####
-        ####                    Conceived and Developed by Ram Seshadri                 ####
-        ####                        All Rights Reserved                                 ####
-        ####################################################################################
         ##################################################################################################
         AUTO_TIMESERIES IS A COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES MANY
         TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
@@ -173,8 +149,16 @@ class AutoTimeSeries:
             model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
-
         self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'auto_SARIMAX', 'VAR', 'ML']
+
+        # new function.
+        if args:
+            for each_arg in args:
+                print(each_arg)
+        if kwargs:
+            for key, value in zip(kwargs.keys(), kwargs.values()):
+                if key == 'seasonal_PDQ':
+                    print('seasonal_PDQ argument is deprecated. Please remove the argument in future.')
 
     def fit(
         self,
@@ -184,7 +168,7 @@ class AutoTimeSeries:
         cv: Optional[int]=None,
         sep: Optional[str]=None):
         """
-        Train the AutoTimeseries object
+        Train the auto_timeseries object
         # TODO: Complete docstring
 
         :param traindata Path for the data file or a dataframe. It accepts both.
@@ -240,7 +224,7 @@ class AutoTimeSeries:
             print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
             ts_column = ts_column[0]
 
-        
+
         self.ts_column = ts_column
 
         # Check 'target' type
@@ -447,7 +431,7 @@ class AutoTimeSeries:
                     time_col=self.ts_column)
 
                 # forecasts = forecast_df['yhat'].values
-                
+
                 ##### Make sure that RMSE works, if not set it to np.inf  #########
                 if self.score_type == 'rmse':
                     score_val = rmse_folds
@@ -766,35 +750,44 @@ class AutoTimeSeries:
     def predict(
         self,
         model: str = 'best',
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
-        simple: bool = True) -> Optional[np.array]:
+        simple: bool = False) -> Optional[np.array]:
         """
         Predict the results
         """
+        if isinstance(model, pd.DataFrame):
+            ### in some cases, they may give just the test data, so don't mistake it for model
+            testdata, forecast_period = copy.deepcopy(model), copy.deepcopy(testdata)
+            model = "best"
 
-        if X_exogen is not None:
+        if testdata is not None:
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
 
             if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
-                if self.ts_column in X_exogen.columns:
-                    X_exogen.set_index(self.ts_column, inplace=True)
-                elif self.ts_column in X_exogen.index.name:
+                if self.ts_column in testdata.columns:
+                    testdata.set_index(self.ts_column, inplace=True)
+                elif self.ts_column in testdata.index.name:
                     pass
                 else:
                     print(f"(Error) Model to be used for prediction 'ML'. Hence, X_egogen' must have a column (or index) called '{self.ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
                     return None
+        else:
+            ### if there is no testdata, at least they must give forecast_period
+            if forecast_period is None:
+                print('If test_data is None, then forecast_period must be given')
+                return
 
         if model.lower() == 'best':
             predictions = self.get_best_model_build().predict(
-                X_exogen = X_exogen,
+                testdata = testdata,
                 forecast_period=forecast_period,
                 simple=simple
             )
         elif self.get_model_build(model) is not None:
             predictions = self.get_model_build(model).predict(
-                X_exogen = X_exogen,
+                testdata = testdata,
                 forecast_period=forecast_period,
                 simple=simple
             )
@@ -889,3 +882,17 @@ class AutoTimeSeries:
             in_list = [elem.lower() for elem in in_list]
 
         return all([True if elem in in_list else False for elem in what_list])
+#################################################################################
+module_type = 'Running' if  __name__ == "__main__" else 'Imported'
+version_number = '0.0.24'
+print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
+
+ats = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
+                time_interval='Month',
+                non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
+                model_type=['Prophet'],
+                verbose=2)
+ats.fit(traindata, ts_column,target)
+ats.predict(testdata, forecast_period)
+""")
+#################################################################################

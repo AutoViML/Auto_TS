@@ -24,7 +24,7 @@ logging.getLogger('fbprophet').setLevel(logging.WARNING)
 import pdb
 
 class BuildProphet(BuildBase):
-    def __init__(self, forecast_period, time_interval, 
+    def __init__(self, forecast_period, time_interval,
         scoring, verbose, conf_int):
         """
         Automatically build a Prophet Model
@@ -46,15 +46,15 @@ class BuildProphet(BuildBase):
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
         """
         Fits the model to the data
-        
+
         :param ts_df The time series data to be used for fitting the model
         :type ts_df pd.DataFrame
-        
+
         :param target_col The column name of the target time series that needs to be modeled.
         All other columns will be considered as exogenous variables (if applicable to method)
         :type target_col str
-        
-        :param cv: Number of folds to use for cross validation. 
+
+        :param cv: Number of folds to use for cross validation.
         Number of observations in the Validation set for each fold = forecast period
         If None, a single fold is used
         :type cv Optional[int]
@@ -62,10 +62,10 @@ class BuildProphet(BuildBase):
         :param time_col: Name of the time column in the dataset (needed by Prophet)
         Time column can also be the index, in which case, this would be the name of the index
         :type time_col str
-        
+
         :rtype object
         """
-        
+
         self.time_col = time_col
         self.original_target_col = target_col
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
@@ -81,13 +81,13 @@ class BuildProphet(BuildBase):
 
         ##### if you are going to use matplotlib with prophet data, it gives an error unless you do this.
         pd.plotting.register_matplotlib_converters()
-        
+
         #### You have to import Prophet if you are going to build a Prophet model #############
         actual = 'y'
         timecol = 'ds'
 
         df = self.prep_col_names_for_prophet(ts_df=ts_df, test=False)
-        
+
         if self.univariate:
             dft = df[[timecol, actual]]
         else:
@@ -97,14 +97,13 @@ class BuildProphet(BuildBase):
         if self.verbose >= 1:
             print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
-        
+
         if self.univariate is False:
             for name in self.original_preds:
                 self.model.add_regressor(name)
-        
 
         self.model.fit(dft)
-        
+
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
 
@@ -112,16 +111,22 @@ class BuildProphet(BuildBase):
             print(f"NumObs: {num_obs}")
             print(f"NFOLDS: {NFOLDS}")
 
-        total_days = (dft['ds'].max() - dft['ds'].min()).days
+        if self.time_interval in ['days','weeks','months','years']:
+            total_days = (dft['ds'].max() - dft['ds'].min()).days
+        else:
+            ### if time period is shorter than days, it must be calculated in hours or mins.
+            total_days = (dft['ds'].max() - dft['ds'].min()).days
+
         if self.verbose >= 2:
             print("Variables used for calculating initial, horizon, period...")
             print(f"Forcast Period: {self.forecast_period}")
             print(f"Max Date: {dft['ds'].max()}")
             print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
 
-        #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days 
-        horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
-        
+        #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days
+        #horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
+        horizon_days = int(total_days/3)
+
         #initial_days = total_days - NFOLDS * horizon_days
         initial_days = min(int(0.5*total_days),int(3*horizon_days)) ## this is recommended by FB Prophet
         #period_days = horizon_days
@@ -133,11 +138,11 @@ class BuildProphet(BuildBase):
             print(f"Initial Days: {initial_days}")
             print(f"Period Days: {period_days}")
             print(f"Horizon Days: {horizon_days}")
-        
+
         OFFSET = 0  # 5 days  # adjusting some days to take into account uneven months.
-        initial = str(initial_days-OFFSET) + " D"  
-        period = str(period_days) + " D" 
-        horizon = str(horizon_days+OFFSET) + " D" 
+        initial = str(initial_days-OFFSET) + " D"
+        period = str(period_days) + " D"
+        horizon = str(horizon_days+OFFSET) + " D"
 
         if self.verbose >= 2:
             print(f"OFFSET: {OFFSET}")
@@ -145,15 +150,17 @@ class BuildProphet(BuildBase):
             print(f"period: {period}")
             print(f"horizon: {horizon}")
 
-        # First  Fold --> 
+        # First  Fold -->
         #   Train Set: 0:initial
         #   Test Set: initial:(initial+horizon)
-        # Second Fold --> 
+        # Second Fold -->
         #   Train Set: (period):(initial+period)
         #   Test Set: (initial+period):(initial+horizon+ period)
         # Format: '850 D'
-        df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon) 
-        
+
+        df_cv = cross_validation(self.model, initial=initial, period=period,
+                            horizon=horizon)
+
         if self.verbose >= 1:
             print("Prophet CV DataFrame")
             print(performance_metrics(df_cv).head())
@@ -165,7 +172,7 @@ class BuildProphet(BuildBase):
         num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 
         # https://stackoverflow.com/questions/54405704/check-if-all-values-in-dataframe-column-are-the-same
-        a = num_obs_folds.to_numpy() 
+        a = num_obs_folds.to_numpy()
         all_equal = (a[0] == a).all()
 
         if not all_equal:
@@ -175,7 +182,7 @@ class BuildProphet(BuildBase):
 
         rmse_folds = []
         norm_rmse_folds = []
-        forecast_df_folds = [] 
+        forecast_df_folds = []
 
         df_cv_grouped = df_cv.groupby('cutoff')
         for (_, lpDf) in df_cv_grouped:
@@ -200,7 +207,7 @@ class BuildProphet(BuildBase):
         #     self.model.plot_components(forecast)
         # except:
         #     print('Error in FB Prophet components forecast. Continuing...')
-        
+
         #rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
 
         #return self.model, forecast, rmse, norm_rmse
@@ -217,20 +224,20 @@ class BuildProphet(BuildBase):
 
     def predict(
         self,
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
-        simple: bool = True,
+        simple: bool = False,
         return_train_preds: bool = False) -> NDFrame:
         """
         Return the predictions
-        :param X_exogen The test dataframe containing the exogenous varaiables to be used for predicton.
-        :type X_exogen Optional[pd.DataFrame]
+        :param testdata The test dataframe containing the exogenous varaiables to be used for predicton.
+        :type testdata Optional[pd.DataFrame]
         :param forecast_period The number of periods to make a prediction for.
         :type forecast_period Optional[int]
-        :param simple If True, this method just returns the predictions. 
+        :param simple If True, this method just returns the predictions.
         If False, it will return the standard error, lower and upper confidence interval (if available)
         :type simple bool
-        :param return_train_preds If True, this method just returns the train predictions along with test predictions. 
+        :param return_train_preds If True, this method just returns the train predictions along with test predictions.
         If False, it will return only test predictions
         :type return_train_preds bool
         :rtype NDFrame
@@ -242,10 +249,10 @@ class BuildProphet(BuildBase):
         # https://towardsdatascience.com/forecast-model-tuning-with-additional-regressors-in-prophet-ffcbf1777dda
         """
 
-        # if X_exogen is not None:
+        # if testdata is not None:
         #     warnings.warn(
-        #         "Multivariate models are not supported by the AutoML prophet module." +  
-        #         "Univariate predictions will be returned for now."                
+        #         "Multivariate models are not supported by the AutoML prophet module." +
+        #         "Univariate predictions will be returned for now."
         #     )
 
         # Prophet is a Little Complicated - You need 2 steps to Forecast
@@ -261,18 +268,18 @@ class BuildProphet(BuildBase):
         ##   1. Create a dataframe with datetime index of past and future dates
         print('Building Forecast dataframe. Forecast Period = %d' % self.forecast_period)
         # Next we ask Prophet to make predictions for those dates in the dataframe along with predn intervals
-        
+
         time_int = self.get_prophet_time_interval(for_cv=False)
-        
+
         if self.univariate:
             if forecast_period is None:
                 forecast_period = self.forecast_period
-            
+
             future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
         else:
-            future = self.prep_col_names_for_prophet(ts_df=X_exogen, test=True)
-            
-                    
+            future = self.prep_col_names_for_prophet(ts_df=testdata, test=True)
+
+
         forecast = self.model.predict(future)
 
         # Return values for the forecast period only
@@ -280,14 +287,20 @@ class BuildProphet(BuildBase):
             if return_train_preds:
                 forecast = forecast['yhat']
             else:
-                forecast = forecast.iloc[-forecast_period:]['yhat']
-            
+                if forecast_period is None:
+                    forecast = forecast['yhat']
+                else:
+                    forecast = forecast.iloc[-forecast_period:]['yhat']
+
         else:
             if return_train_preds:
                 forecast = forecast
             else:
-                forecast = forecast.iloc[-forecast_period:]
-            
+                if forecast_period is None:
+                    forecast = forecast['yhat']
+                else:
+                    forecast = forecast.iloc[-forecast_period:]
+
         return forecast
 
     # TODO: Update: This method will not be used in CV since it is in D always.
@@ -379,4 +392,3 @@ def plot_prophet(dft, forecastdf):
     ax1.set_xlabel('Date Time')
     plt.show(block=False)
     return viz_df
-
