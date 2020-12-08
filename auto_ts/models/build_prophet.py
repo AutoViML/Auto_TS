@@ -13,6 +13,8 @@ from ..utils import print_dynamic_rmse
 
 from fbprophet import Prophet # type: ignore
 from fbprophet.diagnostics import cross_validation
+from fbprophet.diagnostics import performance_metrics
+from fbprophet.plot import plot_cross_validation_metric
 
 from .build_base import BuildBase
 
@@ -63,7 +65,7 @@ class BuildProphet(BuildBase):
         
         :rtype object
         """
-
+        
         self.time_col = time_col
         self.original_target_col = target_col
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
@@ -102,7 +104,7 @@ class BuildProphet(BuildBase):
         
 
         self.model.fit(dft)
-
+        
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
 
@@ -118,10 +120,12 @@ class BuildProphet(BuildBase):
             print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
 
         #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days 
-        horizon_days = (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days 
+        horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
         
-        initial_days = total_days - NFOLDS * horizon_days
-        period_days = horizon_days
+        #initial_days = total_days - NFOLDS * horizon_days
+        initial_days = min(int(0.5*total_days),int(3*horizon_days)) ## this is recommended by FB Prophet
+        #period_days = horizon_days
+        period_days = min(int(0.2*initial_days),int(0.5*horizon_days)) # as recommended by FB Prophet
 
         if self.verbose >= 2:
             print("Unadjusted Prophet CV Diagnostics:")
@@ -150,9 +154,13 @@ class BuildProphet(BuildBase):
         # Format: '850 D'
         df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon) 
         
-        if self.verbose >= 2:
+        if self.verbose >= 1:
             print("Prophet CV DataFrame")
-            print(df_cv)
+            print(performance_metrics(df_cv).head())
+        if self.verbose >= 2:
+            print("Prophet plotting CV Metrics")
+            fig = plot_cross_validation_metric(df_cv, metric=self.scoring)
+            plt.show();
 
         num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 

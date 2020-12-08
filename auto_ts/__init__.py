@@ -240,7 +240,7 @@ class AutoTimeSeries:
             print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
             ts_column = ts_column[0]
 
-
+        
         self.ts_column = ts_column
 
         # Check 'target' type
@@ -447,7 +447,7 @@ class AutoTimeSeries:
                     time_col=self.ts_column)
 
                 # forecasts = forecast_df['yhat'].values
-
+                
                 ##### Make sure that RMSE works, if not set it to np.inf  #########
                 if self.score_type == 'rmse':
                     score_val = rmse_folds
