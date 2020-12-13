@@ -11,7 +11,7 @@
 <li>pip install git+git://github.com/AutoViML/Auto_TS</li>
 </ol>
 <h2 id="run">RUN</h2>
-<p>auto_ts.Auto_Timeseries(traindata, ts_column,<br>
+<p>auto_ts.auto_timeseries(traindata, ts_column,<br>
 target, sep,  score_type=‘rmse’, forecast_period=5,<br>
 time_interval=‘Month’, non_seasonal_pdq=None, seasonality=False,<br>
 seasonal_period=12, seasonal_PDQ=None, model_type=‘stats’,<br>

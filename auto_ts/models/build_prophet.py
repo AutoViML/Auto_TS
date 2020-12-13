@@ -123,6 +123,7 @@ class BuildProphet(BuildBase):
             print(f"Max Date: {dft['ds'].max()}")
             print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
 
+        ## we will be using the recommended defaults for these form FB Prophet page
         #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days
         #horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
         horizon_days = int(total_days/3)

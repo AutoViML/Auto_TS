@@ -884,7 +884,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.24'
+version_number = '0.0.25'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 
 ats = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
