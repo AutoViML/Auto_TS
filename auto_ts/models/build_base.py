@@ -17,27 +17,27 @@ class BuildBase(ABC):
         self.original_target_col: str = ""
         self.original_preds: List[str] = []
 
- 
+
     @abstractmethod
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]) -> object:
         """
         Fits the model to the data
-        
+
         :param ts_df The time series data to be used for fitting the model
         :type ts_df pd.DataFrame
-        
+
         :param target_col The column name of the target time series that needs to be modeled.
         All other columns will be considered as exogenous variables (if applicable to method)
         :type target_col str
-        
-        :param cv: Number of folds to use for cross validation. 
+
+        :param cv: Number of folds to use for cross validation.
         Number of observations in the Validation set for each fold = forecast period
         If None, a single fold is used
         :type cv Optional[int]
-        
+
         :rtype object
         """
-        
+
 
     @abstractmethod
     def refit(self, ts_df: pd.DataFrame) -> object:
@@ -52,16 +52,16 @@ class BuildBase(ABC):
     @abstractmethod
     def predict(
         self,
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = True) -> NDFrame:
         """
         Return the predictions
-        :param X_exogen The test dataframe containing the exogenous varaiables to be used for predicton.
-        :type X_exogen Optional[pd.DataFrame]
+        :param testdata The test dataframe containing the exogenous varaiables to be used for predicton.
+        :type testdata Optional[pd.DataFrame]
         :param forecast_period The number of periods to make a prediction for.
         :type forecast_period Optional[int]
-        :param simple If True, this method just returns the predictions. 
+        :param simple If True, this method just returns the predictions.
         If False, it will return the standard error, lower and upper confidence interval (if available)
         :type simple bool
         :rtype NDFrame
@@ -81,4 +81,3 @@ class BuildBase(ABC):
             NFOLDS = cv
 
         return NFOLDS
-

@@ -60,13 +60,13 @@ class BuildArimaBase(BuildBase):
         else:
             self.univariate = False
 
-           
+
         ##########################################
         #### Find best pdq and PDQ parameters ####
         ##########################################
-        
+
         # NOTE: We use the entire dataset to compute the pdq and PDQ parameters.
-        # Then we use the selected "best" parameters to check how well it 
+        # Then we use the selected "best" parameters to check how well it
         # generalizes across the various folds (which may even be 1)
 
         # ## Added temporarily
@@ -80,7 +80,7 @@ class BuildArimaBase(BuildBase):
             print(f"P: {self.best_P}, D: {self.best_D}, Q: {self.best_Q}")
             print(f"Seasonality: {self.seasonality} Seasonal Period: {self.seasonal_period}")
 
-        
+
         #######################################
         #### Cross Validation across Folds ####
         #######################################
@@ -88,7 +88,7 @@ class BuildArimaBase(BuildBase):
         rmse_folds = []
         norm_rmse_folds = []
         forecast_df_folds = []
-        
+
         NFOLDS = self.get_num_folds_from_cv(cv)
         cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
@@ -111,7 +111,7 @@ class BuildArimaBase(BuildBase):
 
             if self.verbose >= 1:
                 print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
-            
+
             try:
                 self.model = bestmodel.fit(disp=False)
                 if self.verbose >= 1:
@@ -120,13 +120,13 @@ class BuildArimaBase(BuildBase):
                 print(e)
                 print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
                 return bestmodel, None, np.inf, np.inf
-            
+
             if self.verbose >= 1:
                 try:
                     self.model.plot_diagnostics(figsize=(16, 12))
                 except:
                     print('Error: SARIMAX plot diagnostic. Continuing...')
-            
+
             ### this is needed for static forecasts ####################
             # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
             y_truth = ts_train[:]  #  TODO: Note that this is only univariate analysis
@@ -148,7 +148,7 @@ class BuildArimaBase(BuildBase):
                     concatenated['predicted'].values[self.best_d:],
                     verbose=self.verbose
                 )
-            
+
             ########### Dynamic One Step Ahead Forecast ###########################
             ### Dynamic Forecats are a better representation of true predictive power
             ## since they only use information from the time series up to a certain point,
@@ -173,15 +173,15 @@ class BuildArimaBase(BuildBase):
                 ax.set_ylabel('Levels')
                 plt.legend()
                 plt.show(block=False)
-            
+
             # Extract the dynamic predicted and true values of our time series
-            forecast_df = self.predict(X_exogen=ts_test[self.original_preds], simple=False)
+            forecast_df = self.predict(testdata=ts_test[self.original_preds], simple=False)
             forecast_df_folds.append(forecast_df)
 
             # Extract Metrics
             if self.verbose >= 1:
                 print('Dynamic %d-Period Forecast:' % (self.forecast_period))
-                
+
             rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], forecast_df['mean'].values, ts_train[self.original_target_col], toprint=self.verbose)
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
@@ -201,7 +201,7 @@ class BuildArimaBase(BuildBase):
 
         # print(f"SARIMAX Norm RMSE (Original): {norm_rmse_folds}")
         # print(f"SARIMAX Norm RMSE (New): {norm_rmse_folds2}")
-        
+
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
@@ -209,7 +209,7 @@ class BuildArimaBase(BuildBase):
 
         if self.verbose >= 1:
             print(self.model.summary())
-        
+
         # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2
 
@@ -230,7 +230,7 @@ class BuildArimaBase(BuildBase):
             print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
         except Exception as e:
             print(e)
-            
+
         return self
 
     @abstractmethod
@@ -239,21 +239,21 @@ class BuildArimaBase(BuildBase):
         Given a dataset, finds the best parameters using the settings in the class
         Need to set the following parameters in the child class
         self.best_p, self.best_d, self.best_q
-        self.best_P, self.best_D, self.best_Q 
+        self.best_P, self.best_D, self.best_Q
         """
-        
-        
+
+
 
     def get_best_model(self, data: pd.DataFrame):
         """
-        Returns the 'unfit' SARIMAX model with the given dataset and the 
+        Returns the 'unfit' SARIMAX model with the given dataset and the
         selected best parameters. This can be used to fit or refit the model.
         """
 
         # In order to get forecasts to be in the same value ranges of the orig_endogs, you
         # must  set the simple_differencing = False and the start_params to be the same as ARIMA.
         # That is the only way to ensure that the output of this model iscomparable to other ARIMA models
-        
+
         if not self.seasonality:
             if self.univariate:
                 bestmodel = SARIMAX(
@@ -305,37 +305,37 @@ class BuildArimaBase(BuildBase):
 
     def predict(
         self,
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = True) -> NDFrame:
         """
         Return the predictions
         """
         # Extract the dynamic predicted and true values of our time series
-        
+
         if self.univariate:
             if forecast_period is None:
                 # use the forecast period used during training
                 forecast_period = self.forecast_period
         else:
-            if X_exogen is None:
-                raise ValueError("SARIMAX needs X_exogen to make predictions, but this was not provided. Please provide to proceed.")
-                        
-            if forecast_period != X_exogen.shape[0]:
-                warnings.warn("Forecast Period is not equal to the number of observations in X_exogen. The forecast period will be assumed to be the number of observations in X_exogen.")
-            
-            forecast_period = X_exogen.shape[0]
-        
+            if testdata is None:
+                raise ValueError("SARIMAX needs testdata to make predictions, but this was not provided. Please provide to proceed.")
+
+            if forecast_period != testdata.shape[0]:
+                warnings.warn("Forecast Period is not equal to the number of observations in testdata. The forecast period will be assumed to be the number of observations in testdata.")
+
+            forecast_period = testdata.shape[0]
+
             try:
-                X_exogen = X_exogen[self.original_preds]
+                testdata = testdata[self.original_preds]
             except Exception as e:
                 print(e)
-                raise ValueError("Some exogenous columns that were used during training are missing in X_exogen. Please make sure you are passing the correct exogenous columns.")
+                raise ValueError("Some exogenous columns that were used during training are missing in testdata. Please make sure you are passing the correct exogenous columns.")
 
         if self.univariate:
             res = self.model.get_forecast(forecast_period)
         else:
-            res = self.model.get_forecast(forecast_period, exog=X_exogen)
+            res = self.model.get_forecast(forecast_period, exog=testdata)
 
         res_frame = res.summary_frame()
 
@@ -345,8 +345,5 @@ class BuildArimaBase(BuildBase):
         else:
             # Pass as is
             pass
-            
+
         return res_frame
-        
-
-

@@ -34,7 +34,7 @@ class BuildArima():
         self.method = method
         self.verbose = verbose
         self.model = None
- 
+
     def fit(self, ts_df):
         """
         Build a Time Series Model using SARIMAX from statsmodels.
@@ -49,7 +49,7 @@ class BuildArima():
         Log-likelihood. Optionally, you can give it a fit method as one of the following:
         {'css-mle','mle','css'}
         """
-       
+
         solver = 'lbfgs'  # default
 
         p_min = 0
@@ -153,7 +153,7 @@ class BuildArima():
             ## and after that, forecasts are generated using values from previous forecasted
             ## time points.
             #################################################################################
-            
+
             # TODO: Check if this can be changed to use predict function directly.
             start_date = ts_df.index[-self.forecast_period]
             end_date = ts_df.index[-1]
@@ -180,7 +180,7 @@ class BuildArima():
         print(self.model.summary())
 
         res_frame = self.predict(simple=False)
-        
+
         if self.verbose == 1:
             print('Model Forecast(s):\n', res_frame)
         rmse, norm_rmse = print_dynamic_rmse(ts_test, pred_dynamic, ts_train)
@@ -188,7 +188,7 @@ class BuildArima():
 
     def predict(
         self,
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = True) -> NDFrame:
         """
@@ -199,7 +199,7 @@ class BuildArima():
 
         # TODO: Add processing of 'simple' argument and return type
 
-        if X_exogen is not None:
+        if testdata is not None:
             warnings.warn(
                 "You have passed exogenous variables to make predictions for a ARIMA model." +
                 "ARIMA models are univariate models and hence these exogenous variables will be ignored for these predictions."
@@ -211,7 +211,7 @@ class BuildArima():
         if forecast_period is None:
             # use the forecast period used during training
             forecast_period = self.forecast_period
-       
+
         y_forecasted = self.model.forecast(forecast_period)
 
 
@@ -240,6 +240,3 @@ class BuildArima():
             res_frame.drop('mean_ci', axis=1, inplace=True)
 
         return res_frame
-
-
-

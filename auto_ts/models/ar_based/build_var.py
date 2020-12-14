@@ -31,8 +31,8 @@ class BuildVAR():
         self.q_max = q_max
         self.verbose = verbose
         self.model = None
-               
-    def fit(self, ts_df): 
+
+    def fit(self, ts_df):
         """
         This builds a VAR model given a multivariate time series data frame with time as the Index.
         Note that the input "y_train" can be a data frame with one column or multiple cols or a
@@ -43,7 +43,7 @@ class BuildVAR():
         You can give it any of the following metrics as criteria: AIC, BIC, Deviance, Log-likelihood.
         You can give the highest order values for p and q. Default is set to 3 for both.
         """
-        
+
         ts_df = ts_df[:]
         #### dmax here means the column number of the data frame: it serves as a placeholder for columns
         dmax = ts_df.shape[1]
@@ -62,7 +62,7 @@ class BuildVAR():
 
         for d_val in range(1, dmax):
             # Takes the target column and one other endogenous column at a time
-            # and makes a predictino based on that. Then selects the best 
+            # and makes a predictino based on that. Then selects the best
             # engogenous column at the end.
             y_train = ts_train.iloc[:, [0, d_val]]
             print('\nAdditional Variable in VAR model = %s' % cols[d_val])
@@ -112,22 +112,22 @@ class BuildVAR():
             self.model.plot_diagnostics(figsize=(16, 12))
             ax = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
             ax.set(xlabel='Time Steps', title='Impulse Response Functions')
-        
+
         res_df = self.predict(simple=False)
-   
+
         rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:,0], res_df['mean'].values, ts_train.iloc[:,0])
         return self.model, res_df, rmse, norm_rmse
 
     def predict(
         self,
-        X_exogen: Optional[pd.DataFrame]=None,
+        testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = True) -> NDFrame:
         """
         Return the predictions
         """
 
-        if X_exogen is not None:
+        if testdata is not None:
             warnings.warn(
                 "You have passed exogenous variables to make predictions for a VAR model." +
                 "VAR model will predict all exogenous variables automatically, hence your passed values will not be used."
@@ -137,8 +137,8 @@ class BuildVAR():
         if forecast_period is None:
             # use the forecast period used during training
             forecast_period = self.forecast_period
-            
-        # y_forecasted = self.model.forecast(forecast_period) 
+
+        # y_forecasted = self.model.forecast(forecast_period)
 
         res = self.model.get_forecast(forecast_period)
         res_frame = res.summary_frame()
@@ -149,8 +149,5 @@ class BuildVAR():
         else:
             # Pass as is
             pass
-            
-        return res_frame
 
-        
-        
+        return res_frame

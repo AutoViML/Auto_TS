@@ -20,8 +20,8 @@ seaborn
 scikit-learn
 statsmodels
 
-# PyFlux
-pyflux
+# Auto-Arima
+pmdarima
 
 # Facebook Prophet
 fbprophet
