@@ -167,7 +167,7 @@ class BuildProphet(BuildBase):
             print(performance_metrics(df_cv).head())
         if self.verbose >= 2:
             print("Prophet plotting CV Metrics")
-            fig = plot_cross_validation_metric(df_cv, metric=self.scoring)
+            _ = plot_cross_validation_metric(df_cv, metric=self.scoring)
             plt.show();
 
         num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
@@ -186,11 +186,11 @@ class BuildProphet(BuildBase):
         forecast_df_folds = []
 
         df_cv_grouped = df_cv.groupby('cutoff')
-        for (_, lpDf) in df_cv_grouped:
-            rmse, norm_rmse = print_dynamic_rmse(lpDf['y'], lpDf['yhat'], dft['y'])
+        for (_, loop_df) in df_cv_grouped:
+            rmse, norm_rmse = print_dynamic_rmse(loop_df['y'], loop_df['yhat'], dft['y'])
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
-            forecast_df_folds.append(lpDf)
+            forecast_df_folds.append(loop_df)
 
         # print(f"RMSE Folds: {rmse_folds}")
         # print(f"Norm RMSE Folds: {norm_rmse_folds}")
@@ -228,10 +228,10 @@ class BuildProphet(BuildBase):
         testdata: Optional[pd.DataFrame]=None,
         forecast_period: Optional[int] = None,
         simple: bool = False,
-        return_train_preds: bool = False) -> NDFrame:
+        return_train_preds: bool = False) -> Optional[NDFrame]:
         """
         Return the predictions
-        :param testdata The test dataframe containing the exogenous varaiables to be used for predicton.
+        :param testdata The test dataframe containing the exogenous variables to be used for prediction.
         :type testdata Optional[pd.DataFrame]
         :param forecast_period The number of periods to make a prediction for.
         :type forecast_period Optional[int]
@@ -268,7 +268,7 @@ class BuildProphet(BuildBase):
         ### This is where we take the first steps to make a forecast using Prophet:
         ##   1. Create a dataframe with datetime index of past and future dates
         print('Building Forecast dataframe. Forecast Period = %d' % self.forecast_period)
-        # Next we ask Prophet to make predictions for those dates in the dataframe along with predn intervals
+        # Next we ask Prophet to make predictions for those dates in the dataframe along with prediction intervals
 
         time_int = self.get_prophet_time_interval(for_cv=False)
 
@@ -278,8 +278,12 @@ class BuildProphet(BuildBase):
 
             future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
         else:
+            if testdata is None:
+                print("(Error): Model is Multivariate, but X_egogen not provided for prediction.")
+                return None
+            elif forecast_period is None:
+                forecast_period = testdata.shape[0]
             future = self.prep_col_names_for_prophet(ts_df=testdata, test=True)
-
 
         forecast = self.model.predict(future)
 
@@ -388,7 +392,7 @@ def plot_prophet(dft, forecastdf):
     ax1.plot(viz_df['yhat'], color='green')
     ax1.fill_between(viz_df.index, viz_df['yhat_lower'], viz_df['yhat_upper'],
                      alpha=0.2, color="darkgreen")
-    ax1.set_title('Actuals (Red) vs Forecast (Green)')
+    ax1.set_title('Actual (Red) vs Forecast (Green)')
     ax1.set_ylabel('Values')
     ax1.set_xlabel('Date Time')
     plt.show(block=False)

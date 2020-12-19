@@ -6,7 +6,6 @@ from typing import List, Dict, Optional, Tuple, Union
 
 from datetime import datetime
 import copy
-import pdb
 from collections import defaultdict
 import operator
 from time import time
@@ -73,7 +72,7 @@ class auto_timeseries:
         :score_type: The metric used for scoring the models. Default = 'rmse'
         Currently only 2 are supported:
         (1) RMSE
-        (2) Normalized RMSE (ratio of RMSE to the standard deviation of actuals)
+        (2) Normalized RMSE (ratio of RMSE to the standard deviation of actual)
         :type str
 
         :param time_interval Used to indicate the frequency at which the data is collected
@@ -81,7 +80,7 @@ class auto_timeseries:
         the seasonal period for SARIMAX in case it is not provided by the user (None)
         Allowed values are:
           (1) 'months', 'month', 'm' for monthly frequency data
-          (2) 'days', 'daily', 'd' for daily freuency data
+          (2) 'days', 'daily', 'd' for daily frequency data
           (3) 'weeks', 'weekly', 'w' for weekly frequency data
           (4) 'qtr', 'quarter', 'q' for quarterly frequency data
           (5) 'years', 'year', 'annual', 'y', 'a' for yearly frequency data
@@ -100,7 +99,7 @@ class auto_timeseries:
         :param seasonal_period: Indicates the seasonality period in the data.
         Used in the building of the SARIMAX model only at this time.
         There is no impact of this argument if seasonality is set to False
-        If None, the program will try to inder this from the time_interval (frequency) of the data
+        If None, the program will try to infer this from the time_interval (frequency) of the data
         (1) If frequency = Monthly, then seasonal_period = 12
         (1) If frequency = Daily, then seasonal_period = 30
         (1) If frequency = Weekly, then seasonal_period = 52
@@ -116,7 +115,7 @@ class auto_timeseries:
 
         :param model_type The type(s) of model to build. Default to building only statistical models
         Can be a string or a list of models. Allowed values are:
-        'best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
+        'best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
         "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
         "stats" will build statsmodels based ARIMA, SARIMAX and VAR models
         "ML" will build a machine learning model using Random Forests provided explanatory vars are given
@@ -149,7 +148,7 @@ class auto_timeseries:
             model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
-        self.allowed_models = ['best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'auto_SARIMAX', 'VAR', 'ML']
+        self.allowed_models = ['best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'auto_SARIMAX', 'VAR', 'ML']
 
         # new function.
         if args:
@@ -218,6 +217,9 @@ class auto_timeseries:
         # Check 'ts_column' type
         if isinstance(ts_column, int):
             ### If ts_column is a number, then it means you need to convert it to a named variable
+            # TODO: Fix this. ts_df is not defined.
+            # You will need an argument to the load_ts_data function that will simply read the data
+            # from the string location and return it as a dataframe as is
             ts_column = list(ts_df)[ts_column]
         if isinstance(ts_column, list):
             # If it is of type List, just pick the first one
@@ -250,7 +252,7 @@ class auto_timeseries:
                         return None
                     else:
                         print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
-                except:
+                except Exception:
                     print('File could not be loaded. Check the path or filename and try again')
                     return None
         elif isinstance(traindata, pd.DataFrame):
@@ -278,7 +280,7 @@ class auto_timeseries:
         ##################################################################################################
         ### Turn the time series index into a variable and calculate the difference.
         ### If the difference is not in days, then it is a hourly or minute based time series
-        ### If the difference a multiple of days, then test it for weekly, monthly, qtrly, annual etc.
+        ### If the difference a multiple of days, then test it for weekly, monthly, quarterly, annual etc.
         ##################################################################################################
         if ts_df.index.dtype=='int' or ts_df.index.dtype=='float':
             ### You must convert the ts_df index into a date-time series using the ts_column given ####
@@ -365,7 +367,7 @@ class auto_timeseries:
             else:
                 self.time_interval = 'months' # Default is Monthly
         else:
-            print("(Error: 'self.time_interval' is None. This condition should not have occured.")
+            print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
             return
 
         # Impute seasonal_period if not provided by the user
@@ -396,7 +398,7 @@ class auto_timeseries:
         try:
             if self.__any_contained_in_list(what_list=['best'], in_list=self.model_type):
                 print(colorful.BOLD +'WARNING: Running best models will take time... Be Patient...' + colorful.END)
-        except:
+        except Exception:
             print('Check if your model type is a string or one of the available types of models')
 
 
@@ -438,7 +440,7 @@ class auto_timeseries:
                 else:
                     score_val = norm_rmse_folds
             except Exception as e:
-                print("Exception occured while building Prophet model...")
+                print("Exception occurred while building Prophet model...")
                 print(e)
                 print('    FB Prophet may not be installed or Model is not running...')
 
@@ -448,7 +450,7 @@ class auto_timeseries:
             self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['pyflux','ARIMA', 'stats', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type):
             ################### Let's build an ARIMA Model and add results #################
             print("\n")
             print("="*50)
@@ -478,7 +480,7 @@ class auto_timeseries:
                 else:
                     score_val = norm_rmse
             except Exception as e:
-                print("Exception occured while building ARIMA model...")
+                print("Exception occurred while building ARIMA model...")
                 print(e)
                 print('    ARIMA model error: predictions not available.')
 
@@ -488,7 +490,7 @@ class auto_timeseries:
             self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['SARIMAX','auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
             ############# Let's build a SARIMAX Model and get results ########################
             print("\n")
             print("="*50)
@@ -524,7 +526,7 @@ class auto_timeseries:
                 else:
                     score_val = norm_rmse_folds
             except Exception as e:
-                print("Exception occured while building Auto SARIMAX model...")
+                print("Exception occurred while building Auto SARIMAX model...")
                 print(e)
                 print('    Auto SARIMAX model error: predictions not available.')
 
@@ -533,20 +535,6 @@ class auto_timeseries:
             self.ml_dict[name]['forecast'] = forecast_df_folds
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
         if self.__any_contained_in_list(what_list=['VAR', 'stats', 'best'], in_list=self.model_type):
@@ -574,7 +562,7 @@ class auto_timeseries:
                                             %len(preds))
 
                     # TODO: This causes an issue later in ML (most likely cause of https://github.com/AutoViML/Auto_TS/issues/15)
-                    # Since we are passing ts_df there. Make sure you dont assign it
+                    # Since we are passing ts_df there. Make sure you don't assign it
                     # back to the same variable. Make a copy and make changes to that copy.
                     ts_df_shifted = ts_df.copy(deep=True)
                     ts_df_shifted[preds] = ts_df_shifted[preds].shift(1)
@@ -589,7 +577,7 @@ class auto_timeseries:
                     else:
                         score_val = norm_rmse
                 except Exception as e:
-                    print("Exception occured while building VAR model...")
+                    print("Exception occurred while building VAR model...")
                     print(e)
                     warnings.warn('    VAR model error: predictions not available.')
 
@@ -654,7 +642,7 @@ class auto_timeseries:
                     # time_series_plot(dfxs[target], chart_time=self.time_interval)
 
                 except Exception as e:
-                    print("Exception occured while building ML model...")
+                    print("Exception occurred while building ML model...")
                     print(e)
                     print('    For ML model, evaluation score is not available.')
 
@@ -672,14 +660,12 @@ class auto_timeseries:
         best_model_name = self.get_best_model_name()
         print(colorful.BOLD + '\nBest Model is: ' + colorful.END + best_model_name)
 
-        loBestModelDict = self.ml_dict[best_model_name]
-        if loBestModelDict is not None:
-            cv_scores = loBestModelDict.get(self.score_type)
+        best_model_dict = self.ml_dict[best_model_name]
+        if best_model_dict is not None:
+            cv_scores = best_model_dict.get(self.score_type)
             mean_cv_score = self.__get_mean_cv_score(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
-        # print("    Best Model Forecasts (Validation Set):")
-        # print(self.ml_dict[best_model_name]['forecast'])
-
+        
         end = time()
 
         print("\n\n" + "-"*50)
@@ -738,8 +724,6 @@ class auto_timeseries:
         else:
             print(f"Model with name '{model_name}' does not exist.")
             return None
-
-
 
     def get_ml_dict(self):
         """
@@ -804,15 +788,15 @@ class auto_timeseries:
         names = []
         mean_cv_scores = []
         # std_cv_scores = [] # TODO: Add later
-        loMlDict = self.ml_dict
-        if loMlDict is not None:
-            model_names = list(loMlDict.keys())
-            if model_names is not None:
+        local_ml_dict = self.ml_dict
+        if local_ml_dict is not None:
+            model_names = list(local_ml_dict.keys())
+            if model_names != []:
                 for model_name in model_names:
                     names.append(model_name)
-                    loModelDictSingleModel = loMlDict.get(model_name)
-                    if loModelDictSingleModel is not None:
-                        cv_scores = loModelDictSingleModel.get(self.score_type)
+                    model_dict_single_model = local_ml_dict.get(model_name)
+                    if model_dict_single_model is not None:
+                        cv_scores = model_dict_single_model.get(self.score_type)
                         mean_cv_score = self.__get_mean_cv_score(cv_scores)
                         # if isinstance(cv_scores, float):
                         #     mean_cv_score = cv_scores
@@ -842,7 +826,7 @@ class auto_timeseries:
         Return a tidy data frame with the CV scores across all models
         :rtype pandas.DataFrame
         """
-        cv_df = df = pd.DataFrame(columns=['Model', 'CV Scores'])
+        cv_df = pd.DataFrame(columns=['Model', 'CV Scores'])
         for model in self.ml_dict.keys():
             rmses = self.ml_dict.get(model).get("rmse")
             new_row = {'Model':model, 'CV Scores':rmses}
