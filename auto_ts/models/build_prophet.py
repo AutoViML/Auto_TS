@@ -168,7 +168,7 @@ class BuildProphet(BuildBase):
         if self.verbose >= 2:
             print("Prophet plotting CV Metrics")
             _ = plot_cross_validation_metric(df_cv, metric=self.scoring)
-            plt.show();
+            plt.show()
 
         num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 

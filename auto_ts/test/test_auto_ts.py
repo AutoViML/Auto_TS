@@ -707,7 +707,7 @@ class TestAutoTS(unittest.TestCase):
             cv=None # ,
             #sep=self.sep
             )
-        test_predictions = automl_model.predict(
+        _ = automl_model.predict(
             testdata=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=self.forecast_period
         )
@@ -716,18 +716,17 @@ class TestAutoTS(unittest.TestCase):
 
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['Prophet', 'ML', 'VAR', 'auto_SARIMAX', 'ARIMA', 'SARIMAX', 'PyFlux'],
+                'name':['Prophet', 'ML', 'VAR', 'auto_SARIMAX', 'ARIMA'],
                 'rmse':[
                     self.rmse_gold_prophet_multivar_cv_fold2,
                     self.rmse_gold_ml_multivar,
                     self.rmse_gold_var_multivar,
                     self.rmse_gold_auto_sarimax_multivar,
-                    self.rmse_gold_arima_uni_multivar,
-                    self.rmse_gold_sarimax_multivar,
-                    math.inf
+                    self.rmse_gold_arima_uni_multivar
                 ]
             }
         )
+        print(automl_model.get_leaderboard())
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         self.assertEqual(
@@ -792,7 +791,7 @@ class TestAutoTS(unittest.TestCase):
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)
 
             # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
+            _ = automl_model.predict(
                 testdata=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=self.forecast_period,
                 model="Prophet",
@@ -826,7 +825,7 @@ class TestAutoTS(unittest.TestCase):
             assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
+            _ = automl_model.predict(
                 testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
                 forecast_period=self.forecast_period,
                 model="ARIMA",
@@ -839,62 +838,62 @@ class TestAutoTS(unittest.TestCase):
             #     )
             # )
 
-        if automl_model.get_model_build('SARIMAX') is not None:
-            # Simple forecast with forecast window = one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=self.forecast_period,
-                testdata=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"
-            )
+        # if automl_model.get_model_build('SARIMAX') is not None:
+        #     # Simple forecast with forecast window = one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=self.forecast_period,
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds],
+        #         model="SARIMAX"
+        #     )
 
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
+        #     assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
 
-            # Simple forecast with forecast window != one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=6,
-                testdata=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="SARIMAX"
-            )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10)
+        #     # Simple forecast with forecast window != one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=6,
+        #         testdata=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
+        #         model="SARIMAX"
+        #     )
+        #     assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10)
 
-            # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
-                forecast_period=self.forecast_period,
-                testdata=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX",
-                simple=False
-            )
-            self.assertIsNone(
-                np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names
-                )
-            )
+        #     # Complex forecasts (returns confidence intervals, etc.)
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=self.forecast_period,
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds],
+        #         model="SARIMAX",
+        #         simple=False
+        #     )
+        #     self.assertIsNone(
+        #         np.testing.assert_array_equal(
+        #             test_predictions.columns.values, self.expected_pred_col_names
+        #         )
+        #     )
 
-            # Checking missing exogenous variables
-            with self.assertRaises(ValueError):
-                test_predictions = automl_model.predict(
-                    forecast_period=self.forecast_period,
-                    model="SARIMAX"
-                )
+        #     # Checking missing exogenous variables
+        #     with self.assertRaises(ValueError):
+        #         _ = automl_model.predict(
+        #             forecast_period=self.forecast_period,
+        #             model="SARIMAX"
+        #         )
 
-            # Checking missing columns from exogenous variables
-            with self.assertRaises(ValueError):
-                test_multivar_temp = self.test_multivar.copy(deep=True)
-                test_multivar_temp.rename(columns={'Marketing Expense': 'Incorrect Column'}, inplace=True)
-                test_predictions = automl_model.predict(
-                        forecast_period=self.forecast_period,
-                        testdata=test_multivar_temp,
-                        model="SARIMAX"
-                    )
+        #     # Checking missing columns from exogenous variables
+        #     with self.assertRaises(ValueError):
+        #         test_multivar_temp = self.test_multivar.copy(deep=True)
+        #         test_multivar_temp.rename(columns={'Marketing Expense': 'Incorrect Column'}, inplace=True)
+        #         _ = automl_model.predict(
+        #                 forecast_period=self.forecast_period,
+        #                 testdata=test_multivar_temp,
+        #                 model="SARIMAX"
+        #             )
 
-            test_predictions = automl_model.predict(
-                forecast_period=10,
-                testdata=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"
-            )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=10,
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds],
+        #         model="SARIMAX"
+        #     )
+        #     assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
 
 
 
@@ -994,20 +993,20 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ARIMA').get('rmse'),8), self.rmse_gold_arima_uni_multivar,
             "(Multivar Test) ARIMA RMSE does not match up with expected values.")
 
-        ##################################
-        #### Checking SARIMAX Results ####
-        ##################################
-        self.assertIsNone(
-            np.testing.assert_array_equal(
-                np.round(ml_dict.get('SARIMAX').get('forecast')[0]['mean'].values.astype(np.double), 6),
-                self.forecast_gold_sarimax_multivar_internal_val
-            ),
-            "(Multivar Test) SARIMAX Forecast does not match up with expected values."
-        )
+        # ##################################
+        # #### Checking SARIMAX Results ####
+        # ##################################
+        # self.assertIsNone(
+        #     np.testing.assert_array_equal(
+        #         np.round(ml_dict.get('SARIMAX').get('forecast')[0]['mean'].values.astype(np.double), 6),
+        #         self.forecast_gold_sarimax_multivar_internal_val
+        #     ),
+        #     "(Multivar Test) SARIMAX Forecast does not match up with expected values."
+        # )
 
-        self.assertEqual(
-            round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar,
-            "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
+        # self.assertEqual(
+        #     round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar,
+        #     "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
 
         ##############################
         #### Checking VAR Results ####
@@ -1134,7 +1133,7 @@ class TestAutoTS(unittest.TestCase):
             assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)
 
             # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
+            _ = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="Prophet",
                 simple=False
@@ -1165,7 +1164,7 @@ class TestAutoTS(unittest.TestCase):
             assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
+            _ = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="ARIMA",
                 simple=False
@@ -1628,7 +1627,7 @@ class TestAutoTS(unittest.TestCase):
                 ]
             }
         )
-        
+
         print(automl_model.get_leaderboard())
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
@@ -1692,13 +1691,13 @@ class TestAutoTS(unittest.TestCase):
         leaderboard_models = np.array(['ML', 'auto_SARIMAX'])
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
-    def test_cv_retreival_plotting(self):
+    def test_cv_retrieval_plotting(self):
         """
-        Tests CV Scores retreival and plotting
+        Tests CV Scores retrieval and plotting
         """
 
         print("\n\n" + "*"*50)
-        print("Performing Unit Test: 'test_cv_retreival_plotting'")
+        print("Performing Unit Test: 'test_cv_retrieval_plotting'")
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
@@ -1708,7 +1707,7 @@ class TestAutoTS(unittest.TestCase):
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['ML', 'SARIMAX'],
+            model_type=['ML', 'auto_SARIMAX'],
             verbose=0)
         automl_model.fit(
             traindata=self.train_multivar,
@@ -1719,12 +1718,13 @@ class TestAutoTS(unittest.TestCase):
 
         cv_scores_gold = pd.DataFrame(
             {
-                'Model': ['SARIMAX', 'SARIMAX', 'ML', 'ML'],
+                'Model': ['auto_SARIMAX', 'auto_SARIMAX', 'ML', 'ML'],
                 # 'CV Scores': [73.2824, 185.705, 93.0305, 67.304]
-                'CV Scores': [73.2824, 185.705, 107.2037, 81.7406]  # With more engineered features (AutoViML)
+                'CV Scores': [100.816639, 147.703077, 107.2037, 81.7406]  # With more engineered features (AutoViML)
             }
         )
         cv_scores = automl_model.get_cv_scores()
+        print(f"CV Scores: {cv_scores}")
         assert_frame_equal(cv_scores, cv_scores_gold)
 
         automl_model.plot_cv_scores()
