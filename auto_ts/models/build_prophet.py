@@ -1,5 +1,5 @@
 from typing import Optional
-import warnings
+# import warnings
 
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
@@ -21,7 +21,7 @@ from .build_base import BuildBase
 #### Suppress INFO messages from FB Prophet!
 import logging
 logging.getLogger('fbprophet').setLevel(logging.WARNING)
-import pdb
+# import pdb
 
 class BuildProphet(BuildBase):
     def __init__(self, forecast_period, time_interval,
@@ -122,6 +122,18 @@ class BuildProphet(BuildBase):
             print(f"Forcast Period: {self.forecast_period}")
             print(f"Max Date: {dft['ds'].max()}")
             print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
+
+
+        #########################################################################################
+        # NOTE: This change to the FB recommendation will cause the cv folds from facebook to
+        # be incompatible with the folds from the other models (in terms of periods of evaluation
+        # as well as number of observations in each period). Hence the final comparison will
+        # be biased since it will not compare the same folds.
+
+        # The original implementation was giving issues under certain conditions, hence this change
+        # to FB recommendation has been made as a temporary (short term) fix.
+        # The root cause issue will need to be fixed eventually at a later point.
+        #########################################################################################
 
         ## we will be using the recommended defaults for these form FB Prophet page
         #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days
