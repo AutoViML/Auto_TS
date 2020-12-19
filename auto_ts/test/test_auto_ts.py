@@ -17,16 +17,16 @@ class TestAutoTS(unittest.TestCase):
         import os
         sys.path.append(os.environ['DEV_AUTOTS'])
         import pandas as pd  # type: ignore
-        
+
         datapath = 'example_datasets/'
         filename1 = 'Sales_and_Marketing.csv'
         dft = pd.read_csv(datapath+filename1,index_col=None)
-        
+
         self.ts_column = 'Time Period'
         self.sep = ','
         self.target = 'Sales'
         self.preds = [x for x in list(dft) if x not in [self.ts_column, self.target]] # Exogenous variable names
-        
+
         self.train_multivar = dft[:40]
         self.test_multivar = dft[40:]
 
@@ -38,35 +38,35 @@ class TestAutoTS(unittest.TestCase):
         # TODO: Update Prophet column names when you make it consistent
         # self.expected_pred_col_names_prophet = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
         self.expected_pred_col_names = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
-        
+
         ################################
         #### Prophet Golden Results ####
         ################################
 
-       
+
         #########################################################
         #### UNIVARIATE [Both No CV (uses fold2) and CV = 2] ####
         #########################################################
-        
+
         ## Internal (to AutoML) validation set results
-        self.forecast_gold_prophet_univar_internal_val_cv_fold1 = np.array([            
+        self.forecast_gold_prophet_univar_internal_val_cv_fold1 = np.array([
             447.733878, 510.152411, 536.119254, 599.663702,
             592.020981, 657.844486, 667.245238, 485.989273
         ])
 
-        self.forecast_gold_prophet_univar_internal_val_cv_fold2 = np.array([            
-            614.482071, 562.050462, 534.810663, 605.566298,  
+        self.forecast_gold_prophet_univar_internal_val_cv_fold2 = np.array([
+            614.482071, 562.050462, 534.810663, 605.566298,
             580.899233, 585.676464, 686.480721, 732.167184
         ])
 
         self.rmse_gold_prophet_univar_cv_fold1 = 86.34827037
         self.rmse_gold_prophet_univar_cv_fold2 = 56.5751 # Without CV gets this result
-        
 
-        ## External Test Set results 
+
+        ## External Test Set results
         results = [
             749.061242, 751.077262, 796.892366, 783.206733,
-            689.698130, 595.713426, 569.486600, 635.884371           
+            689.698130, 595.713426, 569.486600, 635.884371
             ]
         index = np.arange(40, 48)
 
@@ -78,37 +78,37 @@ class TestAutoTS(unittest.TestCase):
 
         results = results + [576.473786, 581.275889]
         index = np.arange(40, 50)
-            
+
         self.forecast_gold_prophet_univar_external_test_10_cv = pd.Series(
-                data = results, 
+                data = results,
                 index = index
             )
         self.forecast_gold_prophet_univar_external_test_10_cv.name = 'yhat'
 
-        
+
         ###########################################################
         #### MULTIVARIATE [Both No CV (uses fold2) and CV = 2] ####
         ###########################################################
-        
+
         # Internal (to AutoML) validation set results
-        self.forecast_gold_prophet_multivar_internal_val_cv_fold1 = np.array([            
+        self.forecast_gold_prophet_multivar_internal_val_cv_fold1 = np.array([
             502.111972, 569.181958, 578.128706, 576.069791,
             663.258686, 677.851419, 750.972617, 781.269791
         ])
 
-        self.forecast_gold_prophet_multivar_internal_val_cv_fold2 = np.array([            
+        self.forecast_gold_prophet_multivar_internal_val_cv_fold2 = np.array([
             618.244315, 555.784628, 524.396122, 611.513751,
             584.936717, 605.940656, 702.652641, 736.639273
         ])
 
-        self.rmse_gold_prophet_multivar_cv_fold1 = 48.70419901 
-        self.rmse_gold_prophet_multivar_cv_fold2 = 63.24631835 # Without CV gets this result 
-        
-        
-        ## External Test Set results 
+        self.rmse_gold_prophet_multivar_cv_fold1 = 48.70419901
+        self.rmse_gold_prophet_multivar_cv_fold2 = 63.24631835 # Without CV gets this result
+
+
+        ## External Test Set results
         results = [
             747.964093, 736.512241, 814.840792, 825.152970,
-            657.743450, 588.985816, 556.814528, 627.768202  
+            657.743450, 588.985816, 556.814528, 627.768202
             ]
         index = np.arange(0, 8)
 
@@ -120,12 +120,12 @@ class TestAutoTS(unittest.TestCase):
 
         # Same as regular since we only have 8 exogenous observations
         self.forecast_gold_prophet_multivar_external_test_10_cv = pd.Series(
-                data = results, 
+                data = results,
                 index = index
             )
         self.forecast_gold_prophet_multivar_external_test_10_cv.name = 'yhat'
 
-        
+
         ##############################
         #### ARIMA Golden Results ####
         ##############################
@@ -134,11 +134,11 @@ class TestAutoTS(unittest.TestCase):
 
         results = [
             801.78660584, 743.16044526, 694.38764549, 684.72931967,
-            686.70229610, 692.13402266, 698.59426282, 705.36034762            
+            686.70229610, 692.13402266, 698.59426282, 705.36034762
             ]
         index = [
             'Forecast_1', 'Forecast_2', 'Forecast_3', 'Forecast_4',
-            'Forecast_5', 'Forecast_6', 'Forecast_7', 'Forecast_8'  
+            'Forecast_5', 'Forecast_6', 'Forecast_7', 'Forecast_8'
             ]
 
         self.forecast_gold_arima_uni_multivar = np.array(results)
@@ -159,7 +159,7 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_arima_uni_multivar_series_10.name = 'mean'
 
         self.rmse_gold_arima_uni_multivar = 169.00016628
-        
+
 
         #######################################################################################################
 
@@ -172,7 +172,7 @@ class TestAutoTS(unittest.TestCase):
         ## Internal (to AutoML) validation set results
         results = [
             803.31673726, 762.46093997, 718.3581931,  711.42130506,
-            719.36254603, 732.70981867, 747.57645435, 762.47349398            
+            719.36254603, 732.70981867, 747.57645435, 762.47349398
             ]
         self.forecast_gold_sarimax_univar_internal_val = np.array(results)
         self.rmse_gold_sarimax_univar = 193.49650578
@@ -186,7 +186,7 @@ class TestAutoTS(unittest.TestCase):
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
             ])
-        
+
         self.forecast_gold_sarimax_univar_external_test = pd.Series(
                 data = results,
                 index = index
@@ -199,25 +199,25 @@ class TestAutoTS(unittest.TestCase):
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
             '2015-01-01', '2015-02-01'
             ])
-            
+
         self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
 
-        
+
         #######################################
         #### MULTIVARIATE (no seasonality) ####
         #######################################
-                        
+
         ## Internal (to AutoML) validation set results
         results = [
             772.268886, 716.337431, 686.167231, 739.269047,
             704.280567, 757.450733, 767.711055, 785.960125
         ]
         self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
-        self.rmse_gold_sarimax_multivar = 185.704684  
+        self.rmse_gold_sarimax_multivar = 185.704684
 
         ## External Test Set results (With Multivariate columns accepted)
         results = [
@@ -228,14 +228,14 @@ class TestAutoTS(unittest.TestCase):
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
             ])
-        
+
         self.forecast_gold_sarimax_multivar_external_test = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
 
-        results = results[0:6] 
+        results = results[0:6]
         index = index[0:6]
         self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
                 data = results,
@@ -251,13 +251,13 @@ class TestAutoTS(unittest.TestCase):
         # Without CV
         results = [
             726.115602, 646.028979, 657.249936, 746.752393,
-            732.813245, 749.435178, 863.356789, 903.168728 
+            732.813245, 749.435178, 863.356789, 903.168728
         ]
         self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
         self.rmse_gold_sarimax_multivar_s12 = 197.18894
 
         ## External Test Set results (With Multivariate columns accepted) (with seasonality = True, Seasonal Period = 12)
-        
+
         results = [
             1006.134134, 779.874076, 420.461804, 724.042104,
             1827.304601, 1204.070838, -2216.439611, -1278.974132
@@ -267,14 +267,14 @@ class TestAutoTS(unittest.TestCase):
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
             ])
-                
+
         self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
 
-        results = results[0:6] 
+        results = results[0:6]
         index = index[0:6]
         self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
                 data = results,
@@ -286,11 +286,11 @@ class TestAutoTS(unittest.TestCase):
         #### MULTIVARIATE (with seasonality = True, Seasonal Period = 3, CV = 2) ####
         #############################################################################
 
-        ## Internal (to AutoML) validation set results 
-        
+        ## Internal (to AutoML) validation set results
+
         results = [
             119.260686, 540.623654, 230.040446, 364.088969,
-            470.581971, 105.559723, 84.335069, 110.757574 
+            470.581971, 105.559723, 84.335069, 110.757574
         ]
         self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold1 = np.array(results)
 
@@ -305,7 +305,7 @@ class TestAutoTS(unittest.TestCase):
         self.rmse_gold_sarimax_multivar_s3_cv_fold2 = 34.542769
 
 
-        ## External Test Set results 
+        ## External Test Set results
         results = [
             770.447134, 784.881945, 857.496478, 918.626627,
             689.107408, 599.827292, 608.747367, 634.957579
@@ -315,14 +315,14 @@ class TestAutoTS(unittest.TestCase):
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
             '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
             ])
-                
+
         self.forecast_gold_sarimax_multivar_external_test_s3_cv = pd.Series(
                 data = results,
                 index = index
             )
         self.forecast_gold_sarimax_multivar_external_test_s3_cv.name = 'mean'
 
-        results = results[0:6] 
+        results = results[0:6]
         index = index[0:6]
         self.forecast_gold_sarimax_multivar_external_test_10_s3_cv = pd.Series(
                 data = results,
@@ -345,7 +345,7 @@ class TestAutoTS(unittest.TestCase):
         ## Internal (to AutoML) validation set results
         # results = [
         #     803.31673726, 762.46093997, 718.3581931,  711.42130506,
-        #     719.36254603, 732.70981867, 747.57645435, 762.47349398            
+        #     719.36254603, 732.70981867, 747.57645435, 762.47349398
         #     ]
         # self.forecast_gold_sarimax_univar_internal_val = np.array(results)
         self.rmse_gold_auto_sarimax_univar = 128.034697
@@ -359,7 +359,7 @@ class TestAutoTS(unittest.TestCase):
         #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
         #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
         #     ])
-        
+
         # self.forecast_gold_sarimax_univar_external_test = pd.Series(
         #         data = results,
         #         index = index
@@ -372,25 +372,25 @@ class TestAutoTS(unittest.TestCase):
         #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
         #     '2015-01-01', '2015-02-01'
         #     ])
-            
+
         # self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
         #         data = results,
         #         index = index
         #     )
         # self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
 
-        
+
         #######################################
         #### MULTIVARIATE (no seasonality) ####
         #######################################
-                        
+
         # ## Internal (to AutoML) validation set results
         # results = [
         #     772.268886, 716.337431, 686.167231, 739.269047,
         #     704.280567, 757.450733, 767.711055, 785.960125
         # ]
         # self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
-        self.rmse_gold_auto_sarimax_multivar = 147.703077  
+        self.rmse_gold_auto_sarimax_multivar = 147.703077
 
         ## External Test Set results (With Multivariate columns accepted)
         # results = [
@@ -401,14 +401,14 @@ class TestAutoTS(unittest.TestCase):
         #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
         #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
         #     ])
-        
+
         # self.forecast_gold_sarimax_multivar_external_test = pd.Series(
         #         data = results,
         #         index = index
         #     )
         # self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
 
-        # results = results[0:6] 
+        # results = results[0:6]
         # index = index[0:6]
         # self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
         #         data = results,
@@ -424,13 +424,13 @@ class TestAutoTS(unittest.TestCase):
         # # Without CV
         # results = [
         #     726.115602, 646.028979, 657.249936, 746.752393,
-        #     732.813245, 749.435178, 863.356789, 903.168728 
+        #     732.813245, 749.435178, 863.356789, 903.168728
         # ]
         # self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
         self.rmse_gold_auto_sarimax_multivar_s12 = 90.083682
 
         ## External Test Set results (With Multivariate columns accepted) (with seasonality = True, Seasonal Period = 12)
-        
+
         # results = [
         #     1006.134134, 779.874076, 420.461804, 724.042104,
         #     1827.304601, 1204.070838, -2216.439611, -1278.974132
@@ -440,14 +440,14 @@ class TestAutoTS(unittest.TestCase):
         #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
         #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
         #     ])
-                
+
         # self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
         #         data = results,
         #         index = index
         #     )
         # self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
 
-        # results = results[0:6] 
+        # results = results[0:6]
         # index = index[0:6]
         # self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
         #         data = results,
@@ -459,11 +459,11 @@ class TestAutoTS(unittest.TestCase):
         #### MULTIVARIATE (with seasonality = True, Seasonal Period = 3, CV = 2) ####
         #############################################################################
 
-        ## Internal (to AutoML) validation set results 
-        
+        ## Internal (to AutoML) validation set results
+
         # results = [
         #     119.260686, 540.623654, 230.040446, 364.088969,
-        #     470.581971, 105.559723, 84.335069, 110.757574 
+        #     470.581971, 105.559723, 84.335069, 110.757574
         # ]
         # self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold1 = np.array(results)
 
@@ -478,7 +478,7 @@ class TestAutoTS(unittest.TestCase):
         # self.rmse_gold_auto_sarimax_multivar_s3_cv_fold2 = 34.542769
 
 
-        # ## External Test Set results 
+        # ## External Test Set results
         # results = [
         #     770.447134, 784.881945, 857.496478, 918.626627,
         #     689.107408, 599.827292, 608.747367, 634.957579
@@ -488,14 +488,14 @@ class TestAutoTS(unittest.TestCase):
         #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
         #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
         #     ])
-                
+
         # self.forecast_gold_sarimax_multivar_external_test_s3_cv = pd.Series(
         #         data = results,
         #         index = index
         #     )
         # self.forecast_gold_sarimax_multivar_external_test_s3_cv.name = 'mean'
 
-        # results = results[0:6] 
+        # results = results[0:6]
         # index = index[0:6]
         # self.forecast_gold_sarimax_multivar_external_test_10_s3_cv = pd.Series(
         #         data = results,
@@ -529,7 +529,7 @@ class TestAutoTS(unittest.TestCase):
         #### MULTIVARIATE ####
         results = [
             741.37790864, 676.23341949, 615.53872102, 571.7977285,
-            546.95278336, 537.34223069, 537.4744872,  542.30739271           
+            546.95278336, 537.34223069, 537.4744872,  542.30739271
             ]
 
         index = pd.to_datetime([
@@ -551,7 +551,7 @@ class TestAutoTS(unittest.TestCase):
             '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
             '2014-05-01', '2014-06-01'
             ])
-            
+
         self.forecast_gold_var_multivar_series_10 = pd.Series(
                 data = results,
                 index = index
@@ -583,16 +583,16 @@ class TestAutoTS(unittest.TestCase):
         # ]
         # Converted to using same as other model (no rolling window), but unable to return since
         # no internal test set (only validation sets in CV)
-        results = [] 
+        results = []
         self.forecast_gold_ml_multivar_internal_val = results # np.array(results)
         # self.rmse_gold_ml_multivar = 74.133644 # Initially only this was using rolling window
         # self.rmse_gold_ml_multivar = 67.304009 # Converted to using same as other model (no rolling window)
         self.rmse_gold_ml_multivar = 71.824585 # With more engineered features (AutoViML)
-                
+
         ## External Test Set results (With Multivariate columns accepted)
         # # Initially only this was using rolling window
         # results = [
-        #     509.64, 485.24, 479.72, 483.98, 
+        #     509.64, 485.24, 479.72, 483.98,
         #     482.78, 455.04, 518.62, 524.08
         # ]
 
@@ -603,11 +603,11 @@ class TestAutoTS(unittest.TestCase):
 
             # With more engineered features (AutoViML)
             # 733.293931, 627.633457, 621.182141, 614.128809,
-            # 600.902623, 451.565462, 330.694427, 348.744604    
+            # 600.902623, 451.565462, 330.694427, 348.744604
             715.997991, 592.578743, 569.592338, 547.625097,
-            513.972428, 334.603163, 188.705675, 180.323713        
+            513.972428, 334.603163, 188.705675, 180.323713
         ]
-        # index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.RangeIndex(start=40, stop=48, step=1)
         # index = pd.to_datetime([
         index = [
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
@@ -621,8 +621,8 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_multivar_external_test.name = 'mean'
         self.forecast_gold_ml_multivar_external_test.index.name = 'Time Period'
 
-        results = results[0:6] 
-        index = index[0:6]            
+        results = results[0:6]
+        index = index[0:6]
         #self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
         self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
                 data = results,
@@ -642,7 +642,7 @@ class TestAutoTS(unittest.TestCase):
         # self.rmse_gold_ml_multivar_cv_fold2 = 67.30400862
 
         # With more engineered features (AutoViML)
-        self.rmse_gold_ml_multivar_cv = 94.472165   
+        self.rmse_gold_ml_multivar_cv = 94.472165
         self.rmse_gold_ml_multivar_cv_fold1 = 107.20370095
         self.rmse_gold_ml_multivar_cv_fold2 = 81.740629
 
@@ -656,7 +656,7 @@ class TestAutoTS(unittest.TestCase):
             652.85, 645.0, 645.0, 645.0,
             640.458333, 505.043478, 485.444444, 485.444444
         ]
-        # index = pd.RangeIndex(start=40, stop=48, step=1) 
+        # index = pd.RangeIndex(start=40, stop=48, step=1)
         # index = pd.to_datetime([
         index = [
             '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
@@ -670,8 +670,8 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_ml_multivar_external_test_cv.name = 'mean'
         self.forecast_gold_ml_multivar_external_test_cv.index.name = 'Time Period'
 
-        results = results[0:6] 
-        index = index[0:6]            
+        results = results[0:6]
+        index = index[0:6]
         # self.forecast_gold_ml_multivar_external_test_10 = pd.Series(
         self.forecast_gold_ml_multivar_external_test_10_cv = pd.Series(
                 data = results,
@@ -691,7 +691,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
         # seasonal_period argument does not make a difference since seasonality has been set to False.
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -708,12 +708,12 @@ class TestAutoTS(unittest.TestCase):
             #sep=self.sep
             )
         test_predictions = automl_model.predict(
-            X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
+            X_exogen=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=self.forecast_period
-        )  
-        
+        )
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['Prophet', 'ML', 'VAR', 'auto_SARIMAX', 'ARIMA', 'SARIMAX', 'PyFlux'],
@@ -735,10 +735,10 @@ class TestAutoTS(unittest.TestCase):
             "Best model name does not match expected value."
         )
         self.assertTrue(
-            isinstance(automl_model.get_best_model(), Prophet), 
+            isinstance(automl_model.get_best_model(), Prophet),
             "Best model does not match expected value."
         )
-        
+
         self.assertTrue(
             isinstance(automl_model.get_model('SARIMAX'), SARIMAXResultsWrapper),
             "SARIMAX model does not match the expected type."
@@ -747,7 +747,7 @@ class TestAutoTS(unittest.TestCase):
 
         ## Find a way to import these modules (BuildProphet & BuildSarimax) and then you can enable this.
         # self.assertTrue(
-        #     isinstance(automl_model.get_best_model_build(), BuildProphet), 
+        #     isinstance(automl_model.get_best_model_build(), BuildProphet),
         #     "Best model build does not match expected value."
         # )
 
@@ -762,9 +762,9 @@ class TestAutoTS(unittest.TestCase):
             # Using default (best model)
             test_predictions = automl_model.predict(
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                forecast_period=self.forecast_period                    
+                forecast_period=self.forecast_period
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)
 
             # Simple forecast with forecast window != one used in training
             # Using default (best model)
@@ -772,7 +772,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=10
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)   
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)
 
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -781,7 +781,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="Prophet"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)
 
             # Simple forecast with forecast window != one used in training
             # Using named model
@@ -789,7 +789,7 @@ class TestAutoTS(unittest.TestCase):
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 forecast_period=10,
                 model="Prophet")
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -804,7 +804,7 @@ class TestAutoTS(unittest.TestCase):
             #         test_predictions.columns.values, self.expected_pred_col_names_prophet
             #     )
             # )
-        
+
 
         if automl_model.get_model_build('ARIMA') is not None:
             # Simple forecast with forecast window = one used in training
@@ -814,8 +814,8 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="ARIMA"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series) 
-            
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series)
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
@@ -823,7 +823,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=10,
                 model="ARIMA"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10) 
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -838,24 +838,24 @@ class TestAutoTS(unittest.TestCase):
             #         test_predictions.columns.values, self.expected_pred_col_names
             #     )
             # )
-            
+
         if automl_model.get_model_build('SARIMAX') is not None:
             # Simple forecast with forecast window = one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
 
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
                 X_exogen=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10)
 
@@ -864,7 +864,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 model="SARIMAX",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
@@ -876,7 +876,7 @@ class TestAutoTS(unittest.TestCase):
             with self.assertRaises(ValueError):
                 test_predictions = automl_model.predict(
                     forecast_period=self.forecast_period,
-                    model="SARIMAX"                
+                    model="SARIMAX"
                 )
 
             # Checking missing columns from exogenous variables
@@ -886,18 +886,18 @@ class TestAutoTS(unittest.TestCase):
                 test_predictions = automl_model.predict(
                         forecast_period=self.forecast_period,
                         X_exogen=test_multivar_temp,
-                        model="SARIMAX"                
+                        model="SARIMAX"
                     )
 
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
 
 
-            
+
         if automl_model.get_model_build('VAR') is not None:
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -907,7 +907,7 @@ class TestAutoTS(unittest.TestCase):
                 model="VAR"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_var_multivar_series)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
@@ -936,16 +936,16 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
                 X_exogen=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_10)
 
@@ -954,14 +954,14 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 model="ML",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
                     test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
-        
+
         ##################################
         #### Checking Prophet Results ####
         ##################################
@@ -980,7 +980,7 @@ class TestAutoTS(unittest.TestCase):
         ################################
         #### Checking ARIMA Results ####
         ################################
-        
+
         # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
         self.assertIsNone(
             np.testing.assert_array_equal(
@@ -1004,11 +1004,11 @@ class TestAutoTS(unittest.TestCase):
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
-               
+
         ##############################
         #### Checking VAR Results ####
         ##############################
@@ -1019,7 +1019,7 @@ class TestAutoTS(unittest.TestCase):
             ),
             "(Multivar Test) VAR Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('VAR').get('rmse'),8), self.rmse_gold_var_multivar,
             "(Multivar Test) VAR RMSE does not match up with expected values.")
@@ -1031,7 +1031,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertListEqual(
             ml_dict.get('ML').get('forecast'), self.forecast_gold_ml_multivar_internal_val,
             "(Multivar Test) ML Forecast does not match up with expected values.")
-        
+
         self.assertEqual(
             round(ml_dict.get('ML').get('rmse')[0], 6), self.rmse_gold_ml_multivar,
             "(Multivar Test) ML RMSE does not match up with expected values.")
@@ -1046,7 +1046,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
@@ -1059,10 +1059,10 @@ class TestAutoTS(unittest.TestCase):
             cv=None # ,
             #sep=self.sep
             )
-        test_predictions = automl_model.predict(forecast_period=self.forecast_period)  
-        
+        test_predictions = automl_model.predict(forecast_period=self.forecast_period)
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         leaderboard_gold = pd.DataFrame(
             {
                 'name': ['Prophet', 'auto_SARIMAX', 'ARIMA', 'SARIMAX', 'PyFlux', 'VAR', 'ML'],
@@ -1084,10 +1084,10 @@ class TestAutoTS(unittest.TestCase):
             "Best model name does not match expected value."
         )
         self.assertTrue(
-            isinstance(automl_model.get_best_model(), Prophet), 
+            isinstance(automl_model.get_best_model(), Prophet),
             "Best model does not match expected value."
         )
-        
+
         self.assertTrue(
             isinstance(automl_model.get_model('SARIMAX'), SARIMAXResultsWrapper),
             "SARIMAX model does not match the expected type."
@@ -1096,7 +1096,7 @@ class TestAutoTS(unittest.TestCase):
 
         ## Find a way to import these modules (BuildProphet & BuildSarimax) and then you can enable this.
         # self.assertTrue(
-        #     isinstance(automl_model.get_best_model_build(), BuildProphet), 
+        #     isinstance(automl_model.get_best_model_build(), BuildProphet),
         #     "Best model build does not match expected value."
         # )
 
@@ -1106,17 +1106,17 @@ class TestAutoTS(unittest.TestCase):
         # )
 
 
-       
+
         if automl_model.get_best_model_build() is not None:
             # Simple forecast with forecast window = one used in training
             # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=self.forecast_period)
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)
 
             # Simple forecast with forecast window != one used in training
             # Using default (best model)
             test_predictions = automl_model.predict(forecast_period=10)
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)   
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)
 
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -1124,14 +1124,14 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="Prophet"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_cv)
 
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="Prophet")
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)        
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_univar_external_test_10_cv)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -1145,7 +1145,7 @@ class TestAutoTS(unittest.TestCase):
             #         test_predictions.columns.values, self.expected_pred_col_names_prophet
             #     )
             # )
-        
+
 
         if automl_model.get_model_build('ARIMA') is not None:
             # Simple forecast with forecast window = one used in training
@@ -1154,15 +1154,15 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 model="ARIMA"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series) 
-            
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series)
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 model="ARIMA"
             )
-            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10) 
+            assert_series_equal(test_predictions.round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
             # Complex forecasts (returns confidence intervals, etc.)
             test_predictions = automl_model.predict(
@@ -1176,7 +1176,7 @@ class TestAutoTS(unittest.TestCase):
             #         test_predictions.columns.values, self.expected_pred_col_names
             #     )
             # )
-            
+
         if automl_model.get_model_build('SARIMAX') is not None:
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -1185,7 +1185,7 @@ class TestAutoTS(unittest.TestCase):
                 model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_univar_external_test)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
@@ -1205,7 +1205,7 @@ class TestAutoTS(unittest.TestCase):
                     test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
-            
+
         if automl_model.get_model_build('VAR') is not None:
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -1214,7 +1214,7 @@ class TestAutoTS(unittest.TestCase):
                 model="VAR"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_var_univar_series)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
@@ -1240,15 +1240,15 @@ class TestAutoTS(unittest.TestCase):
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_univar_series)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_univar_series_10)
 
@@ -1256,16 +1256,16 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 model="ML",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
                     test_predictions.columns.values, self.expected_pred_col_names
                 )
             )
-           
 
-        
+
+
         #########################################
         #### Checking getter for Model Build ####
         #########################################
@@ -1291,7 +1291,7 @@ class TestAutoTS(unittest.TestCase):
         ################################
         #### Checking ARIMA Results ####
         ################################
-        
+
         # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
         self.assertIsNone(
             np.testing.assert_array_equal(
@@ -1315,11 +1315,11 @@ class TestAutoTS(unittest.TestCase):
             ),
             "(Univar Test) SARIMAX Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('SARIMAX').get('rmse')[0],8), self.rmse_gold_sarimax_univar,
             "(Univar Test) SARIMAX RMSE does not match up with expected values.")
-               
+
         ##############################
         #### Checking VAR Results ####
         ##############################
@@ -1327,7 +1327,7 @@ class TestAutoTS(unittest.TestCase):
             ml_dict.get('VAR').get('forecast'), self.forecast_gold_var_univar,
             "(Univar Test) VAR Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('VAR').get('rmse'),8), self.rmse_gold_var_univar,
             "(Univar Test) VAR RMSE does not match up with expected values.")
@@ -1335,17 +1335,17 @@ class TestAutoTS(unittest.TestCase):
         #############################
         #### Checking ML Results ####
         #############################
-        
+
         self.assertEqual(
             ml_dict.get('ML').get('forecast'), self.forecast_gold_ml_univar,
             "(Univar Test) ML Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('ML').get('rmse'),8), self.rmse_gold_ml_univar,
             "(Univar Test) ML RMSE does not match up with expected values."
         )
-    
+
     def test_auto_ts_multivar_seasonal_SARIMAX(self):
         """
         test to check functionality of the auto_ts function (multivariate with seasonal SARIMAX)
@@ -1356,7 +1356,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
         # TODO: seasonal_period argument does not make a difference. Commenting out for now.
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1364,7 +1364,7 @@ class TestAutoTS(unittest.TestCase):
             # non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
             model_type=['SARIMAX', 'auto_SARIMAX'],
             verbose=0)
-        
+
         automl_model.fit(
             traindata=self.train_multivar,
             ts_column=self.ts_column,
@@ -1372,14 +1372,14 @@ class TestAutoTS(unittest.TestCase):
             cv=None #,
             # sep=self.sep
             )
-        
+
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-        )  
-        
+        )
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['auto_SARIMAX', 'SARIMAX'],
@@ -1397,17 +1397,17 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
 
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s12)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
                 X_exogen=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10_s12)
 
@@ -1416,7 +1416,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 model="SARIMAX",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
@@ -1429,7 +1429,7 @@ class TestAutoTS(unittest.TestCase):
                 test_predictions = automl_model.predict(
                     forecast_period=self.forecast_period,
                     # X_exogen=self.test_multivar[self.preds],
-                    model="SARIMAX"                
+                    model="SARIMAX"
                 )
 
             # Checking missing columns from exogenous variables
@@ -1439,13 +1439,13 @@ class TestAutoTS(unittest.TestCase):
                 test_predictions = automl_model.predict(
                         forecast_period=self.forecast_period,
                         X_exogen=test_multivar_temp,
-                        model="SARIMAX"                
+                        model="SARIMAX"
                     )
 
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s12)
 
@@ -1460,7 +1460,7 @@ class TestAutoTS(unittest.TestCase):
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s12,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
@@ -1474,7 +1474,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         # Reduced seasonality from 12 to 3 since we are doing CV. There is not enough data
         # to use seasonality of 12 along with CV since the first fold only has 24 train obs.
@@ -1483,7 +1483,7 @@ class TestAutoTS(unittest.TestCase):
             non_seasonal_pdq=None, seasonality=True, seasonal_period=3,
             model_type=['SARIMAX', 'auto_SARIMAX'],
             verbose=0)
-        
+
         automl_model.fit(
             traindata=self.train_multivar,
             ts_column=self.ts_column,
@@ -1491,14 +1491,14 @@ class TestAutoTS(unittest.TestCase):
             cv=2 #,
             # sep=self.sep
             )
-        
+
         test_predictions = automl_model.predict(
             forecast_period=self.forecast_period,
             X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-        )  
-        
+        )
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['SARIMAX', 'auto_SARIMAX'],
@@ -1516,17 +1516,17 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
 
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s3_cv)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
                 X_exogen=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_10_s3_cv)
 
@@ -1535,7 +1535,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 model="SARIMAX",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
@@ -1548,7 +1548,7 @@ class TestAutoTS(unittest.TestCase):
                 test_predictions = automl_model.predict(
                     forecast_period=self.forecast_period,
                     # X_exogen=self.test_multivar[self.preds],
-                    model="SARIMAX"                
+                    model="SARIMAX"
                 )
 
             # Checking missing columns from exogenous variables
@@ -1558,13 +1558,13 @@ class TestAutoTS(unittest.TestCase):
                 test_predictions = automl_model.predict(
                         forecast_period=self.forecast_period,
                         X_exogen=test_multivar_temp,
-                        model="SARIMAX"                
+                        model="SARIMAX"
                     )
 
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="SARIMAX"                
+                model="SARIMAX"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test_s3_cv)
 
@@ -1586,14 +1586,14 @@ class TestAutoTS(unittest.TestCase):
             ),
             "(Multivar Test) SARIMAX Forecast does not match up with expected values --> Fold 2."
         )
-        
+
         self.assertEqual(
             round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar_s3_cv_fold1,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 1.")
         self.assertEqual(
             round(ml_dict.get('SARIMAX').get('rmse')[1], 6), self.rmse_gold_sarimax_multivar_s3_cv_fold2,
             "(Multivar Test) SARIMAX RMSE does not match up with expected values --> Fold 2.")
-               
+
     def test_subset_of_models(self):
         """
         test to check functionality of the training with only a subset of models
@@ -1604,7 +1604,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1618,23 +1618,24 @@ class TestAutoTS(unittest.TestCase):
             cv=None,
             sep=self.sep
         )
-        
+
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['ML', 'auto_SARIMAX', 'SARIMAX'],
+                'name': ['ML', 'auto_SARIMAX'],
                 'rmse': [
                     self.rmse_gold_ml_multivar,
-                    self.rmse_gold_auto_sarimax_multivar,
-                    self.rmse_gold_sarimax_multivar
-                ] 
+                    self.rmse_gold_auto_sarimax_multivar
+                ]
             }
         )
+        
+        print(automl_model.get_leaderboard())
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
             non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-            model_type=['SARIMAX', 'bogus', 'ML'],
+            model_type=['auto_SARIMAX', 'bogus', 'ML'],
             verbose=0)
         automl_model.fit(
             traindata=self.train_multivar,
@@ -1642,11 +1643,11 @@ class TestAutoTS(unittest.TestCase):
             target=self.target,
             cv=None,
             sep=self.sep)
-        
+
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['ML', 'SARIMAX'],
-                'rmse': [self.rmse_gold_ml_multivar, self.rmse_gold_sarimax_multivar] 
+                'name': ['ML', 'auto_SARIMAX'],
+                'rmse': [self.rmse_gold_ml_multivar, self.rmse_gold_auto_sarimax_multivar]
             }
         )
         assert_frame_equal(automl_model.get_leaderboard().reset_index(drop=True).round(6), leaderboard_gold)
@@ -1666,15 +1667,15 @@ class TestAutoTS(unittest.TestCase):
 
     def test_passing_list_instead_of_str(self):
         """
-        Tests passing models as a list insteasd of a string
+        Tests passing models as a list instead of a string
         """
-        
+
         print("\n\n" + "*"*50)
         print("Performing Unit Test: 'test_passing_list_instead_of_str'")
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1687,7 +1688,7 @@ class TestAutoTS(unittest.TestCase):
             target=[self.target],
             cv=None,
             sep=self.sep)
-        
+
         leaderboard_models = np.array(['ML', 'SARIMAX'])
         np.testing.assert_array_equal(automl_model.get_leaderboard()['name'].values, leaderboard_models)
 
@@ -1701,7 +1702,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
 
         automl_model = ATS(
@@ -1714,7 +1715,7 @@ class TestAutoTS(unittest.TestCase):
             ts_column=self.ts_column,
             target=self.target,
             cv=2,
-            sep=self.sep)        
+            sep=self.sep)
 
         cv_scores_gold = pd.DataFrame(
             {
@@ -1724,8 +1725,8 @@ class TestAutoTS(unittest.TestCase):
             }
         )
         cv_scores = automl_model.get_cv_scores()
-        assert_frame_equal(cv_scores, cv_scores_gold)   
-        
+        assert_frame_equal(cv_scores, cv_scores_gold)
+
         automl_model.plot_cv_scores()
 
     def test_prophet_multivar_standalone_noCV(self):
@@ -1737,7 +1738,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1749,10 +1750,10 @@ class TestAutoTS(unittest.TestCase):
             ts_column=self.ts_column,
             target=self.target,
             cv=None,
-            sep=self.sep) 
-        
+            sep=self.sep)
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         ####################################
         #### Internal Validation Checks ####
         ####################################
@@ -1769,7 +1770,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertEqual(
             round(ml_dict.get('Prophet').get('rmse')[0],8), self.rmse_gold_prophet_multivar_cv_fold2
         )
-        
+
         ##############################
         #### Extarnal Test Checks ####
         ##############################
@@ -1777,20 +1778,20 @@ class TestAutoTS(unittest.TestCase):
         # Simple forecast with forecast window = one used in training
         # Using named model
         test_predictions = automl_model.predict(
-            X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
+            X_exogen=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=self.forecast_period,
             model="Prophet"
         )
 
-        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)
 
         # Simple forecast with forecast window != one used in training
         # Using named model
         test_predictions = automl_model.predict(
-            X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
+            X_exogen=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=10,
             model="Prophet")
-        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)
 
     def test_prophet_multivar_standalone_withCV(self):
         """
@@ -1801,7 +1802,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1813,10 +1814,10 @@ class TestAutoTS(unittest.TestCase):
             ts_column=self.ts_column,
             target=self.target,
             cv=2,
-            sep=self.sep) 
-        
+            sep=self.sep)
+
         ml_dict = automl_model.get_ml_dict()
-        
+
         ####################################
         #### Internal Validation Checks ####
         ####################################
@@ -1842,7 +1843,7 @@ class TestAutoTS(unittest.TestCase):
         self.assertEqual(
             round(ml_dict.get('Prophet').get('rmse')[1],8), self.rmse_gold_prophet_multivar_cv_fold2
         )
-        
+
         ##############################
         #### Extarnal Test Checks ####
         ##############################
@@ -1850,20 +1851,20 @@ class TestAutoTS(unittest.TestCase):
         # Simple forecast with forecast window = one used in training
         # Using named model
         test_predictions = automl_model.predict(
-            X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
+            X_exogen=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=self.forecast_period,
             model="Prophet"
         )
-        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)        
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_cv)
 
         # Simple forecast with forecast window != one used in training
         # Using named model
         test_predictions = automl_model.predict(
-            X_exogen=self.test_multivar[[self.ts_column] + self.preds], 
+            X_exogen=self.test_multivar[[self.ts_column] + self.preds],
             forecast_period=10,
             model="Prophet")
-        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)        
-    
+        assert_series_equal(test_predictions.round(6), self.forecast_gold_prophet_multivar_external_test_10_cv)
+
     def test_ml_standalone_noCV(self):
         """
         Testing ML Standalone without CV
@@ -1874,7 +1875,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1886,8 +1887,8 @@ class TestAutoTS(unittest.TestCase):
             ts_column=self.ts_column,
             target=self.target,
             cv=None,
-            sep=self.sep) 
-        
+            sep=self.sep)
+
 
     def test_ml_standalone_withCV(self):
         """
@@ -1898,7 +1899,7 @@ class TestAutoTS(unittest.TestCase):
         print("*"*50 + "\n\n")
 
         import numpy as np  # type: ignore
-        from auto_ts import AutoTimeSeries as ATS
+        from auto_ts import auto_timeseries as ATS
 
         automl_model = ATS(
             score_type='rmse', forecast_period=self.forecast_period, time_interval='Month',
@@ -1910,10 +1911,10 @@ class TestAutoTS(unittest.TestCase):
             ts_column=self.ts_column,
             target=self.target,
             cv=2,
-            sep=self.sep) 
-        
+            sep=self.sep)
+
         ml_dict = automl_model.get_ml_dict()
-       
+
         leaderboard_gold = pd.DataFrame(
             {
                 'name':['ML'],
@@ -1928,16 +1929,16 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_cv)
-            
+
             # Simple forecast with forecast window != one used in training
             # Using named model
             test_predictions = automl_model.predict(
                 forecast_period=6,
                 X_exogen=self.test_multivar.iloc[0:6][[self.ts_column] + self.preds],
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_10_cv)
 
@@ -1946,7 +1947,7 @@ class TestAutoTS(unittest.TestCase):
                 forecast_period=self.forecast_period,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
                 model="ML",
-                simple=False                
+                simple=False
             )
             self.assertIsNone(
                 np.testing.assert_array_equal(
@@ -1959,7 +1960,7 @@ class TestAutoTS(unittest.TestCase):
             test_predictions = automl_model.predict(
                 forecast_period=10,
                 X_exogen=self.test_multivar[[self.ts_column] + self.preds],
-                model="ML"                
+                model="ML"
             )
             assert_series_equal(test_predictions.round(6), self.forecast_gold_ml_multivar_external_test_cv)
 
@@ -1971,7 +1972,7 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('ML').get('rmse')[1], 8), self.rmse_gold_ml_multivar_cv_fold2,
             "(Multivar Test) ML RMSE does not match up with expected values --> Fold 2.")
 
-        
-     
+
+
 if __name__ == '__main__':
     unittest.main()
