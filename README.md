@@ -1,8 +1,20 @@
-<h1 id="auto-ts">Auto_TimeSeries</h1>
-<p>Automatically build multiple Time Series models using a Single Line of Code.</p>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Auto_TS</title>
+</head>
+<body>
+<h1 id="auto-ts">Auto_TS: Auto_TimeSeries</h1>
+<p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code.</p>
+<p>Auto_timeseries is a complex model building utility for time series data. Since it automates many
+Tasks involved in a complex endeavor, it assumes many intelligent defaults. But you can change them.
+Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
+and Scikit-Learn ML. It will automatically select the best model which gives best score specified.
+</p>
+<p>New version 0.0.25 onwards changes the syntax of Auto_TimeSeries to be more like scikit-learn (fit and predict syntax). You will have to initialize an object and then call fit with your data and then predict again with data. Hope this makes it easier to remember and use.</p>
 <h2 id="introduction">Introduction</h2>
-<p>Auto_TimeSeries is an Automated ML library for time series data. Auto_TimeSeries was initially conceived and developed by [Ram Seshadri](https://www.linkedin.com/in/ram-seshadri-nyc-nj/) and was significantly expanded in functionality and scope and upgraded to its present form by [Nikhil Gupta](https://github.com/ngupta23).</p>
 <p>Auto_TimeSeries enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
+<p>Auto_TimeSeries is an Automated ML library for time series data. Auto_TimeSeries was initially conceived and developed by <a href="https://www.linkedin.com/in/ram-seshadri-nyc-nj/">Ram Seshadri</a> and was significantly expanded in functionality and scope and upgraded to its present status by <a href="https://github.com/ngupta23">Nikhil Gupta</a>.</p>
 <p>auto-ts.Auto_TimeSeries() is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or FB prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
 <h2 id="installation-instructions">INSTALLATION INSTRUCTIONS</h2>
 <ol>
@@ -11,37 +23,111 @@
 <li>pip install git+git://github.com/AutoViML/Auto_TS</li>
 </ol>
 <h2 id="run">RUN</h2>
-<p>auto_ts.auto_timeseries(traindata, ts_column,<br>
-target, sep,  score_type=‘rmse’, forecast_period=5,<br>
-time_interval=‘Month’, non_seasonal_pdq=None, seasonality=False,<br>
-seasonal_period=12, seasonal_PDQ=None, model_type=‘stats’,<br>
-verbose=1)</p>
+<p> First you need to import auto_timeseries from auto_ts library:<br>
+<code>
+from auto_ts import auto_timeseries
+</code>
+</p>
+<p>
+Second, Initialize an auto_timeseries model object which will hold all your parameters:</p>
+<p><code>
+model = auto_timeseries(
+            score_type='rmse',
+            time_interval='Month',
+            non_seasonal_pdq=None, seasonality=False,
+            seasonal_period=12,
+            model_type=['Prophet'],
+            verbose=2)
+</code></p>
+Here are how the input parameters defined:<br>
+<ol>
+<li><b>score_type (default='rmse')</b>: The metric used for scoring the models. Type is string.
+Currently only the following two types are supported:
+(1) "rmse": Root Mean Squared Error (RMSE)
+(2) "normalized_rmse": Ratio of RMSE to the standard deviation of actuals</li>
+<li><b>time_interval (default=None)</b>: Used to indicate the frequency at which the data is collected
+This is used for two purposes (1) in building the Prophet model and (2) used to impute the seasonal period for SARIMAX in case it is not provided by the user (None). Type is String.
+Allowed values are:
+  (1) 'months', 'month', 'm' for monthly frequency data
+  (2) 'days', 'daily', 'd' for daily freuency data
+  (3) 'weeks', 'weekly', 'w' for weekly frequency data
+  (4) 'qtr', 'quarter', 'q' for quarterly frequency data
+  (5) 'years', 'year', 'annual', 'y', 'a' for yearly frequency data
+  (6) 'hours', 'hourly', 'h' for hourly frequency data
+  (7) 'minutes', 'minute', 'min', 'n' for minute frequency data
+  (8) 'seconds', 'second', 'sec', 's' for second frequency data
+You can leave it blank and auto_timeseries will impute it.
+</li>
+<li><b>non_seasonal_pdq (default = (3,1,3))</b>: Indicates the maximum value of (p, d, q) to be used in the search for statistical ARIMA models.
+If None, then the following values are assumed max_p = 3, max_d = 1, max_q = 3. Type is Tuple.</li>
+<li><b>seasonality (default=False)</b>: Used in the building of the SARIMAX model only at this time. True or False. Type is bool.</li>
+<li><b>seasonal_period (default is None)</b>: Indicates the seasonality period in the data.
+Used in the building of the SARIMAX model only at this time.
+There is no impact of this argument if seasonality is set to False
+If None, the program will try to infer this from the time_interval (frequency) of the data
+(1) If frequency = Monthly, then seasonal_period = 12
+(1) If frequency = Daily, then seasonal_period = 30
+(1) If frequency = Weekly, then seasonal_period = 52
+(1) If frequency = Quarterly, then seasonal_period = 4
+(1) If frequency = Yearly, then seasonal_period = 1
+(1) If frequency = Hourly, then seasonal_period = 24
+(1) If frequency = Minutes, then seasonal_period = 60
+(1) If frequency = Seconds, then seasonal_period = 60
+Type is integer</li>
+<li><b>conf_int (default=0.95)</b>: Confidence Interval for building the Prophet model. Default: 0.95. Type is float.</li>
+<li><b>model_type (default: 'stats'</b>: The type(s) of model to build. Default to building only statistical models
+Can be a string or a list of models. Allowed values are:
+'best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
+"prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
+"stats" will build statsmodels based ARIMA, SARIMAX and VAR models
+"ML" will build a machine learning model using Random Forests provided explanatory vars are given
+'best' will try to build all models and pick the best one
+If a list is provided, then only those models will be built
+WARNING: "best" might take some time for large data sets. We recommend that you
+choose a small sample from your data set bedfore attempting to run entire data.
+Type can be either: [string, list]
+</li>
+<li><b>verbose (default=0)</b>: Indicates the verbosity of printing (Default = 0). Type is integer.</li>
+</ol>
+The next step after defining the model object is to fit it with some real data:
+<p>
+<code>
+model.fit(
+            traindata=train_data,
+            ts_column=ts_column,
+            target=target,
+            cv=5,
+            sep=","
+        )
+</code></p>
+<br>Here are how the parameters defined:
+<ul>
+<li><b>traindata (required)</b>: It can be either a dataframe or a file. You must give the name of the file along with its data path in case if a file. It also accepts a pandas dataframe in case you already have a dataframe loaded in your notebook.</li>
+<li><b>ts_column (required)</b>: name of the datetime column in your dataset (it could be a name of column or index number in the columns index)</li>
+<li><b>target (required)</b>: name of the column you   are trying to predict. Target could also be the only column in your dataset</li>
+<li><b>cv (default=5)</b>: You can enter any integer for the number of folds you want in your cross validation data set.
+</li>
+<li><b>sep (default=",")</b>: Sep is the separator in your traindata file. If your separator is ",", "\t", ";", make sure you enter it here. If not, it is ignored.</li>
+</ul>
+The next step after training the model object is to make some predictions with test data:
+<p>
+<code>
+predictions = model.predict(
+            testdata=test_data,
+            forecast_period=forecast_period
+        )  
+</code></p>
+<br>Here are how the parameters defined:
+<ul>
+<li><b>testdata (required)</b>: It can be either a dataframe or an empty string to indicate no test data frame is available. Instead you can use the forecast_period (next).</li>
+<li><b>forecast_period (default=5)</b>: The number of time intervals ahead that you want to forecast. Type is integer.</li>
+</ul>
 <h2 id="requirements">Requirements</h2>
-<p>PyFlux</p>
+<p>scikit-learn</p>
 <p>FB Prophet</p>
 <p>statsmodels</p>
 <h1 id="license">License:</h1>
 <p>Apache License 2.0</p>
-<h1 id="inputs">INPUTS:</h1>
-<ul>
-<li>trainfile: name of the file along with its data path or a dataframe.<br>
-It accepts either a pandas dataframe or name of the file and its data path.</li>
-<li>ts_column: name of the datetime column in your<br>
-dataset (it could be name or number)</li>
-<li>target: name of the column you   are trying to predict. Target could also be the only column in your<br>
-data</li>
-<li>score_type: ‘rmse’ is the default. You can choose among “mae”,<br>
-“mse” and “rmse”.   forecast_period: default is 2. How many periods out do you want to forecast? It should be an integer</li>
-<li>time_interval: default is “Month”. What is the time period in your data set. Options are: “day”,   ‘month’,‘week’,‘year’,‘quarter’ etc.</li>
-<li>model_type:   default is “stats”. Choice is between “stats”, “prophet”, “ml”, and “best”.
-<ul>
-<li>“stats” will build statsmodels based ARIMA&lt; SARIMAX and VAR models</li>
-<li>“ml” will build a machine learning model using Random Forests provided explanatory vars are given</li>
-<li>“prophet” will build a model using FB Prophet -&gt; this means you must have FB Prophet installed</li>
-<li>“best” will build three of the best models from above which might take some time for large data sets.</li>
-</ul>
-</li>
-</ul>
 <h2 id="recommendations">Recommendations</h2>
 <ul>
 <li>We recommend that you choose a small sample from your data set before attempting to run entire data. and the evaluation metric so it can select the best model. Currently models within “stats” are compared using AIC and BIC. However, models across different types are compared using RMSE. The results of models are shown using RMSE and Normalized RMSE (ratio of RMSE to the standard deviation of actuals).</li>
@@ -57,3 +143,5 @@ data</li>
 <p>This is not an Officially supported Google project.</p>
 <h2 id="copyright">Copyright</h2>
 <p>© Google</p>
+</body>
+</html>
