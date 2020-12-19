@@ -47,7 +47,6 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 class auto_timeseries:
     def __init__(
         self,
-        forecast_period: int,
         score_type: str = 'rmse',
         time_interval: Optional[str] = None,
         non_seasonal_pdq: Optional[Tuple]=None,
@@ -66,10 +65,6 @@ class auto_timeseries:
         ####                        Python 3: 2018-2020                                 ####
         ####################################################################################
         Initialize an auto_timeseries object
-
-        :forecast_period The number of time intervals ahead that you want to forecast
-        :type forecast_period int
-
         :score_type: The metric used for scoring the models. Default = 'rmse'
         Currently only 2 are supported:
         (1) RMSE
@@ -136,10 +131,10 @@ class auto_timeseries:
         and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
         #####################################################################################################
         """
-
+        lag_period = 5
         self.ml_dict: Dict = {}
         self.score_type: str = score_type
-        self.forecast_period = forecast_period
+        self.forecast_period = lag_period
         self.time_interval = time_interval
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
