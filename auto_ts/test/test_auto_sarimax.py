@@ -18,10 +18,6 @@ from pandas.testing import assert_frame_equal # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 
-    
-
-
-
 class TestAutoTS(unittest.TestCase):
 
     def setUp(self):
@@ -30,16 +26,16 @@ class TestAutoTS(unittest.TestCase):
         import os
         sys.path.append(os.environ['DEV_AUTOTS'])
         import pandas as pd  # type: ignore
-        
+
         datapath = 'example_datasets/'
         filename1 = 'Sales_and_Marketing.csv'
         dft = pd.read_csv(datapath+filename1,index_col=None)
-        
+
         self.ts_column = 'Time Period'
         self.sep = ','
         self.target = 'Sales'
         self.preds = [x for x in list(dft) if x not in [self.ts_column, self.target]] # Exogenous variable names
-        
+
         self.train_multivar = dft[:40]
         self.test_multivar = dft[40:]
 
@@ -49,7 +45,7 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_period = 8
 
         self.expected_pred_col_names = np.array(['mean', 'mean_se', 'mean_ci_lower', 'mean_ci_upper'])
-        
+
         ########################
         #### Golden Results ####
         ########################
@@ -112,4 +108,4 @@ class TestAutoTS(unittest.TestCase):
         pass
 
 
-       
+

@@ -1,4 +1,14 @@
 -------------------------------
+version_number = '0.0.24.b2'
+-------------------------------
+Fixed bug with Prophet Multivariate Prediction where it needed to pass forecast_period in 
+addition to X_exogen. Only X_egogen is needed now. Forecast Period is calculated based on 
+number of observations in the X_exogen data.
+
+TODO: Make sure all predict functions are consistent (Prophet now has an Optional 
+return if things go wrong. Others should do the same.)
+
+-------------------------------
 version_number = '0.0.24'
 -------------------------------
 Added 'auto_arima' capabaility from pmdarima library
