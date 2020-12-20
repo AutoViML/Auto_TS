@@ -130,14 +130,13 @@ class auto_timeseries:
         and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
         #####################################################################################################
         """
-        lag_period = 5
         self.ml_dict: Dict = {}
         self.score_type: str = score_type
         self.forecast_period = lag_period
         self.time_interval = time_interval
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
-        self.seasonal_period = seasonal_period
+        self.seasonal_period = 1 ## setting it to 1 per Nikhil's suggestion
         self.conf_int = conf_int
         if isinstance(model_type, str):
             model_type = [model_type]
