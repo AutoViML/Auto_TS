@@ -1,15 +1,13 @@
 from typing import Optional
-# import warnings
+import logging
+import copy
 
 import numpy as np  # type: ignore
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
 
-import copy
-import matplotlib.pyplot as plt # type: ignore
 
-# helper functions
-from ..utils import print_dynamic_rmse
+import matplotlib.pyplot as plt # type: ignore
 
 from fbprophet import Prophet # type: ignore
 from fbprophet.diagnostics import cross_validation
@@ -18,10 +16,14 @@ from fbprophet.plot import plot_cross_validation_metric
 
 from .build_base import BuildBase
 
+# helper functions
+from ..utils import print_dynamic_rmse
+from ..utils.logging import SuppressStdoutStderr
+
 #### Suppress INFO messages from FB Prophet!
-import logging
+
 logging.getLogger('fbprophet').setLevel(logging.WARNING)
-# import pdb
+
 
 class BuildProphet(BuildBase):
     def __init__(self, forecast_period, time_interval,
@@ -102,7 +104,10 @@ class BuildProphet(BuildBase):
             for name in self.original_preds:
                 self.model.add_regressor(name)
 
-        self.model.fit(dft)
+        print("  Starting Prophet Fit")
+        with SuppressStdoutStderr():
+            self.model.fit(dft)
+        print("  End of Prophet Fit")
 
         num_obs = dft.shape[0]
         NFOLDS = self.get_num_folds_from_cv(cv)
@@ -171,8 +176,11 @@ class BuildProphet(BuildBase):
         #   Test Set: (initial+period):(initial+horizon+ period)
         # Format: '850 D'
 
-        df_cv = cross_validation(self.model, initial=initial, period=period,
-                            horizon=horizon)
+        print("  Starting Prophet Cross Validation")
+        with SuppressStdoutStderr():
+            df_cv = cross_validation(self.model, initial=initial, period=period,
+                                horizon=horizon)
+        print("  End of Prophet Cross Validation")
 
         if self.verbose >= 1:
             print("Prophet CV DataFrame")
