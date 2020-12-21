@@ -78,28 +78,86 @@ class BuildVAR(BuildBase):
 
         self.find_best_parameters(data = ts_df)
 
-        # Cross Validate (original)
-        ts_train = ts_df[:-self.forecast_period]
-        ts_test = ts_df[-self.forecast_period:]
+        #######################################
+        #### Cross Validation across Folds ####
+        #######################################
 
-        if self.verbose == 1:
-            print(
-                'Data Set split into train %s and test %s for Cross Validation Purposes'
-                % (ts_train.shape, ts_test.shape)
-            )
+        rmse_folds = []
+        norm_rmse_folds = []
+        forecast_df_folds = []
 
-        y_train = ts_train.iloc[:, [0, self.best_d]]
-        self.model = VARMAX(y_train, order=(self.best_p, self.best_q), trend='c')
-        self.model = self.model.fit(disp=False)
-        if self.verbose == 1:
-            self.model.plot_diagnostics(figsize=(16, 12))
-            axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
-            axis.set(xlabel='Time Steps', title='Impulse Response Functions')
+        NFOLDS = self.get_num_folds_from_cv(cv)
+        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        for fold_number, (train, test) in enumerate(cv.split(ts_df)):
+            ts_train = ts_df.iloc[train]
+            ts_test = ts_df.iloc[test]
 
-        res_df = self.predict(simple=False)
+            if self.verbose >= 1:
+                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape} Test Shape: {ts_test.shape}")
 
-        rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], res_df['mean'].values, ts_train.iloc[:, 0])
-        return self.model, res_df, rmse, norm_rmse
+            #########################################
+            #### Define the model with fold data ####
+            #########################################
+            y_train = ts_train.iloc[:, [0, self.best_d]]
+            bestmodel = self.get_best_model(y_train)
+
+            ######################################
+            #### Fit the model with fold data ####
+            ######################################
+
+            if self.verbose >= 1:
+                print(f'Fitting best VAR model on Fold: {fold_number+1}')
+            try:
+                self.model = bestmodel.fit(disp=False)
+            except Exception as e:
+                print(e)
+                print(f'Error: VAR Fit on Fold: {fold_number+1} unsuccessful.')
+                return bestmodel, None, np.inf, np.inf
+
+            if self.verbose >= 1:
+                self.model.plot_diagnostics(figsize=(16, 12))
+                axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
+                axis.set(xlabel='Time Steps', title='Impulse Response Functions')
+
+            forecast_df = self.predict(simple=False)
+            forecast_df_folds.append(forecast_df)
+            
+            rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], forecast_df['mean'].values, ts_train.iloc[:, 0])
+            rmse_folds.append(rmse)
+            norm_rmse_folds.append(norm_rmse)
+            
+        norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+        
+        ###############################################
+        #### Refit the model on the entire dataset ####
+        ###############################################
+        y_train = ts_df.iloc[:, [0, self.best_d]]
+        self.refit(ts_df=y_train)
+        
+        # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
+        return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2
+
+        # ts_train = ts_df[:-self.forecast_period]
+        # ts_test = ts_df[-self.forecast_period:]
+
+        # if self.verbose == 1:
+        #     print(
+        #         'Data Set split into train %s and test %s for Cross Validation Purposes'
+        #         % (ts_train.shape, ts_test.shape)
+        #     )
+
+        # y_train = ts_train.iloc[:, [0, self.best_d]]
+        # self.model = VARMAX(y_train, order=(self.best_p, self.best_q), trend='c')
+        # self.model = self.model.fit(disp=False)
+        # if self.verbose == 1:
+        #     self.model.plot_diagnostics(figsize=(16, 12))
+        #     axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
+        #     axis.set(xlabel='Time Steps', title='Impulse Response Functions')
+
+        # res_df = self.predict(simple=False)
+
+        # rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], res_df['mean'].values, ts_train.iloc[:, 0])
+        # return self.model, res_df, rmse, norm_rmse
 
     def predict(
             self,
@@ -206,11 +264,21 @@ class BuildVAR(BuildBase):
         :type ts_df pd.DataFrame
         :rtype object
         """
-        pass
+        bestmodel = self.get_best_model(ts_df)
+        print('Refitting data with previously found best parameters')
+        try:
+            self.model = bestmodel.fit(disp=False)
+            print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
+        except Exception as exception:
+            print(exception)
+
+        return self
+        
 
     def get_best_model(self, data: pd.DataFrame):
         """
         Returns the 'unfit' SARIMAX model with the given dataset and the
         selected best parameters. This can be used to fit or refit the model.
         """
-        pass
+        bestmodel = VARMAX(data, order=(self.best_p, self.best_q), trend='c')
+        return bestmodel
