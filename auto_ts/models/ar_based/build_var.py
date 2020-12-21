@@ -17,41 +17,64 @@ sns.set(style="white", color_codes=True)
 
 from statsmodels.tsa.statespace.varmax import VARMAX # type: ignore
 
+from tscv import GapWalkForward # type: ignore
+
 # helper functions
 from ...utils import print_dynamic_rmse
 from ...models.ar_based.param_finder import find_lowest_pq
+from ..build_base import BuildBase
 
 
-class BuildVAR():
+class BuildVAR(BuildBase):
     """Class to build a VAR model
     """
-    def __init__(self, criteria, forecast_period=2, p_max=3, q_max=3, verbose=0):
+    def __init__(self, scoring, forecast_period=2, p_max=3, q_max=3, verbose=0):
         """
         Automatically build a VAR Model
+
+        Since it automatically builds a VAR model, you need to give it a Criteria (scoring) to optimize
+        on. You can give it any of the following metrics as scoring options:
+            AIC, BIC, Deviance, Log-likelihood.
+        You can give the highest order values for p and q. Default is set to 3 for both.
         """
-        self.criteria = criteria
-        self.forecast_period = forecast_period
+        super().__init__(
+            scoring=scoring,
+            forecast_period=forecast_period,
+            verbose=verbose
+        )
         self.p_max = p_max
         self.q_max = q_max
-        self.verbose = verbose
-        self.model = None
         self.best_p = None
         self.best_d = None
         self.best_q = None
 
-    def fit(self, ts_df):
+    # def fit(self, ts_df):
+    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int] = None) -> object:
         """
-        This builds a VAR model given a multivariate time series data frame with time as the Index.
-        Note that the input "y_train" can be a data frame with one column or multiple cols or a
-        multivariate array. However, the first column must be the target variable. The others are added.
-        You must include only Time Series data in it. DO NOT include "Non-Stationary" or "Trendy" data.
-        Make sure your Time Series is "Stationary" before you send it in!! If not, this will give spurious
-        results. Since it automatically builds a VAR model, you need to give it a Criteria to optimize on.
-        You can give it any of the following metrics as criteria: AIC, BIC, Deviance, Log-likelihood.
-        You can give the highest order values for p and q. Default is set to 3 for both.
-        """
+         This builds a VAR model given a multivariate time series data frame with time as the Index.
 
-        ts_df = ts_df[:]
+        :param ts_df The time series data to be used for fitting the model. Note that the input can be
+        a data frame with one column or multiple cols or a multivariate array. However, the first column
+        must be the target variable. You must include only Time Series data in it. DO NOT include
+        "Non-Stationary" or "Trendy" data. Make sure your Time Series is "Stationary" before you send
+        it in!! If not, this will give spurious results.
+        :type ts_df pd.DataFrame
+
+        :param target_col The column name of the target time series that needs to be modeled.
+        All other columns will be considered as exogenous variables (if applicable to method)
+        :type target_col str
+
+        :param cv: Number of folds to use for cross validation.
+        Number of observations in the Validation set for each fold = forecast period
+        If None, a single fold is used
+        :type cv Optional[int]
+
+        :rtype object
+        """
+        self.original_target_col = target_col
+        self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+
+        ts_df = ts_df[[self.original_target_col] + self.original_preds]
 
         self.find_best_parameters(data = ts_df)
 
@@ -148,7 +171,7 @@ class BuildVAR():
                     try:
                         model = VARMAX(y_train, order=(p_val, q_val), trend='c')
                         model = model.fit(max_iter=1000, disp=False)
-                        info_criteria.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('model.' + self.criteria)
+                        info_criteria.loc['AR{}'.format(p_val), 'MA{}'.format(q_val)] = eval('model.' + self.scoring)
                         print(' Iteration %d completed' % i)
                         i += 1
                     except Exception:
@@ -166,7 +189,7 @@ class BuildVAR():
                     annot=True,
                     fmt='.0f'
                 )
-                axis.set_title(self.criteria)
+                axis.set_title(self.scoring)
             results_dict[str(interim_p) + ' ' + str(interim_d) + ' ' + str(interim_q)] = interim_bic
         best_bic = min(results_dict.items(), key=operator.itemgetter(1))[1]
         best_pdq = min(results_dict.items(), key=operator.itemgetter(1))[0]
@@ -174,3 +197,20 @@ class BuildVAR():
         self.best_d = int(best_pdq.split(' ')[1])
         self.best_q = int(best_pdq.split(' ')[2])
         print('Best variable selected for VAR: %s' % data.columns.tolist()[self.best_d])
+
+    def refit(self, ts_df: pd.DataFrame) -> object:
+        """
+        Refits an already trained model using a new dataset
+        Useful when fitting to the full data after testing with cross validation
+        :param ts_df The time series data to be used for fitting the model
+        :type ts_df pd.DataFrame
+        :rtype object
+        """
+        pass
+
+    def get_best_model(self, data: pd.DataFrame):
+        """
+        Returns the 'unfit' SARIMAX model with the given dataset and the
+        selected best parameters. This can be used to fit or refit the model.
+        """
+        pass

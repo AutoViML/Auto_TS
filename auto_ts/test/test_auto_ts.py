@@ -567,45 +567,6 @@ class TestAutoTS(unittest.TestCase):
         ############################
         #### VAR Golden Results ####
         ############################
-
-        #### UNIVARIATE ####
-        self.forecast_gold_var_univar = None
-        self.rmse_gold_var_univar = math.inf
-        self.forecast_gold_var_univar_series = None
-        self.forecast_gold_var_univar_series_10 = None
-
-        #### MULTIVARIATE ####
-        results = [
-            741.37790864, 676.23341949, 615.53872102, 571.7977285,
-            546.95278336, 537.34223069, 537.47448720, 542.30739271
-            ]
-
-        index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01'
-            ])
-
-        self.forecast_gold_var_multivar = np.array(results)
-
-        self.forecast_gold_var_multivar_series = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_var_multivar_series.name = 'mean'
-
-        results = results + [548.245948, 553.274306]
-        index = pd.to_datetime([
-            '2013-09-01', '2013-10-01', '2013-11-01', '2013-12-01',
-            '2014-01-01', '2014-02-01', '2014-03-01', '2014-04-01',
-            '2014-05-01', '2014-06-01'
-            ])
-
-        self.forecast_gold_var_multivar_series_10 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_var_multivar_series_10.name = 'mean'
-
         self.rmse_gold_var_multivar = 112.4770318
 
 
@@ -949,38 +910,6 @@ class TestAutoTS(unittest.TestCase):
         #     )
         #     assert_series_equal(test_predictions.round(6), self.forecast_gold_sarimax_multivar_external_test)
 
-        if automl_model.get_model_build('VAR') is not None:
-            # Simple forecast with forecast window = one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for VAR
-                forecast_period=self.forecast_period,
-                model="VAR"
-            )
-            assert_series_equal(test_predictions['mean'].round(6), self.forecast_gold_var_multivar_series)
-
-            # Simple forecast with forecast window != one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for VAR
-                forecast_period=10,
-                model="VAR"
-            )
-            assert_series_equal(test_predictions['mean'].round(6), self.forecast_gold_var_multivar_series_10)
-
-            # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for VAR
-                forecast_period=self.forecast_period,
-                model="VAR",
-                simple=False
-            )
-            self.assertIsNone(
-                np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names
-                )
-            )
-
         if automl_model.get_model_build('ML') is not None:
             # Simple forecast with forecast window = one used in training
             # Using named model
@@ -1061,21 +990,6 @@ class TestAutoTS(unittest.TestCase):
         # self.assertEqual(
         #     round(ml_dict.get('SARIMAX').get('rmse')[0], 6), self.rmse_gold_sarimax_multivar,
         #     "(Multivar Test) SARIMAX RMSE does not match up with expected values.")
-
-        ##############################
-        #### Checking VAR Results ####
-        ##############################
-        self.assertIsNone(
-            np.testing.assert_array_equal(
-                np.round(ml_dict.get('VAR').get('forecast')['mean'].values.astype(np.double), 8),
-                self.forecast_gold_var_multivar
-            ),
-            "(Multivar Test) VAR Forecast does not match up with expected values."
-        )
-
-        self.assertEqual(
-            round(ml_dict.get('VAR').get('rmse'), 8), self.rmse_gold_var_multivar,
-            "(Multivar Test) VAR RMSE does not match up with expected values.")
 
         #############################
         #### Checking ML Results ####
@@ -1247,35 +1161,7 @@ class TestAutoTS(unittest.TestCase):
         #             test_predictions.columns.values, self.expected_pred_col_names
         #         )
         #     )
-
-        if automl_model.get_model_build('VAR') is not None:
-            # Simple forecast with forecast window = one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=self.forecast_period,
-                model="VAR"
-            )
-            assert_series_equal(test_predictions['mean'].round(6), self.forecast_gold_var_univar_series)
-
-            # Simple forecast with forecast window != one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=10,
-                model="VAR"
-            )
-            assert_series_equal(test_predictions['mean'].round(6), self.forecast_gold_var_univar_series_10)
-
-            # Complex forecasts (returns confidence intervals, etc.)
-            test_predictions = automl_model.predict(
-                forecast_period=self.forecast_period,
-                model="VAR",
-                simple=False
-            )
-            self.assertIsNone(
-                np.testing.assert_array_equal(
-                    test_predictions.columns.values, self.expected_pred_col_names
-                )
-            )
+       
 
         if automl_model.get_model_build('ML') is not None:
             # Simple forecast with forecast window = one used in training
@@ -1311,7 +1197,6 @@ class TestAutoTS(unittest.TestCase):
         #########################################
         #### Checking getter for Model Build ####
         #########################################
-        self.assertIsNone(automl_model.get_model_build('VAR'), "Expected Univar VAR model to be None but did not get None.")
         self.assertIsNone(automl_model.get_model_build('ML'), "Expected Univar ML model to be None but did not get None.")
 
 
@@ -1363,18 +1248,6 @@ class TestAutoTS(unittest.TestCase):
         # self.assertEqual(
         #     round(ml_dict.get('SARIMAX').get('rmse')[0],8), self.rmse_gold_sarimax_univar,
         #     "(Univar Test) SARIMAX RMSE does not match up with expected values.")
-
-        ##############################
-        #### Checking VAR Results ####
-        ##############################
-        self.assertEqual(
-            ml_dict.get('VAR').get('forecast'), self.forecast_gold_var_univar,
-            "(Univar Test) VAR Forecast does not match up with expected values."
-        )
-
-        self.assertEqual(
-            round(ml_dict.get('VAR').get('rmse'), 8), self.rmse_gold_var_univar,
-            "(Univar Test) VAR RMSE does not match up with expected values.")
 
         #############################
         #### Checking ML Results ####

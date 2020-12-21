@@ -7,9 +7,7 @@ import pandas as pd  # type: ignore
 from pmdarima.arima.auto import auto_arima # type: ignore
 from pmdarima.arima import auto_arima # type: ignore
 
-from tscv import GapWalkForward # type: ignore
 
-from ..build_base import BuildBase
 from .build_arima_base import BuildArimaBase
 
 # helper functions

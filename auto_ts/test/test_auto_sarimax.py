@@ -18,7 +18,7 @@ from pandas.testing import assert_frame_equal # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 
-class TestAutoTS(unittest.TestCase):
+class TestAutoSarimax(unittest.TestCase):
 
     def setUp(self):
         # Pre Release
