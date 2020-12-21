@@ -46,6 +46,7 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 class auto_timeseries:
     def __init__(
         self,
+        forecast_period: int = 1,
         score_type: str = 'rmse',
         time_interval: Optional[str] = None,
         non_seasonal_pdq: Optional[Tuple]=None,
@@ -132,17 +133,17 @@ class auto_timeseries:
         """
         self.ml_dict: Dict = {}
         self.score_type: str = score_type
-        self.forecast_period = lag_period
+        self.forecast_period =  forecast_period
         self.time_interval = time_interval
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
-        self.seasonal_period = 1 ## setting it to 1 per Nikhil's suggestion
+        self.seasonal_period = seasonal_period 
         self.conf_int = conf_int
         if isinstance(model_type, str):
             model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
-        self.allowed_models = ['best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'auto_SARIMAX', 'VAR', 'ML']
+        self.allowed_models = ['best', 'prophet', 'stats', 'ARIMA', 'auto_SARIMAX', 'VAR', 'ML']
 
         # new function.
         if args:
