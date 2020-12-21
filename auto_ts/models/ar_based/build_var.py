@@ -121,43 +121,21 @@ class BuildVAR(BuildBase):
 
             forecast_df = self.predict(simple=False)
             forecast_df_folds.append(forecast_df)
-            
+
             rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], forecast_df['mean'].values, ts_train.iloc[:, 0])
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
-            
+
         norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
-        
+
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
         y_train = ts_df.iloc[:, [0, self.best_d]]
         self.refit(ts_df=y_train)
-        
+
         # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2
-
-        # ts_train = ts_df[:-self.forecast_period]
-        # ts_test = ts_df[-self.forecast_period:]
-
-        # if self.verbose == 1:
-        #     print(
-        #         'Data Set split into train %s and test %s for Cross Validation Purposes'
-        #         % (ts_train.shape, ts_test.shape)
-        #     )
-
-        # y_train = ts_train.iloc[:, [0, self.best_d]]
-        # self.model = VARMAX(y_train, order=(self.best_p, self.best_q), trend='c')
-        # self.model = self.model.fit(disp=False)
-        # if self.verbose == 1:
-        #     self.model.plot_diagnostics(figsize=(16, 12))
-        #     axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
-        #     axis.set(xlabel='Time Steps', title='Impulse Response Functions')
-
-        # res_df = self.predict(simple=False)
-
-        # rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], res_df['mean'].values, ts_train.iloc[:, 0])
-        # return self.model, res_df, rmse, norm_rmse
 
     def predict(
             self,
@@ -273,7 +251,7 @@ class BuildVAR(BuildBase):
             print(exception)
 
         return self
-        
+
 
     def get_best_model(self, data: pd.DataFrame):
         """
