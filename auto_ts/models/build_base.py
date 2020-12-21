@@ -19,7 +19,7 @@ class BuildBase(ABC):
 
 
     @abstractmethod
-    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]) -> object:
+    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int] = None) -> object:
         """
         Fits the model to the data
 

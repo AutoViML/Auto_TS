@@ -1,8 +1,9 @@
+"""Module to Build a Prphet Model
+"""
 from typing import Optional
 import logging
 import copy
 
-import numpy as np  # type: ignore
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
 
@@ -26,8 +27,11 @@ logging.getLogger('fbprophet').setLevel(logging.WARNING)
 
 
 class BuildProphet(BuildBase):
-    def __init__(self, forecast_period, time_interval,
-        scoring, verbose, conf_int):
+    """Class to build a Prophet Model
+    """
+    def __init__(
+            self, forecast_period, time_interval, scoring, verbose, conf_int
+        ):
         """
         Automatically build a Prophet Model
         """
@@ -44,6 +48,7 @@ class BuildProphet(BuildBase):
             # weekly_seasonality=False,
             # daily_seasonality=False,
             interval_width=self.conf_int)
+        self.univariate = None
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
         """
@@ -88,12 +93,12 @@ class BuildProphet(BuildBase):
         actual = 'y'
         timecol = 'ds'
 
-        df = self.prep_col_names_for_prophet(ts_df=ts_df, test=False)
+        data = self.prep_col_names_for_prophet(ts_df=ts_df, test=False)
 
         if self.univariate:
-            dft = df[[timecol, actual]]
+            dft = data[[timecol, actual]]
         else:
-            dft = df[[timecol, actual] + self.original_preds]
+            dft = data[[timecol, actual] + self.original_preds]
 
         ##### For most Financial time series data, 80% conf interval is enough...
         if self.verbose >= 1:
@@ -116,7 +121,7 @@ class BuildProphet(BuildBase):
             print(f"NumObs: {num_obs}")
             print(f"NFOLDS: {NFOLDS}")
 
-        if self.time_interval in ['days','weeks','months','years']:
+        if self.time_interval in ['days', 'weeks', 'months', 'years']:
             total_days = (dft['ds'].max() - dft['ds'].min()).days
         else:
             ### if time period is shorter than days, it must be calculated in hours or mins.
@@ -146,9 +151,9 @@ class BuildProphet(BuildBase):
         horizon_days = int(total_days/3)
 
         #initial_days = total_days - NFOLDS * horizon_days
-        initial_days = min(int(0.5*total_days),int(3*horizon_days)) ## this is recommended by FB Prophet
+        initial_days = min(int(0.5*total_days), int(3*horizon_days)) ## this is recommended by FB Prophet
         #period_days = horizon_days
-        period_days = min(int(0.2*initial_days),int(0.5*horizon_days)) # as recommended by FB Prophet
+        period_days = min(int(0.2*initial_days), int(0.5*horizon_days)) # as recommended by FB Prophet
 
         if self.verbose >= 2:
             print("Unadjusted Prophet CV Diagnostics:")
@@ -178,8 +183,7 @@ class BuildProphet(BuildBase):
 
         print("  Starting Prophet Cross Validation")
         with SuppressStdoutStderr():
-            df_cv = cross_validation(self.model, initial=initial, period=period,
-                                horizon=horizon)
+            df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon)
         print("  End of Prophet Cross Validation")
 
         if self.verbose >= 1:
@@ -244,11 +248,11 @@ class BuildProphet(BuildBase):
         """
 
     def predict(
-        self,
-        testdata: Optional[pd.DataFrame]=None,
-        forecast_period: Optional[int] = None,
-        simple: bool = False,
-        return_train_preds: bool = False) -> Optional[NDFrame]:
+            self,
+            testdata: Optional[pd.DataFrame] = None,
+            forecast_period: Optional[int] = None,
+            simple: bool = False,
+            return_train_preds: bool = False) -> Optional[NDFrame]:
         """
         Return the predictions
         :param testdata The test dataframe containing the exogenous variables to be used for prediction.
@@ -330,7 +334,7 @@ class BuildProphet(BuildBase):
 
     # TODO: Update: This method will not be used in CV since it is in D always.
     # Hence Remove the 'for_cv' argument
-    def get_prophet_time_interval(self, for_cv: bool =False) -> str:
+    def get_prophet_time_interval(self, for_cv: bool = False) -> str:
         """
         Returns the time interval in Prophet compatible format
 
@@ -368,7 +372,7 @@ class BuildProphet(BuildBase):
 
         return time_int
 
-    def prep_col_names_for_prophet(self, ts_df: pd.DataFrame, test: bool=False) -> pd.DataFrame:
+    def prep_col_names_for_prophet(self, ts_df: pd.DataFrame, test: bool = False) -> pd.DataFrame:
         """
         Renames the columns of the input dataframe to the right format needed by Prophet
         Target is renamed to 'y' and the time column is renamed to 'ds'
@@ -377,19 +381,19 @@ class BuildProphet(BuildBase):
 
         if self.time_col not in ts_df.columns:
             #### This happens when time_col is not found but it's actually the index. In that case, reset index
-            df = ts_df.reset_index()
+            data = ts_df.reset_index()
         else:
-            df = ts_df.copy(deep=True)
+            data = ts_df.copy(deep=True)
 
-        if self.time_col not in df.columns:
+        if self.time_col not in data.columns:
             print("(Error): You have not provided the time_column values. This will result in an error")
 
         if test is False:
-            df = df.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
+            data = data.rename(columns={self.time_col: 'ds', self.original_target_col: 'y'})
         else:
-            df = df.rename(columns={self.time_col: 'ds'})
+            data = data.rename(columns={self.time_col: 'ds'})
 
-        return df
+        return data
 
 def plot_prophet(dft, forecastdf):
     """
@@ -405,9 +409,8 @@ def plot_prophet(dft, forecastdf):
     connect_date = dft.index[-2]
     mask = (forecastdf.index > connect_date)
     predict_df = forecastdf.loc[mask]
-    viz_df = dft.join(predict_df[['yhat', 'yhat_lower', 'yhat_upper']],
-                      how='outer')
-    _ , ax1 = plt.subplots(figsize=(20, 10))
+    viz_df = dft.join(predict_df[['yhat', 'yhat_lower', 'yhat_upper']], how='outer')
+    _, ax1 = plt.subplots(figsize=(20, 10))
     ax1.plot(viz_df['y'], color='red')
     ax1.plot(viz_df['yhat'], color='green')
     ax1.fill_between(viz_df.index, viz_df['yhat_lower'], viz_df['yhat_upper'],
