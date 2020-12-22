@@ -186,211 +186,211 @@ class TestAutoTS(unittest.TestCase):
         self.forecast_gold_prophet_multivar_external_test_10_cv.name = 'yhat'
 
 
-        ##############################
-        #### ARIMA Golden Results ####
-        ##############################
+        # ##############################
+        # #### ARIMA Golden Results ####
+        # ##############################
 
-        #### UNIVARIATE and MULTIVARIATE ####
+        # #### UNIVARIATE and MULTIVARIATE ####
 
-        results = [
-            801.78660584, 743.16044526, 694.38764549, 684.72931967,
-            686.70229610, 692.13402266, 698.59426282, 705.36034762
-            ]
-        index = [
-            'Forecast_1', 'Forecast_2', 'Forecast_3', 'Forecast_4',
-            'Forecast_5', 'Forecast_6', 'Forecast_7', 'Forecast_8'
-            ]
+        # results = [
+        #     801.78660584, 743.16044526, 694.38764549, 684.72931967,
+        #     686.70229610, 692.13402266, 698.59426282, 705.36034762
+        #     ]
+        # index = [
+        #     'Forecast_1', 'Forecast_2', 'Forecast_3', 'Forecast_4',
+        #     'Forecast_5', 'Forecast_6', 'Forecast_7', 'Forecast_8'
+        #     ]
 
-        self.forecast_gold_arima_uni_multivar = np.array(results)
+        # self.forecast_gold_arima_uni_multivar = np.array(results)
 
-        self.forecast_gold_arima_uni_multivar_series = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_arima_uni_multivar_series.name = 'mean'
+        # self.forecast_gold_arima_uni_multivar_series = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_arima_uni_multivar_series.name = 'mean'
 
-        results = results + [712.217380, 719.101457]
-        index = index + ['Forecast_9', 'Forecast_10']
+        # results = results + [712.217380, 719.101457]
+        # index = index + ['Forecast_9', 'Forecast_10']
 
-        self.forecast_gold_arima_uni_multivar_series_10 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_arima_uni_multivar_series_10.name = 'mean'
+        # self.forecast_gold_arima_uni_multivar_series_10 = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_arima_uni_multivar_series_10.name = 'mean'
 
-        self.rmse_gold_arima_uni_multivar = 169.00016628
-
-
-        #######################################################################################################
-
-        ################################
-        #### SARIMAX Golden Results ####
-        ################################
-
-        #### UNIVARIATE ####
-
-        ## Internal (to AutoML) validation set results
-        results = [
-            803.31673726, 762.46093997, 718.35819310, 711.42130506,
-            719.36254603, 732.70981867, 747.57645435, 762.47349398
-            ]
-        self.forecast_gold_sarimax_univar_internal_val = np.array(results)
-        self.rmse_gold_sarimax_univar = 193.49650578
-
-        ## External Test Set results
-        results = [
-            737.281499, 718.144765, 672.007487, 618.321458,
-            578.990868, 567.799468, 586.467414, 625.619993
-        ]
-        index = pd.to_datetime([
-            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
-            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
-            ])
-
-        self.forecast_gold_sarimax_univar_external_test = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_univar_external_test.name = 'mean'
-
-        results = results + [669.666326, 703.29552]
-        index = pd.to_datetime([
-            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
-            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
-            '2015-01-01', '2015-02-01'
-            ])
-
-        self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
+        # self.rmse_gold_arima_uni_multivar = 169.00016628
 
 
-        #######################################
-        #### MULTIVARIATE (no seasonality) ####
-        #######################################
+        # #######################################################################################################
 
-        ## Internal (to AutoML) validation set results
-        results = [
-            772.268886, 716.337431, 686.167231, 739.269047,
-            704.280567, 757.450733, 767.711055, 785.960125
-        ]
-        self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
-        self.rmse_gold_sarimax_multivar = 185.704684
+        # ################################
+        # #### SARIMAX Golden Results ####
+        # ################################
 
-        ## External Test Set results (With Multivariate columns accepted)
-        results = [
-            750.135204, 806.821297, 780.232195, 743.309074,
-            724.400616, 683.117893, 673.696113, 686.807075
-        ]
-        index = pd.to_datetime([
-            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
-            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
-            ])
+        # #### UNIVARIATE ####
 
-        self.forecast_gold_sarimax_multivar_external_test = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
+        # ## Internal (to AutoML) validation set results
+        # results = [
+        #     803.31673726, 762.46093997, 718.35819310, 711.42130506,
+        #     719.36254603, 732.70981867, 747.57645435, 762.47349398
+        #     ]
+        # self.forecast_gold_sarimax_univar_internal_val = np.array(results)
+        # self.rmse_gold_sarimax_univar = 193.49650578
 
-        results = results[0:6]
-        index = index[0:6]
-        self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test_10.name = 'mean'
+        # ## External Test Set results
+        # results = [
+        #     737.281499, 718.144765, 672.007487, 618.321458,
+        #     578.990868, 567.799468, 586.467414, 625.619993
+        # ]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
 
-        ################################################################################
-        #### MULTIVARIATE (with seasonality = True, Seasonal Period = 12 CV = None) ####
-        ################################################################################
+        # self.forecast_gold_sarimax_univar_external_test = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_univar_external_test.name = 'mean'
 
-        ## Internal (to AutoML) validation set results (with seasonality = True, Seasonal Period = 12)
-        # Without CV
-        results = [
-            726.115602, 646.028979, 657.249936, 746.752393,
-            732.813245, 749.435178, 863.356789, 903.168728
-        ]
-        self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
-        self.rmse_gold_sarimax_multivar_s12 = 197.18894
+        # results = results + [669.666326, 703.29552]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01',
+        #     '2015-01-01', '2015-02-01'
+        #     ])
 
-        ## External Test Set results
-        # (With Multivariate columns accepted)
-        # (with seasonality = True, Seasonal Period = 12)
-
-        results = [
-            1006.134134, 779.874076, 420.461804, 724.042104,
-            1827.304601, 1204.070838, -2216.439611, -1278.974132
-        ]
-
-        index = pd.to_datetime([
-            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
-            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
-            ])
-
-        self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
-
-        results = results[0:6]
-        index = index[0:6]
-        self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test_10_s12.name = 'mean'
-
-        #############################################################################
-        #### MULTIVARIATE (with seasonality = True, Seasonal Period = 3, CV = 2) ####
-        #############################################################################
-
-        ## Internal (to AutoML) validation set results
-
-        results = [
-            119.260686, 540.623654, 230.040446, 364.088969,
-            470.581971, 105.559723, 84.335069, 110.757574
-        ]
-        self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold1 = np.array(results)
-
-        results = [
-            551.736392, 502.232401, 440.047123, 521.382176,
-            496.012325, 501.563083, 634.825011, 674.975611
-        ]
-        self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold2 = np.array(results)
-
-        self.rmse_gold_sarimax_multivar_s12_cv = 239.191102
-        self.rmse_gold_sarimax_multivar_s3_cv_fold1 = 443.839435
-        self.rmse_gold_sarimax_multivar_s3_cv_fold2 = 34.542769
+        # self.forecast_gold_sarimax_univar_external_test_10 = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_univar_external_test_10.name = 'mean'
 
 
-        ## External Test Set results
-        results = [
-            770.447134, 784.881945, 857.496478, 918.626627,
-            689.107408, 599.827292, 608.747367, 634.957579
-        ]
+        # #######################################
+        # #### MULTIVARIATE (no seasonality) ####
+        # #######################################
 
-        index = pd.to_datetime([
-            '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
-            '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
-            ])
+        # ## Internal (to AutoML) validation set results
+        # results = [
+        #     772.268886, 716.337431, 686.167231, 739.269047,
+        #     704.280567, 757.450733, 767.711055, 785.960125
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val = np.array(results)
+        # self.rmse_gold_sarimax_multivar = 185.704684
 
-        self.forecast_gold_sarimax_multivar_external_test_s3_cv = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test_s3_cv.name = 'mean'
+        # ## External Test Set results (With Multivariate columns accepted)
+        # results = [
+        #     750.135204, 806.821297, 780.232195, 743.309074,
+        #     724.400616, 683.117893, 673.696113, 686.807075
+        # ]
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
 
-        results = results[0:6]
-        index = index[0:6]
-        self.forecast_gold_sarimax_multivar_external_test_10_s3_cv = pd.Series(
-            data=results,
-            index=index
-        )
-        self.forecast_gold_sarimax_multivar_external_test_10_s3_cv.name = 'mean'
+        # self.forecast_gold_sarimax_multivar_external_test = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test.name = 'mean'
+
+        # results = results[0:6]
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10 = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test_10.name = 'mean'
+
+        # ################################################################################
+        # #### MULTIVARIATE (with seasonality = True, Seasonal Period = 12 CV = None) ####
+        # ################################################################################
+
+        # ## Internal (to AutoML) validation set results (with seasonality = True, Seasonal Period = 12)
+        # # Without CV
+        # results = [
+        #     726.115602, 646.028979, 657.249936, 746.752393,
+        #     732.813245, 749.435178, 863.356789, 903.168728
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s12 = np.array(results)
+        # self.rmse_gold_sarimax_multivar_s12 = 197.18894
+
+        # ## External Test Set results
+        # # (With Multivariate columns accepted)
+        # # (with seasonality = True, Seasonal Period = 12)
+
+        # results = [
+        #     1006.134134, 779.874076, 420.461804, 724.042104,
+        #     1827.304601, 1204.070838, -2216.439611, -1278.974132
+        # ]
+
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+
+        # self.forecast_gold_sarimax_multivar_external_test_s12 = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test_s12.name = 'mean'
+
+        # results = results[0:6]
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10_s12 = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test_10_s12.name = 'mean'
+
+        # #############################################################################
+        # #### MULTIVARIATE (with seasonality = True, Seasonal Period = 3, CV = 2) ####
+        # #############################################################################
+
+        # ## Internal (to AutoML) validation set results
+
+        # results = [
+        #     119.260686, 540.623654, 230.040446, 364.088969,
+        #     470.581971, 105.559723, 84.335069, 110.757574
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold1 = np.array(results)
+
+        # results = [
+        #     551.736392, 502.232401, 440.047123, 521.382176,
+        #     496.012325, 501.563083, 634.825011, 674.975611
+        # ]
+        # self.forecast_gold_sarimax_multivar_internal_val_s3_cv_fold2 = np.array(results)
+
+        # self.rmse_gold_sarimax_multivar_s12_cv = 239.191102
+        # self.rmse_gold_sarimax_multivar_s3_cv_fold1 = 443.839435
+        # self.rmse_gold_sarimax_multivar_s3_cv_fold2 = 34.542769
+
+
+        # ## External Test Set results
+        # results = [
+        #     770.447134, 784.881945, 857.496478, 918.626627,
+        #     689.107408, 599.827292, 608.747367, 634.957579
+        # ]
+
+        # index = pd.to_datetime([
+        #     '2014-05-01', '2014-06-01', '2014-07-01', '2014-08-01',
+        #     '2014-09-01', '2014-10-01', '2014-11-01', '2014-12-01'
+        #     ])
+
+        # self.forecast_gold_sarimax_multivar_external_test_s3_cv = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test_s3_cv.name = 'mean'
+
+        # results = results[0:6]
+        # index = index[0:6]
+        # self.forecast_gold_sarimax_multivar_external_test_10_s3_cv = pd.Series(
+        #     data=results,
+        #     index=index
+        # )
+        # self.forecast_gold_sarimax_multivar_external_test_10_s3_cv.name = 'mean'
 
         #######################################################################################################
 
@@ -725,7 +725,8 @@ class TestAutoTS(unittest.TestCase):
 
         leaderboard_gold = pd.DataFrame(
             {
-                'name':['ML', 'Prophet', 'VAR', 'auto_SARIMAX', 'ARIMA'],
+                # 'name':['ML', 'Prophet', 'VAR', 'auto_SARIMAX', 'ARIMA'],
+                'name':['ML', 'Prophet', 'VAR', 'auto_SARIMAX'],
                 'rmse':[
                     self.rmse_gold_ml_multivar,
                     # self.rmse_gold_prophet_multivar_cv_fold2  # Unbiased
@@ -733,7 +734,7 @@ class TestAutoTS(unittest.TestCase):
                     (self.rmse_gold_prophet_multivar_cv_fold2 + self.rmse_gold_prophet_multivar_cv_fold1)/2,
                     self.rmse_gold_var_multivar,
                     self.rmse_gold_auto_sarimax_multivar,
-                    self.rmse_gold_arima_uni_multivar
+                    # self.rmse_gold_arima_uni_multivar
                 ]
             }
         )
@@ -821,37 +822,37 @@ class TestAutoTS(unittest.TestCase):
             # )
 
 
-        if automl_model.get_model_build('ARIMA') is not None:
-            # Simple forecast with forecast window = one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
-                forecast_period=self.forecast_period,
-                model="ARIMA"
-            )
-            assert_series_equal(test_predictions['mean'].astype(np.double).round(6), self.forecast_gold_arima_uni_multivar_series)
+        # if automl_model.get_model_build('ARIMA') is not None:
+        #     # Simple forecast with forecast window = one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
+        #         forecast_period=self.forecast_period,
+        #         model="ARIMA"
+        #     )
+        #     assert_series_equal(test_predictions['mean'].astype(np.double).round(6), self.forecast_gold_arima_uni_multivar_series)
 
-            # Simple forecast with forecast window != one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
-                forecast_period=10,
-                model="ARIMA"
-            )
-            assert_series_equal(test_predictions['mean'].astype(np.double).round(6), self.forecast_gold_arima_uni_multivar_series_10)
+        #     # Simple forecast with forecast window != one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
+        #         forecast_period=10,
+        #         model="ARIMA"
+        #     )
+        #     assert_series_equal(test_predictions['mean'].astype(np.double).round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
-            # Complex forecasts (returns confidence intervals, etc.)
-            _ = automl_model.predict(
-                testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
-                forecast_period=self.forecast_period,
-                model="ARIMA",
-                simple=False
-            )
-            # self.assertIsNone(
-            #     np.testing.assert_array_equal(
-            #         test_predictions.columns.values, self.expected_pred_col_names
-            #     )
-            # )
+        #     # Complex forecasts (returns confidence intervals, etc.)
+        #     _ = automl_model.predict(
+        #         testdata=self.test_multivar[[self.ts_column] + self.preds], # Not needed for ARIMA
+        #         forecast_period=self.forecast_period,
+        #         model="ARIMA",
+        #         simple=False
+        #     )
+        #     # self.assertIsNone(
+        #     #     np.testing.assert_array_equal(
+        #     #         test_predictions.columns.values, self.expected_pred_col_names
+        #     #     )
+        #     # )
 
         # if automl_model.get_model_build('SARIMAX') is not None:
         #     # Simple forecast with forecast window = one used in training
@@ -959,22 +960,22 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('Prophet').get('rmse')[0], 8), self.rmse_gold_prophet_multivar_cv_fold1,  # Biased
             "(Multivar Test) Prophet RMSE does not match up with expected values.")
 
-        ################################
-        #### Checking ARIMA Results ####
-        ################################
+        # ################################
+        # #### Checking ARIMA Results ####
+        # ################################
 
-        # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
-        self.assertIsNone(
-            np.testing.assert_array_equal(
-                np.round(ml_dict.get('ARIMA').get('forecast')['mean'].values.astype(np.double), 8),
-                self.forecast_gold_arima_uni_multivar
-            ),
-            "(Multivar Test) ARIMA Forecast does not match up with expected values."
-        )
+        # # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
+        # self.assertIsNone(
+        #     np.testing.assert_array_equal(
+        #         np.round(ml_dict.get('ARIMA').get('forecast')['mean'].values.astype(np.double), 8),
+        #         self.forecast_gold_arima_uni_multivar
+        #     ),
+        #     "(Multivar Test) ARIMA Forecast does not match up with expected values."
+        # )
 
-        self.assertEqual(
-            round(ml_dict.get('ARIMA').get('rmse'), 8), self.rmse_gold_arima_uni_multivar,
-            "(Multivar Test) ARIMA RMSE does not match up with expected values.")
+        # self.assertEqual(
+        #     round(ml_dict.get('ARIMA').get('rmse'), 8), self.rmse_gold_arima_uni_multivar,
+        #     "(Multivar Test) ARIMA RMSE does not match up with expected values.")
 
         # ##################################
         # #### Checking SARIMAX Results ####
@@ -1032,11 +1033,12 @@ class TestAutoTS(unittest.TestCase):
 
         leaderboard_gold = pd.DataFrame(
             {
-                'name': ['Prophet', 'auto_SARIMAX', 'ARIMA', 'VAR', 'ML'],
+                # 'name': ['Prophet', 'auto_SARIMAX', 'ARIMA', 'VAR', 'ML'],
+                'name': ['Prophet', 'auto_SARIMAX', 'VAR', 'ML'],
                 'rmse':[
                     self.rmse_gold_prophet_univar_cv_fold2,
                     self.rmse_gold_auto_sarimax_univar,
-                    self.rmse_gold_arima_uni_multivar,
+                    # self.rmse_gold_arima_uni_multivar,
                     math.inf,
                     math.inf
                 ]
@@ -1103,34 +1105,34 @@ class TestAutoTS(unittest.TestCase):
             # )
 
 
-        if automl_model.get_model_build('ARIMA') is not None:
-            # Simple forecast with forecast window = one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=self.forecast_period,
-                model="ARIMA"
-            )
-            assert_series_equal(test_predictions['mean'].astype(np.float).round(6), self.forecast_gold_arima_uni_multivar_series)
+        # if automl_model.get_model_build('ARIMA') is not None:
+        #     # Simple forecast with forecast window = one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=self.forecast_period,
+        #         model="ARIMA"
+        #     )
+        #     assert_series_equal(test_predictions['mean'].astype(np.float).round(6), self.forecast_gold_arima_uni_multivar_series)
 
-            # Simple forecast with forecast window != one used in training
-            # Using named model
-            test_predictions = automl_model.predict(
-                forecast_period=10,
-                model="ARIMA"
-            )
-            assert_series_equal(test_predictions['mean'].astype(np.float).round(6), self.forecast_gold_arima_uni_multivar_series_10)
+        #     # Simple forecast with forecast window != one used in training
+        #     # Using named model
+        #     test_predictions = automl_model.predict(
+        #         forecast_period=10,
+        #         model="ARIMA"
+        #     )
+        #     assert_series_equal(test_predictions['mean'].astype(np.float).round(6), self.forecast_gold_arima_uni_multivar_series_10)
 
-            # Complex forecasts (returns confidence intervals, etc.)
-            _ = automl_model.predict(
-                forecast_period=self.forecast_period,
-                model="ARIMA",
-                simple=False
-            )
-            # self.assertIsNone(
-            #     np.testing.assert_array_equal(
-            #         test_predictions.columns.values, self.expected_pred_col_names
-            #     )
-            # )
+        #     # Complex forecasts (returns confidence intervals, etc.)
+        #     _ = automl_model.predict(
+        #         forecast_period=self.forecast_period,
+        #         model="ARIMA",
+        #         simple=False
+        #     )
+        #     # self.assertIsNone(
+        #     #     np.testing.assert_array_equal(
+        #     #         test_predictions.columns.values, self.expected_pred_col_names
+        #     #     )
+        #     # )
 
         # # TODO: Change to auto_SARIMAX later
         # if automl_model.get_model_build('SARIMAX') is not None:
@@ -1217,22 +1219,22 @@ class TestAutoTS(unittest.TestCase):
             round(ml_dict.get('Prophet').get('rmse')[0], 8), self.rmse_gold_prophet_univar_cv_fold1,  # Biased
             "(Univar Test) Prophet RMSE does not match up with expected values.")
 
-        ################################
-        #### Checking ARIMA Results ####
-        ################################
+        # ################################
+        # #### Checking ARIMA Results ####
+        # ################################
 
-        # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
-        self.assertIsNone(
-            np.testing.assert_array_equal(
-                np.round(ml_dict.get('ARIMA').get('forecast')['mean'].values.astype(np.double), 8),
-                self.forecast_gold_arima_uni_multivar
-            ),
-            "(Univar Test) ARIMA Forecast does not match up with expected values."
-        )
+        # # https://stackoverflow.com/questions/19387608/attributeerror-rint-when-using-numpy-round
+        # self.assertIsNone(
+        #     np.testing.assert_array_equal(
+        #         np.round(ml_dict.get('ARIMA').get('forecast')['mean'].values.astype(np.double), 8),
+        #         self.forecast_gold_arima_uni_multivar
+        #     ),
+        #     "(Univar Test) ARIMA Forecast does not match up with expected values."
+        # )
 
-        self.assertEqual(
-            round(ml_dict.get('ARIMA').get('rmse'), 8), self.rmse_gold_arima_uni_multivar,
-            "(Univar Test) ARIMA RMSE does not match up with expected values.")
+        # self.assertEqual(
+        #     round(ml_dict.get('ARIMA').get('rmse'), 8), self.rmse_gold_arima_uni_multivar,
+        #     "(Univar Test) ARIMA RMSE does not match up with expected values.")
 
         # ##################################
         # #### Checking SARIMAX Results ####
