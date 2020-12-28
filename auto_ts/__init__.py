@@ -111,9 +111,9 @@ class auto_timeseries:
 
         :param model_type The type(s) of model to build. Default to building only statistical models
         Can be a string or a list of models. Allowed values are:
-        'best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
+        'best', 'prophet', 'stats', 'SARIMAX', 'VAR', 'ML'.
         "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
-        "stats" will build statsmodels based ARIMA, SARIMAX and VAR models
+        "stats" will build statsmodels based SARIMAX and VAR models
         "ML" will build a machine learning model using Random Forests provided explanatory vars are given
         'best' will try to build all models and pick the best one
         If a list is provided, then only those models will be built
@@ -127,7 +127,7 @@ class auto_timeseries:
         ##################################################################################################
         AUTO_TIMESERIES IS A COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES MANY
         TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
-        Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
+        Auto_Timeseries will rapidly build predictive models based on Statsmodels, Seasonal ARIMA
         and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
         #####################################################################################################
         """
@@ -143,7 +143,7 @@ class auto_timeseries:
             model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
-        self.allowed_models = ['best', 'prophet', 'stats', 'ARIMA', 'auto_SARIMAX', 'VAR', 'ML']
+        self.allowed_models = ['best', 'prophet', 'stats', 'auto_SARIMAX', 'VAR', 'ML']
 
         # new function.
         if args:
@@ -445,44 +445,44 @@ class auto_timeseries:
             self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type):
-            ################### Let's build an ARIMA Model and add results #################
-            print("\n")
-            print("="*50)
-            print("Building ARIMA Model")
-            print("="*50)
-            print("\n")
+        # if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type):
+        #     ################### Let's build an ARIMA Model and add results #################
+        #     print("\n")
+        #     print("="*50)
+        #     print("Building ARIMA Model")
+        #     print("="*50)
+        #     print("\n")
 
-            name = 'ARIMA'
+        #     name = 'ARIMA'
 
-            # Placeholder for cases when model can not be built
-            score_val = np.inf
-            model_build = None
-            model = None
-            forecasts = None
-            print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
-            try:
-                model_build = BuildArima(
-                    stats_scoring, p_max, d_max, q_max,
-                    forecast_period=self.forecast_period, method='mle', verbose=self.verbose
-                )
-                model, forecasts, rmse, norm_rmse = model_build.fit(
-                    ts_df[target]
-                )
+        #     # Placeholder for cases when model can not be built
+        #     score_val = np.inf
+        #     model_build = None
+        #     model = None
+        #     forecasts = None
+        #     print(colorful.BOLD + '\nRunning Non Seasonal ARIMA Model...' + colorful.END)
+        #     try:
+        #         model_build = BuildArima(
+        #             stats_scoring, p_max, d_max, q_max,
+        #             forecast_period=self.forecast_period, method='mle', verbose=self.verbose
+        #         )
+        #         model, forecasts, rmse, norm_rmse = model_build.fit(
+        #             ts_df[target]
+        #         )
 
-                if self.score_type == 'rmse':
-                    score_val = rmse
-                else:
-                    score_val = norm_rmse
-            except Exception as e:
-                print("Exception occurred while building ARIMA model...")
-                print(e)
-                print('    ARIMA model error: predictions not available.')
+        #         if self.score_type == 'rmse':
+        #             score_val = rmse
+        #         else:
+        #             score_val = norm_rmse
+        #     except Exception as e:
+        #         print("Exception occurred while building ARIMA model...")
+        #         print(e)
+        #         print('    ARIMA model error: predictions not available.')
 
-            self.ml_dict[name]['model'] = model
-            self.ml_dict[name]['forecast'] = forecasts
-            self.ml_dict[name][self.score_type] = score_val
-            self.ml_dict[name]['model_build'] = model_build
+        #     self.ml_dict[name]['model'] = model
+        #     self.ml_dict[name]['forecast'] = forecasts
+        #     self.ml_dict[name][self.score_type] = score_val
+        #     self.ml_dict[name]['model_build'] = model_build
 
 
         if self.__any_contained_in_list(what_list=['auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
