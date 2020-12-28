@@ -137,7 +137,7 @@ class auto_timeseries:
         self.time_interval = time_interval
         self.non_seasonal_pdq = non_seasonal_pdq
         self.seasonality = seasonality
-        self.seasonal_period = seasonal_period 
+        self.seasonal_period = seasonal_period
         self.conf_int = conf_int
         if isinstance(model_type, str):
             model_type = [model_type]
@@ -660,7 +660,7 @@ class auto_timeseries:
             cv_scores = best_model_dict.get(self.score_type)
             mean_cv_score = self.__get_mean_cv_score(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
-        
+
         end = time()
 
         print("\n\n" + "-"*50)
