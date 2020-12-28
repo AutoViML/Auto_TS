@@ -1,5 +1,5 @@
-import numpy as np
-import pandas as pd
+import numpy as np # type: ignore
+import pandas as pd  # type: ignore
 import itertools
 import operator
 # helper functions
@@ -17,7 +17,7 @@ def build_pyflux_model(df, target, ar=3, ma=3,integ=1, forecast_period=2,
     """
     try:
         # imported pyflux pkg
-        import pyflux as pf
+        import pyflux as pf  # type: ignore
     except:
         print('Pyflux is not installed - hence not running PyFlux model')
         return 'error','error','error','error'

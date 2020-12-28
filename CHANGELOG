@@ -1,0 +1,46 @@
+-------------------------------
+version_number = '0.0.24.b2'
+-------------------------------
+Fixed bug with Prophet Multivariate Prediction where it needed to pass forecast_period in 
+addition to X_exogen. Only X_egogen is needed now. Forecast Period is calculated based on 
+number of observations in the X_exogen data.
+
+TODO: Make sure all predict functions are consistent (Prophet now has an Optional 
+return if things go wrong. Others should do the same.)
+
+-------------------------------
+version_number = '0.0.24'
+-------------------------------
+Added 'auto_arima' capabaility from pmdarima library
+
+-------------------------------
+version_number = '0.0.23.b4'
+-------------------------------
+Changed default argument for 'sep' in fit function to be 'None' (treated as ',' internally).
+
+Fixed bug with predict function in auto_ts 
+Dataframe index for X_exogen needed to be set before passing to predict since we were doing the same
+while fitting. Without this, it was causing issues with ML models where we are internally 
+constructing the 'future dataframe' and if while fiting, the dataframe had datatime index and while
+predicting, X_egogen had integer index (index was still in dataframne column in X_egogen), it was
+causing issues while adding time series features (could not get time series features from integers).
+
+
+-------------------------------
+version_number = '0.0.23.b3'
+-------------------------------
+More time series engineered features included in ML models
+Example, 'dayofweek', 'quarter', 'month', 'year', 'dayofyear', 'weekofyear', 'weekend', etc.
+
+
+-------------------------------
+version_number = '0.0.23.b2'
+-------------------------------
+Fixed bug in Prophet rolling window horizon calculation
+
+
+-------------------------------
+version_number = '0.0.23'
+-------------------------------
+Prophet now includes multivariate modeling capability with rolling window
+SARIMAX also includes multivariate modeling capability with rolling window

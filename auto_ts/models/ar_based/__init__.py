@@ -1,3 +1,4 @@
-from .arima import build_arima_model
-from .sarimax import build_sarimax_model
-from .var import build_var_model
+from .build_arima import BuildArima
+from .build_sarimax import BuildSarimax
+from .build_autoarimax import BuildAutoSarimax
+from .build_var import BuildVAR

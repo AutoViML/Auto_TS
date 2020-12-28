@@ -20,7 +20,7 @@ def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, 
     return rmse, rmse/std_dev
 
 
-def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.array) -> Tuple[float, float]:
+def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.array, toprint: bool = True) -> Tuple[float, float]:
     """
     This utility calculates rmse between actuals and predicted. However, it does one more.
     Since in dynamic forecast, we need the longer original, it calculates Normalized RMSE
@@ -29,9 +29,10 @@ def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.arra
     """
     rmse = np.sqrt(np.mean((actuals - predicted)**2))
     norm_rmse = rmse/original.std()
-    print('    RMSE = {:,.2f}'.format(rmse))
-    print('    Std Deviation of Originals = {:,.2f}'.format(original.std()))
-    print('    Normalized RMSE = %0.0f%%' %(100*norm_rmse))
+    if toprint:
+        print('    RMSE = {:,.2f}'.format(rmse))
+        print('    Std Deviation of Originals = {:,.2f}'.format(original.std()))
+        print('    Normalized RMSE = %0.0f%%' %(100*norm_rmse))
     return rmse, norm_rmse
 
 
