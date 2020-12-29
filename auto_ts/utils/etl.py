@@ -65,7 +65,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
         Note that the original columns are dropped if you set the 'dropT' argument to True.
         If not, they are preserved.
     This Pandas DataFrame of lagged time series data is immediately available for supervised learning.
-    
+
     rtype: pd.DataFrame, str, List[str]
     """
     df = df[:]

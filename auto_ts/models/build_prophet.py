@@ -3,10 +3,12 @@
 from typing import Optional
 import logging
 import copy
+import time
+import numpy as np
 
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
-
+import pdb
 
 import matplotlib.pyplot as plt # type: ignore
 
@@ -72,6 +74,7 @@ class BuildProphet(BuildBase):
 
         :rtype object
         """
+        # use all available threads/cores
 
         self.time_col = time_col
         self.original_target_col = target_col
@@ -144,28 +147,50 @@ class BuildProphet(BuildBase):
         # to FB recommendation has been made as a temporary (short term) fix.
         # The root cause issue will need to be fixed eventually at a later point.
         #########################################################################################
+        start_time = time.time()
+        ### Prophet's Time Interval translates into frequency based on the following pandas date_range alias:
+        #  Link: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
+        ## This is done using the get_prophet_time_interval() function later.
 
         ## we will be using the recommended defaults for these form FB Prophet page
         #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days
         #horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
-        horizon_days = int(total_days/3)
-
+        ### if the forecast_period is given as 5 and the time_interval is Monthly, then horizon = 5 months
+        time_interval_days = {
+                'months': 30,
+                'weeks': 7,
+                'days': 1,
+                'semi-annual': 180,
+                'annual':365,
+                'quarterly': 90,
+                }
+        ## set the time period based on days since that is what FB Prophet wants.
+        horizon_days = int(self.forecast_period*time_interval_days[self.time_interval])
         #initial_days = total_days - NFOLDS * horizon_days
         initial_days = min(int(0.5*total_days), int(3*horizon_days)) ## this is recommended by FB Prophet
         #period_days = horizon_days
         period_days = min(int(0.2*initial_days), int(0.5*horizon_days)) # as recommended by FB Prophet
 
-        if self.verbose >= 2:
-            print("Unadjusted Prophet CV Diagnostics:")
-            print(f"Total Days: {total_days}")
-            print(f"Initial Days: {initial_days}")
-            print(f"Period Days: {period_days}")
-            print(f"Horizon Days: {horizon_days}")
+        if self.verbose >= 3:
+            print("FB Prophet Cross-validation assumptions:")
+            print(f"    Total {self.time_interval}: {total_days}")
+            print(f"    Initial {self.time_interval}: {initial_days}")
+            print(f"    Period {self.time_interval}: {period_days}")
+            print(f"    Horizon {self.time_interval}: {horizon_days}")
 
         OFFSET = 0  # 5 days  # adjusting some days to take into account uneven months.
-        initial = str(initial_days-OFFSET) + " D"
-        period = str(period_days) + " D"
-        horizon = str(horizon_days+OFFSET) + " D"
+        #initial = str(initial_days-OFFSET) + " D"
+        #period = str(period_days) + " D"
+        #horizon = str(horizon_days+OFFSET) + " D"
+
+        #### This is the simplest way to set these defaults to create a sliding window
+        initial = int(dft.shape[0]/2) #*time_interval_days[timeinterval]
+        horizon = self.forecast_period #*time_interval_days[timeinterval]
+        period = max(2, int(self.forecast_period/2)) #*time_interval_days[timeinterval]
+        print("FB Prophet Cross-validation assumptions: in %s" %self.time_interval)
+        print('    initial=',initial)
+        print('    horizon=',horizon)
+        print('    period=',period)
 
         if self.verbose >= 2:
             print(f"OFFSET: {OFFSET}")
@@ -183,38 +208,43 @@ class BuildProphet(BuildBase):
 
         print("  Starting Prophet Cross Validation")
         with SuppressStdoutStderr():
-            df_cv = cross_validation(self.model, initial=initial, period=period, horizon=horizon)
+            actuals, predictions, rmse_folds, norm_rmse_folds = easy_cross_validation(dft,actual,
+                                        initial=initial, period=period,
+                                          horizon=horizon)
+            #df_cv = cross_validation(self.model, initial=initial, period=period,
+            #                horizon=horizon)
+            forecast_df_folds = copy.deepcopy(predictions)
         print("  End of Prophet Cross Validation")
 
         if self.verbose >= 1:
             print("Prophet CV DataFrame")
-            print(performance_metrics(df_cv).head())
+            #print(performance_metrics(df_cv).head())
         if self.verbose >= 2:
             print("Prophet plotting CV Metrics")
-            _ = plot_cross_validation_metric(df_cv, metric=self.scoring)
-            plt.show()
+            #_ = plot_cross_validation_metric(df_cv, metric=self.scoring)
+            #plt.show()
 
-        num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
+        #num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 
         # https://stackoverflow.com/questions/54405704/check-if-all-values-in-dataframe-column-are-the-same
-        a = num_obs_folds.to_numpy()
-        all_equal = (a[0] == a).all()
+        #a = num_obs_folds.to_numpy()
+        #all_equal = (a[0] == a).all()
 
-        if not all_equal:
-            print("WARNING: All folds did not have the same number of observations in the validation sets.")
-            print("Num Test Obs Per fold")
-            print(num_obs_folds)
+        #if not all_equal:
+            #print("WARNING: All folds did not have the same number of observations in the validation sets.")
+            #print("Num Test Obs Per fold")
+            #print(num_obs_folds)
 
-        rmse_folds = []
-        norm_rmse_folds = []
-        forecast_df_folds = []
+        #rmse_folds = []
+        #norm_rmse_folds = []
+        #forecast_df_folds = []
 
-        df_cv_grouped = df_cv.groupby('cutoff')
-        for (_, loop_df) in df_cv_grouped:
-            rmse, norm_rmse = print_dynamic_rmse(loop_df['y'], loop_df['yhat'], dft['y'])
-            rmse_folds.append(rmse)
-            norm_rmse_folds.append(norm_rmse)
-            forecast_df_folds.append(loop_df)
+        #df_cv_grouped = df_cv.groupby('cutoff')
+        #for (_, loop_df) in df_cv_grouped:
+        #    rmse, norm_rmse = print_dynamic_rmse(loop_df['y'], loop_df['yhat'], dft['y'])
+        #    rmse_folds.append(rmse)
+        #    norm_rmse_folds.append(norm_rmse)
+        #    forecast_df_folds.append(loop_df)
 
         # print(f"RMSE Folds: {rmse_folds}")
         # print(f"Norm RMSE Folds: {norm_rmse_folds}")
@@ -234,7 +264,12 @@ class BuildProphet(BuildBase):
         #     print('Error in FB Prophet components forecast. Continuing...')
 
         #rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
+        print('---------------------------')
+        print('Final Prophet CV results:')
+        print('---------------------------')
+        rmse, norm_rmse = print_dynamic_rmse(actuals, predictions, actuals)
 
+        print('Time taken (in seconds): %d' %((time.time()-start_time)))
         #return self.model, forecast, rmse, norm_rmse
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
 
@@ -420,3 +455,64 @@ def plot_prophet(dft, forecastdf):
     ax1.set_xlabel('Date Time')
     plt.show(block=False)
     return viz_df
+#################################
+from sklearn.metrics import mean_squared_error
+from fbprophet import Prophet
+import time
+import pdb
+import copy
+import matplotlib.pyplot as plt
+def easy_cross_validation(train, target, initial, horizon, period):
+    n_folds = int(((train.shape[0]-initial)/period)-1)
+    y_preds = pd.DataFrame()
+    print('Max. iterations using sliding window cross validation = %d' %n_folds)
+    start_time = time.time()
+    start_p = 0  ## this represents start of train fold
+    end_p = initial  ## this represents end of train fold
+    start_s = initial  ## this represents start of test fold
+    end_s = initial + horizon ### this represents end of test fold
+    rmse_means = []
+    norm_rmse_means = []
+    y_trues = pd.DataFrame()
+    for i in range(n_folds):
+        #start_p += i*period
+        end_p += i*period
+        train_fold = train[start_p:end_p]
+        start_s += i*period
+        end_s += i*period
+        test_fold = train[start_s: end_s]
+        if len(test_fold) == 0:
+            break
+        model = Prophet(growth="linear")
+        kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+        model.fit(train_fold, **kwargs)
+        future_period = model.make_future_dataframe(freq="MS",periods=horizon)
+        forecast_df = model.predict(future_period)
+        y_pred = forecast_df.iloc[start_s:end_s]['yhat']
+        if i == 0:
+            y_preds = copy.deepcopy(y_pred)
+        else:
+            y_preds = y_preds.append(y_pred)
+        rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[target],y_pred,test_fold[target])
+        print('Cross Validation window: %d completed' %(i+1,))
+        rmse_means.append(rmse_fold)
+        norm_rmse_means.append(rmse_norm)
+    ### This is where you consolidate the CV results ####
+    #print('Time Taken = %0.0f mins' %((time.time()-start_time)/60))
+    rmse_mean = np.mean(rmse_means)
+    #print('Average CV RMSE over %d windows (macro) = %0.5f' %(i,rmse_mean))
+    y_trues = train[-y_preds.shape[0]:][target]
+    cv_micro = np.sqrt(mean_squared_error(y_trues.values,
+                                          y_preds.values))
+    #print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+    try:
+        fig,ax = plt.subplots(figsize=(15,7))
+        labels = ['actual','forecast']
+        train[target].plot(ax=ax,)
+        y_preds[-horizon:].plot(ax=ax,)
+        ax.legend(labels)
+        plt.title('Prophet: Actual vs Forecast in last window of Cross Validation', fontsize=20);
+    except:
+        print('Error: Not able to plot Prophet CV results')
+    return y_trues, y_preds, rmse_means, norm_rmse_means
+##################################################################################
