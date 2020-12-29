@@ -1,6 +1,8 @@
 from typing import Optional
 import warnings
+warnings.filterwarnings(action='ignore')
 from abc import abstractmethod
+import copy
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -72,14 +74,14 @@ class BuildArimaBase(BuildBase):
         # ## Added temporarily
         # ts_train = ts_df.iloc[:-self.forecast_period]
         # self.find_best_parameters(data = ts_train)
-        self.find_best_parameters(data = ts_df)
+        auto_arima_model = self.find_best_parameters(data = ts_df)
+        self.model = auto_arima_model
 
         if self.verbose >= 1:
             print(f"\n\nBest Parameters:")
             print(f"p: {self.best_p}, d: {self.best_d}, q: {self.best_q}")
             print(f"P: {self.best_P}, D: {self.best_D}, Q: {self.best_Q}")
-            print(f"Seasonality: {self.seasonality} Seasonal Period: {self.seasonal_period}")
-
+            print(f"Seasonality: {self.seasonality}\nSeasonal Period: {self.seasonal_period}")
 
         #######################################
         #### Cross Validation across Folds ####
@@ -98,91 +100,38 @@ class BuildArimaBase(BuildBase):
             if self.verbose >= 1:
                 print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape} Test Shape: {ts_test.shape}")
 
-
-            #########################################
-            #### Define the model with fold data ####
-            #########################################
-
-            bestmodel = self.get_best_model(ts_train)
-
-            ######################################
-            #### Fit the model with fold data ####
-            ######################################
-
-            if self.verbose >= 1:
-                print(colorful.BOLD + 'Fitting best SARIMAX model' + colorful.END)
-
-            try:
-                self.model = bestmodel.fit(disp=False)
-                if self.verbose >= 1:
-                    print('    Best %s metric = %0.1f' % (self.scoring, eval('self.model.' + self.scoring)))
-            except Exception as e:
-                print(e)
-                print('Error: Getting Singular Matrix. Please try using other PDQ parameters or turn off Seasonality')
-                return bestmodel, None, np.inf, np.inf
-
-            if self.verbose >= 1:
-                try:
-                    self.model.plot_diagnostics(figsize=(16, 12))
-                except:
-                    print('Error: SARIMAX plot diagnostic. Continuing...')
-
             ### this is needed for static forecasts ####################
             # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
             y_truth = ts_train[:]  #  TODO: Note that this is only univariate analysis
 
-            if self.univariate:
-                y_forecasted = self.model.predict(dynamic=False)
+            if len(self.original_preds) == 0:
+                exog = None
+            elif len(self.original_preds) == 1:
+                exog = ts_test[self.original_preds[0]].values.reshape(-1, 1)
             else:
-                y_forecasted = self.model.predict(dynamic=False, exog=ts_test[self.original_preds])
+                exog = ts_test[self.original_preds].values
 
-            concatenated = pd.concat([y_truth, y_forecasted], axis=1, keys=['original', 'predicted'])
+            y_forecasted = self.model.predict(ts_test.shape[0],exog)
 
-            ### for SARIMAX, you don't have to restore differences since it predicts like actuals.###
+            concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
+                            y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
+
+            ### for SARIMAX and Auto_ARIMA, you don't have to restore differences since it predicts like actuals.###
+            y_true = concatenated['original']
+            y_pred = concatenated['predicted']
             if self.verbose >= 1:
                 print('Static Forecasts:')
                 # Since you are differencing the data, some original data points will not be available
                 # Hence taking from first available value.
-                print_static_rmse(
-                    concatenated['original'].values[self.best_d:],
-                    concatenated['predicted'].values[self.best_d:],
-                    verbose=self.verbose
-                )
-
-            ########### Dynamic One Step Ahead Forecast ###########################
-            ### Dynamic Forecats are a better representation of true predictive power
-            ## since they only use information from the time series up to a certain point,
-            ## and after that, forecasts are generated using values from previous forecasted
-            ## time points.
-            #################################################################################
-            # Now do dynamic forecast plotting for the last X steps of the data set ######
-
-            if self.verbose >= 1:
-                ax = concatenated[['original', 'predicted']][self.best_d:].plot(figsize=(16, 12))
-                startdate = ts_df.index[-self.forecast_period-1]
-                pred_dynamic = self.model.get_prediction(start=startdate, dynamic=True, full_results=True)
-                pred_dynamic_ci = pred_dynamic.conf_int()
-                pred_dynamic.predicted_mean.plot(label='Dynamic Forecast', ax=ax)
-                try:
-                    ax.fill_between(pred_dynamic_ci.index, pred_dynamic_ci.iloc[:, 0],
-                                    pred_dynamic_ci.iloc[:, 1], color='k', alpha=.25)
-                    ax.fill_betweenx(ax.get_ylim(), startdate, ts_train.index[-1], alpha=.1, zorder=-1)
-                except:
-                    pass
-                ax.set_xlabel('Date')
-                ax.set_ylabel('Levels')
-                plt.legend()
-                plt.show(block=False)
+                print_static_rmse(y_true, y_pred, verbose=self.verbose)
+                #quick_ts_plot(y_true, y_pred)
 
             # Extract the dynamic predicted and true values of our time series
-            forecast_df = self.predict(testdata=ts_test[self.original_preds], simple=False)
+            forecast_df = copy.deepcopy(y_forecasted)
             forecast_df_folds.append(forecast_df)
 
-            # Extract Metrics
-            if self.verbose >= 1:
-                print('Dynamic %d-Period Forecast:' % (self.forecast_period))
 
-            rmse, norm_rmse = print_dynamic_rmse(ts_test[self.original_target_col], forecast_df['mean'].values, ts_train[self.original_target_col], toprint=self.verbose)
+            rmse, norm_rmse = print_static_rmse(y_true, y_pred, verbose=0) ## don't print this time
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
 
@@ -258,7 +207,7 @@ class BuildArimaBase(BuildBase):
             if self.univariate:
                 bestmodel = SARIMAX(
                     endog=data[self.original_target_col],
-                    # exog=data[self.original_preds],
+                    # exog=data[self.original_preds], ###if it is univariate, no preds needed
                     order=(self.best_p, self.best_d, self.best_q),
                     enforce_stationarity=False,
                     enforce_invertibility=False,
@@ -268,7 +217,7 @@ class BuildArimaBase(BuildBase):
             else:
                 bestmodel = SARIMAX(
                     endog=data[self.original_target_col],
-                    exog=data[self.original_preds],
+                    exog=data[self.original_preds], ## if it is multivariate, preds are needed
                     order=(self.best_p, self.best_d, self.best_q),
                     enforce_stationarity=False,
                     enforce_invertibility=False,
@@ -279,7 +228,7 @@ class BuildArimaBase(BuildBase):
             if self.univariate:
                 bestmodel = SARIMAX(
                     endog=data[self.original_target_col],
-                    # exog=data[self.original_preds],
+                    # exog=data[self.original_preds], ### if univariate, no preds are needed
                     order=(self.best_p, self.best_d, self.best_q),
                     seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
                     enforce_stationarity=False,
@@ -291,7 +240,7 @@ class BuildArimaBase(BuildBase):
             else:
                 bestmodel = SARIMAX(
                     endog=data[self.original_target_col],
-                    exog=data[self.original_preds],
+                    exog=data[self.original_preds], ### if multivariate, preds are needed
                     order=(self.best_p, self.best_d, self.best_q),
                     seasonal_order=(self.best_P, self.best_D, self.best_Q, self.seasonal_period),
                     enforce_stationarity=False,
@@ -320,22 +269,37 @@ class BuildArimaBase(BuildBase):
         else:
             if testdata is None:
                 raise ValueError("SARIMAX needs testdata to make predictions, but this was not provided. Please provide to proceed.")
+                forecast_period = self.forecast_period
+            elif isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
+                if forecast_period != testdata.shape[0]:
+                    warnings.warn("Forecast Period is not equal to the number of observations in testdata. The forecast period will be assumed to be the number of observations in testdata.")
+                forecast_period = testdata.shape[0]
+                self.forecast_period = forecast_period
+                try:
+                    testdata = testdata[self.original_preds]
+                except Exception as e:
+                    print(e)
+                    print("Model was trained with train dataframe. Please make sure you are passing a test data frame.")
+                    return
+            elif isinstance(testdata, int):
+                if forecast_period != testdata:
+                    print("Forecast Period is not equal to the number of observations in testdata. The forecast period will be assumed to be the number of observations in testdata.")
 
-            if forecast_period != testdata.shape[0]:
-                warnings.warn("Forecast Period is not equal to the number of observations in testdata. The forecast period will be assumed to be the number of observations in testdata.")
-
-            forecast_period = testdata.shape[0]
-
-            try:
-                testdata = testdata[self.original_preds]
-            except Exception as e:
-                print(e)
-                raise ValueError("Some exogenous columns that were used during training are missing in testdata. Please make sure you are passing the correct exogenous columns.")
+                forecast_period = testdata
+                self.forecast_period = forecast_period
 
         if self.univariate:
-            res = self.model.get_forecast(forecast_period)
+            res = self.model.get_forecast(self.forecast_period)
         else:
-            res = self.model.get_forecast(forecast_period, exog=testdata)
+            if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
+                res = self.model.get_forecast(self.forecast_period, exog=testdata)
+            else:
+                try:
+                    res = self.model.get_forecast(self.forecast_period)
+                except Exception as e:
+                    print(e)
+                    print("Model was trained with train dataframe. Please make sure you are passing a test data frame.")
+                    return
 
         res_frame = res.summary_frame()
 

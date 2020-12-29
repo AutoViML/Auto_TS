@@ -2,6 +2,7 @@
 #Defining AUTO_TIMESERIES here
 ##########################################################
 import warnings
+warnings.filterwarnings(action='ignore')
 from typing import List, Dict, Optional, Tuple, Union
 
 from datetime import datetime
@@ -41,7 +42,7 @@ from .models.build_prophet import BuildProphet
 
 # Utils
 from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_supervised, \
-                   time_series_plot, print_static_rmse, print_dynamic_rmse
+                   time_series_plot, print_static_rmse, print_dynamic_rmse, quick_ts_plot
 
 
 class auto_timeseries:
@@ -144,7 +145,9 @@ class auto_timeseries:
             model_type = [model_type]
         self.model_type = model_type
         self.verbose = verbose
-        self.allowed_models = ['best', 'prophet', 'stats', 'auto_SARIMAX', 'VAR', 'ML']
+        self.holidays = None
+        self.growth = "linear"
+        self.allowed_models = ['best', 'prophet', 'stats', 'ml', 'arima','ARIMA','Prophet','SARIMAX', 'VAR', 'ML']
 
         # new function.
         if args:
@@ -154,14 +157,21 @@ class auto_timeseries:
             for key, value in zip(kwargs.keys(), kwargs.values()):
                 if key == 'seasonal_PDQ':
                     print('seasonal_PDQ argument is deprecated. Please remove the argument in future.')
+                if key == 'holidays':
+                    print('holidays argument for FB Prophet given. It must be dictionary or DataFrame.')
+                    self.holidays = value
+                if key == 'growth':
+                    print('growth argument of FB Prophet given. It must be "linear" or "logistic"')
+                    self.growth = value
 
     def fit(
         self,
         traindata: Union[str, pd.DataFrame],
         ts_column: Union[str, int, List[str]],
         target: Union[str, List[str]],
-        cv: Optional[int]=None,
-        sep: Optional[str]=None):
+        sep: Optional[str]=',', ## default is comma, string can be anything.
+        cv: Optional[int]=5, ### Integer field cannot be defaulted to None
+        ):
         """
         Train the auto_timeseries object
         # TODO: Complete docstring
@@ -183,7 +193,7 @@ class auto_timeseries:
 
         :param cv Number of folds to use for cross validation.
             Number of observations in the Validation set for each fold = forecast period
-            If None, a single fold is used
+            default is 5 fold cross validation.
         :type cv Optional[int]
 
         :param sep: Note that optionally you can give a separator for the data in your file.
@@ -228,9 +238,9 @@ class auto_timeseries:
         # Check 'target' type
         if isinstance(target, list):
             target = target[0]
-            print('    Taking the first column in target list as Target variable = %s' %target)
+            print('    Auto_TS cannot handle Multi-Label targets. Taking first column in target list as Target = %s' %target)
         else:
-            print('    Target variable = %s' %target)
+            print('    Target variable given as = %s' %target)
 
         print("Start of loading of data.....")
 
@@ -244,7 +254,7 @@ class auto_timeseries:
                     ts_df = load_ts_data(traindata, self.ts_column, sep, target)
                     if isinstance(ts_df, str):
                         print("""Time Series column '%s' could not be converted to a Pandas date time column.
-                            Please convert your input into a date-time column  and try again""" %self.ts_column)
+                            Please convert your ts_column into a pandas date-time and try again""" %self.ts_column)
                         return None
                     else:
                         print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
@@ -292,7 +302,7 @@ class auto_timeseries:
         #### This is where the program tries to tease out the time period in the data set ####
         ######################################################################################
         if self.time_interval is None:
-            print("Time Interval of obserations has not been provided. Program will try to figure this out now...")
+            print("Time Interval between obserations has not been provided. Auto_TS will try to infer this now...")
             ts_index = pd.to_datetime(ts_df.index)
             diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
             diffdays = diff.days
@@ -320,7 +330,7 @@ class auto_timeseries:
                     self.time_interval = 'qtr'
                 elif 178 <= diff_in_days < 360:
                     print('It is a Semi Annual time series.')
-                    self.time_interval = 'qtr'
+                    self.time_interval = 'semi'
                 elif diff_in_days >= 360:
                     print('It is an Annual time series.')
                     self.time_interval = 'years'
@@ -352,6 +362,8 @@ class auto_timeseries:
                 self.time_interval = 'weeks'
             elif self.time_interval in ['qtr', 'quarter', 'q']:
                 self.time_interval = 'qtr'
+            elif self.time_interval in ['semi', 'semi-annual', '2q']:
+                self.time_interval = 'semi'
             elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
                 self.time_interval = 'years'
             elif self.time_interval in ['hours', 'hourly', 'h']:
@@ -362,6 +374,7 @@ class auto_timeseries:
                 self.time_interval = 'seconds'
             else:
                 self.time_interval = 'months' # Default is Monthly
+                print('Time Interval not provided. Setting default as Monthly')
         else:
             print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
             return
@@ -376,6 +389,8 @@ class auto_timeseries:
                 self.seasonal_period = 52
             elif self.time_interval in 'qtr':
                 self.seasonal_period = 4
+            elif self.time_interval in 'semi':
+                self.seasonal_period = 2
             elif self.time_interval in 'years':
                 self.seasonal_period = 1
             elif self.time_interval in 'hours':
@@ -403,7 +418,7 @@ class auto_timeseries:
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
         #########                 FB Prophet              ###################################
 
-        if self.__any_contained_in_list(what_list=['prophet', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['prophet', 'Prophet', 'best'], in_list=self.model_type):
             print("\n")
             print("="*50)
             print("Building Prophet Model")
@@ -421,7 +436,8 @@ class auto_timeseries:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
                 model_build = BuildProphet(
                     self.forecast_period, self.time_interval,
-                    self.score_type, self.verbose, self.conf_int)
+                    self.score_type, self.verbose, self.conf_int, self.holidays, self.growth,
+                    self.seasonality)
                 model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
                     ts_df=ts_df[[target]+preds],
                     target_col=target,
@@ -486,7 +502,7 @@ class auto_timeseries:
         #     self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['ARIMA','arima','auto_arima','auto_SARIMAX', 'stats', 'best'], in_list=self.model_type):
             ############# Let's build a SARIMAX Model and get results ########################
             print("\n")
             print("="*50)
@@ -533,7 +549,7 @@ class auto_timeseries:
             self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['VAR', 'stats', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
             print("\n")
@@ -585,7 +601,7 @@ class auto_timeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
-        if self.__any_contained_in_list(what_list=['ml', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['ml', 'ML','best'], in_list=self.model_type):
             ########## Let's build a Machine Learning Model now with Time Series Data ################
 
             print("\n")
@@ -666,11 +682,11 @@ class auto_timeseries:
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
 
         end = time()
-
+        elapsed = end-start
         print("\n\n" + "-"*50)
-        print(f"Total time taken: {end-start} seconds.")
+        print(f"Total time taken: {elapsed:.0f} seconds.")
         print("-"*50 + "\n\n")
-
+        print("Leaderboard with best model on top of list:\n",self.get_leaderboard())
         return self
 
     def get_best_model_name(self) -> str:
@@ -732,22 +748,34 @@ class auto_timeseries:
 
     def predict(
         self,
+        testdata,
         model: str = 'best',
-        testdata: Optional[pd.DataFrame]=None,
-        forecast_period: Optional[int] = None,
-        simple: bool = False) -> Optional[np.array]:
+        simple: bool = False,
+        ):
         """
         Predict the results
         """
-        if isinstance(model, pd.DataFrame):
-            ### in some cases, they may give just the test data, so don't mistake it for model
-            testdata, forecast_period = copy.deepcopy(model), copy.deepcopy(testdata)
-            model = "best"
 
-        if testdata is not None:
+
+        if isinstance(model, str):
+            if model.lower() == 'best' or len(self.model_type) == 1:
+                bestmodel = self.get_best_model_build()
+            else:
+                if self.get_model_build(model) is not None:
+                    bestmodel = self.get_model_build(model)
+                else:
+                    print(f"(Error) Model of type '{model}' does not exist. No predictions will be made.")
+                    return None
+            self.model = bestmodel
+        else:
+            ### if no model is specified, just use the best model ###
+            bestmodel = self.get_best_model_build()
+            self.model = bestmodel
+
+
+        if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
-
             if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
                 if self.ts_column in testdata.columns:
                     testdata.set_index(self.ts_column, inplace=True)
@@ -756,28 +784,27 @@ class auto_timeseries:
                 else:
                     print(f"(Error) Model to be used for prediction 'ML'. Hence, X_egogen' must have a column (or index) called '{self.ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
                     return None
+                ### Now do the predictions using the final model asked to be predicted ###
+                predictions = bestmodel.predict(testdata,simple=simple)
+            elif model.lower() == 'prophet' or self.get_best_model_name() == 'Prophet':
+                predictions = bestmodel.predict(testdata,simple=simple)
+            elif self.get_best_model_name() == 'VAR':
+                predictions = bestmodel.predict(testdata,simple=simple)
+            else:
+                predictions = bestmodel.predict(testdata,simple=simple)
+        elif isinstance(testdata, int):
+            #### if testdata is an Integer, then it appears to be a forecast period, then use it that way
+            ### only certain stats-based models can use forecast period
+            if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
+                print(f'{model} is an ML-based model, hence it cannot be used with a forecast period')
+                predictions = None
+            else:
+                predictions = bestmodel.predict(testdata,simple=simple)
         else:
             ### if there is no testdata, at least they must give forecast_period
-            if forecast_period is None:
+            if testdata is None:
                 print('If test_data is None, then forecast_period must be given')
                 return
-
-        if model.lower() == 'best':
-            predictions = self.get_best_model_build().predict(
-                testdata = testdata,
-                forecast_period=forecast_period,
-                simple=simple
-            )
-        elif self.get_model_build(model) is not None:
-            predictions = self.get_model_build(model).predict(
-                testdata = testdata,
-                forecast_period=forecast_period,
-                simple=simple
-            )
-        else:
-            print(f"(Error) Model of type '{model}' does not exist. No predictions will be made.")
-            predictions = None
-
         return predictions
 
     def get_leaderboard(self, ascending=True) -> Optional[pd.DataFrame]:
@@ -873,7 +900,7 @@ print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 ats = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
                 time_interval='Month',
                 non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-                model_type=['Prophet'],
+                model_type=['best'],
                 verbose=2)
 ats.fit(traindata, ts_column,target)
 ats.predict(testdata, forecast_period)

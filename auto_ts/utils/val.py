@@ -2,7 +2,7 @@ import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 import seaborn as sns # type: ignore
-# This gives an error when running from a python script. 
+# This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 # get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
@@ -97,7 +97,7 @@ def rolling_validation_time_series(model, df, preds, target,train_size=0,
             if verbose:
                 print('Iteration %d: Observations:%d' %(index+1,len(X_train)+len(X_test)))
                 print('    Train Size=%d, Test Size=%d' %(len(y_train),len(y_test)))
-            # TODO: 
+            # TODO:
             rmse = print_rmse(y_test, model.predict(X_test))
             norm_rmse = rmse/y_test.std()
             non_df[i] = rmse
@@ -170,3 +170,12 @@ def ts_model_validation(model_results):
     print('\nDurbin-Watson test on residuals: d={:.2f}\n\t(NB: 2 means no serial correlation, 0=pos, 4=neg)'.format(dw))
     print('\nTest for all AR roots outside unit circle (>1): {}'.format(arroots_outside_unit_circle))
     print('\nTest for all MA roots outside unit circle (>1): {}'.format(maroots_outside_unit_circle))
+############################################################################################################
+def quick_ts_plot(y_true, y_pred):
+    fig,ax = plt.subplots(figsize=(15,7))
+    labels = ['actual','forecast']
+    y_true.plot(ax=ax,)
+    y_pred.plot(ax=ax,)
+    ax.legend(labels)
+    plt.title('Prophet: Actual vs Forecast in last window of Cross Validation', fontsize=20);
+##############################################################################################

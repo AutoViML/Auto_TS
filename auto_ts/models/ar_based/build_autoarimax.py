@@ -1,10 +1,10 @@
 import math
-
+import pdb
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 # TODO: Resolve which one we want to use
-from pmdarima.arima.auto import auto_arima # type: ignore
+#from pmdarima.arima.auto import auto_arima # type: ignore
 from pmdarima.arima import auto_arima # type: ignore
 
 
@@ -24,9 +24,15 @@ class BuildAutoSarimax(BuildArimaBase):
 
         if self.verbose >= 1:
             print(colorful.BOLD + '\n    Finding the best parameters using AutoArima:' + colorful.END)
+        if len(self.original_preds) == 0:
+            exog = None
+        elif len(self.original_preds) == 1:
+            exog = data[self.original_preds[0]].values.reshape(-1, 1)
+        else:
+            exog = data[self.original_preds].values
         arima_model =  auto_arima(
             y = data[self.original_target_col],
-            # exogenous=data[self.original_preds],  # TODO: Check if this should be included
+            exogenous=exog, ## these variables must be given in predictions as well
             out_of_sample_size=0,  # use whole dataset to compute metrics
             information_criterion=self.scoring, # AIC
             scoring='mse', # only supports 'mse' or 'mae'
@@ -38,7 +44,7 @@ class BuildAutoSarimax(BuildArimaBase):
             stepwise = True, random_state=42, n_fits = 50, n_jobs=1,  # Hyperparameer Search
             error_action='warn', trace = True, supress_warnings=True
         )
-
+        
         self.best_p, self.best_d, self.best_q = arima_model.order  # example (0, 1, 1)
         self.best_P, self.best_D, self.best_Q, _ = arima_model.seasonal_order # example (2, 1, 1, 12)
 
@@ -51,7 +57,9 @@ class BuildAutoSarimax(BuildArimaBase):
         elif self.scoring.lower() == 'bic':
             metric_value = arima_model.bic()
         else:
-            print("Error: Metric provided is not correct. Supports one of 'aic', 'aicc', or 'bic'")
+            print("Error: Metric must be 'aic', 'aicc', or 'bic'. Continuing with 'bic' as default")
+            metric_value = arima_model.bic()
+            self.scoring = 'bic'
 
         if self.verbose >= 1:
             print(
@@ -60,4 +68,4 @@ class BuildAutoSarimax(BuildArimaBase):
                 self.best_P, self.best_D, self.best_Q,
                 self.seasonal_period, self.scoring, metric_value)
             )
-
+        return arima_model

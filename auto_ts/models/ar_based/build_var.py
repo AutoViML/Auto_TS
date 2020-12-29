@@ -1,6 +1,6 @@
 """Module to build a VAR model
 """
-
+import pdb
 from typing import Optional
 import warnings
 import itertools
@@ -153,6 +153,13 @@ class BuildVAR(BuildBase):
                 "VAR model will predict all exogenous variables automatically, " +
                 "hence your passed values will not be used."
             )
+            if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
+                if len(testdata) != self.forecast_period:
+                    self.forecast_period = testdata.shape[0]
+            elif isinstance(testdata, int):
+                self.forecast_period = testdata
+                
+            forecast_period = self.forecast_period
 
         # Extract the dynamic predicted and true values of our time series
         if forecast_period is None:

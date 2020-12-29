@@ -32,7 +32,7 @@ class BuildProphet(BuildBase):
     """Class to build a Prophet Model
     """
     def __init__(
-            self, forecast_period, time_interval, scoring, verbose, conf_int
+            self, forecast_period, time_interval, scoring, verbose, conf_int, holidays, growth, seasonality
         ):
         """
         Automatically build a Prophet Model
@@ -45,11 +45,26 @@ class BuildProphet(BuildBase):
 
         self.time_interval = time_interval
         self.conf_int = conf_int
+        self.holidays = holidays
+        self.growth = growth
+        self.seasonality = seasonality
+        if self.time_interval == 'weeks':
+            weekly_seasonality =  seasonality
+        elif self.time_interval == 'years':
+            yearly_seasonality = seasonality
+        elif self.time_interval == 'days':
+            daily_seasonality = seasonality
+        else:
+            yearly_seasonality=False
+            weekly_seasonality=False
+            daily_seasonality=False
         self.model = Prophet(
-            # yearly_seasonality=False,
-            # weekly_seasonality=False,
-            # daily_seasonality=False,
-            interval_width=self.conf_int)
+            yearly_seasonality=yearly_seasonality,
+            weekly_seasonality=weekly_seasonality,
+            daily_seasonality=daily_seasonality,
+            interval_width=self.conf_int,
+            holidays = self.holidays,
+            growth = self.growth)
         self.univariate = None
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
@@ -107,6 +122,7 @@ class BuildProphet(BuildBase):
         if self.verbose >= 1:
             print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
+        start_time = time.time()
 
         if self.univariate is False:
             for name in self.original_preds:
@@ -147,7 +163,7 @@ class BuildProphet(BuildBase):
         # to FB recommendation has been made as a temporary (short term) fix.
         # The root cause issue will need to be fixed eventually at a later point.
         #########################################################################################
-        start_time = time.time()
+
         ### Prophet's Time Interval translates into frequency based on the following pandas date_range alias:
         #  Link: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         ## This is done using the get_prophet_time_interval() function later.
@@ -160,9 +176,9 @@ class BuildProphet(BuildBase):
                 'months': 30,
                 'weeks': 7,
                 'days': 1,
-                'semi-annual': 180,
+                'semi': 182,
                 'annual':365,
-                'quarterly': 90,
+                'qtr': 91,
                 }
         ## set the time period based on days since that is what FB Prophet wants.
         horizon_days = int(self.forecast_period*time_interval_days[self.time_interval])
@@ -172,11 +188,11 @@ class BuildProphet(BuildBase):
         period_days = min(int(0.2*initial_days), int(0.5*horizon_days)) # as recommended by FB Prophet
 
         if self.verbose >= 3:
-            print("FB Prophet Cross-validation assumptions:")
-            print(f"    Total {self.time_interval}: {total_days}")
-            print(f"    Initial {self.time_interval}: {initial_days}")
-            print(f"    Period {self.time_interval}: {period_days}")
-            print(f"    Horizon {self.time_interval}: {horizon_days}")
+            print("FB Prophet Cross-validation assumptions in days:")
+            print(f"    Total number of days in train data = {total_days}")
+            print(f"    Initial period of training days = {initial_days}")
+            print(f"    Moving window Period of additional training days = {period_days}")
+            print(f"    Forecast Horizon in days after every training = {horizon_days}")
 
         OFFSET = 0  # 5 days  # adjusting some days to take into account uneven months.
         #initial = str(initial_days-OFFSET) + " D"
@@ -187,16 +203,12 @@ class BuildProphet(BuildBase):
         initial = int(dft.shape[0]/2) #*time_interval_days[timeinterval]
         horizon = self.forecast_period #*time_interval_days[timeinterval]
         period = max(2, int(self.forecast_period/2)) #*time_interval_days[timeinterval]
-        print("FB Prophet Cross-validation assumptions: in %s" %self.time_interval)
-        print('    initial=',initial)
-        print('    horizon=',horizon)
-        print('    period=',period)
-
-        if self.verbose >= 2:
-            print(f"OFFSET: {OFFSET}")
-            print(f"initial: {initial}")
-            print(f"period: {period}")
-            print(f"horizon: {horizon}")
+        if self.verbose >= 1:
+            print("FB Prophet Cross-validation assumptions:")
+            print(f"    OFFSET: {OFFSET}")
+            print(f"    Initial period of training = {initial} {self.time_interval}")
+            print(f"    Moving window Period of additional training: {period} {self.time_interval}")
+            print(f"    Forecast Horizon after every training: {horizon} {self.time_interval}")
 
         # First  Fold -->
         #   Train Set: 0:initial
@@ -326,23 +338,32 @@ class BuildProphet(BuildBase):
         ##    of future (total: 3270) rows of data.
         ### This is where we take the first steps to make a forecast using Prophet:
         ##   1. Create a dataframe with datetime index of past and future dates
-        print('Building Forecast dataframe. Forecast Period = %d' % self.forecast_period)
+
         # Next we ask Prophet to make predictions for those dates in the dataframe along with prediction intervals
 
         time_int = self.get_prophet_time_interval(for_cv=False)
 
         if self.univariate:
-            if forecast_period is None:
-                forecast_period = self.forecast_period
-
-            future = self.model.make_future_dataframe(periods=forecast_period, freq=time_int)
-        else:
-            if testdata is None:
-                print("(Error): Model is Multivariate, but X_egogen not provided for prediction.")
-                return None
-            elif forecast_period is None:
+            if isinstance(testdata, int):
+                forecast_period = testdata
+            elif isinstance(testdata, pd.DataFrame):
                 forecast_period = testdata.shape[0]
-            future = self.prep_col_names_for_prophet(ts_df=testdata, test=True)
+                if testdata.shape[0] != self.forecast_period:
+                    self.forecast_period = testdata.shape[0]
+            else:
+                forecast_period = self.forecast_period
+            future = self.model.make_future_dataframe(periods=self.forecast_period, freq=time_int)
+        else:
+            if isinstance(testdata, int) or testdata is None:
+                print("(Error): Model is Multivariate, hence test dataframe must be provided for prediction.")
+                return None
+            elif isinstance(testdata, pd.DataFrame):
+                forecast_period = testdata.shape[0]
+                if testdata.shape[0] != self.forecast_period:
+                    self.forecast_period = testdata.shape[0]
+                future = self.prep_col_names_for_prophet(ts_df=testdata, test=True)
+        print('Building Forecast dataframe. Forecast Period = %d' % self.forecast_period)
+        ### This will work in both univariate and multi-variate cases now ######
 
         forecast = self.model.predict(future)
 
@@ -506,12 +527,7 @@ def easy_cross_validation(train, target, initial, horizon, period):
                                           y_preds.values))
     #print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
     try:
-        fig,ax = plt.subplots(figsize=(15,7))
-        labels = ['actual','forecast']
-        train[target].plot(ax=ax,)
-        y_preds[-horizon:].plot(ax=ax,)
-        ax.legend(labels)
-        plt.title('Prophet: Actual vs Forecast in last window of Cross Validation', fontsize=20);
+        quick_ts_plot(train[target], y_preds[-horizon:])
     except:
         print('Error: Not able to plot Prophet CV results')
     return y_trues, y_preds, rmse_means, norm_rmse_means
