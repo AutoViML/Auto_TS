@@ -21,9 +21,10 @@ setuptools.setup(
         "pandas",
         "matplotlib",
         "seaborn",
-        "scikit-learn",
+        "scikit-learn==0.22.2",
         "fbprophet",
         "statsmodels",
+        "tscv"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

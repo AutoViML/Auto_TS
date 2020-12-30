@@ -11,13 +11,14 @@
 numpy
 pandas
 scipy
+tscv
 
 # Viz libs
 matplotlib
 seaborn
 
 # Stats libraries
-scikit-learn
+scikit-learn==0.22.2
 statsmodels
 
 # Auto-Arima
