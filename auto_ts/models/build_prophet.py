@@ -5,6 +5,7 @@ import logging
 import copy
 import time
 import numpy as np
+from tscv import GapWalkForward # type: ignore
 
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
@@ -20,7 +21,7 @@ from fbprophet.plot import plot_cross_validation_metric
 from .build_base import BuildBase
 
 # helper functions
-from ..utils import print_dynamic_rmse
+from ..utils import print_dynamic_rmse, quick_ts_plot
 from ..utils.logging import SuppressStdoutStderr
 
 #### Suppress INFO messages from FB Prophet!
@@ -140,19 +141,6 @@ class BuildProphet(BuildBase):
             print(f"NumObs: {num_obs}")
             print(f"NFOLDS: {NFOLDS}")
 
-        if self.time_interval in ['days', 'weeks', 'months', 'years']:
-            total_days = (dft['ds'].max() - dft['ds'].min()).days
-        else:
-            ### if time period is shorter than days, it must be calculated in hours or mins.
-            total_days = (dft['ds'].max() - dft['ds'].min()).days
-
-        if self.verbose >= 2:
-            print("Variables used for calculating initial, horizon, period...")
-            print(f"Forcast Period: {self.forecast_period}")
-            print(f"Max Date: {dft['ds'].max()}")
-            print(f"Horizon Start: {dft.iloc[-self.forecast_period]['ds']}")
-
-
         #########################################################################################
         # NOTE: This change to the FB recommendation will cause the cv folds from facebook to
         # be incompatible with the folds from the other models (in terms of periods of evaluation
@@ -168,48 +156,6 @@ class BuildProphet(BuildBase):
         #  Link: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         ## This is done using the get_prophet_time_interval() function later.
 
-        ## we will be using the recommended defaults for these form FB Prophet page
-        #horizon_days = (dft['ds'].max() - dft.iloc[-forecast_start]['ds']).days
-        #horizon_days = min(365, (dft['ds'].max() - dft.iloc[-(self.forecast_period+1)]['ds']).days )
-        ### if the forecast_period is given as 5 and the time_interval is Monthly, then horizon = 5 months
-        time_interval_days = {
-                'months': 30,
-                'weeks': 7,
-                'days': 1,
-                'semi': 182,
-                'annual':365,
-                'qtr': 91,
-                }
-        ## set the time period based on days since that is what FB Prophet wants.
-        horizon_days = int(self.forecast_period*time_interval_days[self.time_interval])
-        #initial_days = total_days - NFOLDS * horizon_days
-        initial_days = min(int(0.5*total_days), int(3*horizon_days)) ## this is recommended by FB Prophet
-        #period_days = horizon_days
-        period_days = min(int(0.2*initial_days), int(0.5*horizon_days)) # as recommended by FB Prophet
-
-        if self.verbose >= 3:
-            print("FB Prophet Cross-validation assumptions in days:")
-            print(f"    Total number of days in train data = {total_days}")
-            print(f"    Initial period of training days = {initial_days}")
-            print(f"    Moving window Period of additional training days = {period_days}")
-            print(f"    Forecast Horizon in days after every training = {horizon_days}")
-
-        OFFSET = 0  # 5 days  # adjusting some days to take into account uneven months.
-        #initial = str(initial_days-OFFSET) + " D"
-        #period = str(period_days) + " D"
-        #horizon = str(horizon_days+OFFSET) + " D"
-
-        #### This is the simplest way to set these defaults to create a sliding window
-        initial = int(dft.shape[0]/2) #*time_interval_days[timeinterval]
-        horizon = self.forecast_period #*time_interval_days[timeinterval]
-        period = max(2, int(self.forecast_period/2)) #*time_interval_days[timeinterval]
-        if self.verbose >= 1:
-            print("FB Prophet Cross-validation assumptions:")
-            print(f"    OFFSET: {OFFSET}")
-            print(f"    Initial period of training = {initial} {self.time_interval}")
-            print(f"    Moving window Period of additional training: {period} {self.time_interval}")
-            print(f"    Forecast Horizon after every training: {horizon} {self.time_interval}")
-
         # First  Fold -->
         #   Train Set: 0:initial
         #   Test Set: initial:(initial+horizon)
@@ -219,14 +165,70 @@ class BuildProphet(BuildBase):
         # Format: '850 D'
 
         print("  Starting Prophet Cross Validation")
-        with SuppressStdoutStderr():
-            actuals, predictions, rmse_folds, norm_rmse_folds = easy_cross_validation(dft,actual,
-                                        initial=initial, period=period,
-                                          horizon=horizon)
-            #df_cv = cross_validation(self.model, initial=initial, period=period,
-            #                horizon=horizon)
-            forecast_df_folds = copy.deepcopy(predictions)
+        ################################################################################
+        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        y_preds = pd.DataFrame()
+        print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
+        start_time = time.time()
+        rmse_folds = []
+        norm_rmse_folds = []
+        y_trues = pd.DataFrame()
+        for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
+            train_fold = dft.iloc[train_index]
+            test_fold = dft.iloc[test_index]
+            horizon = len(test_fold)
+
+            if self.verbose >= 1:
+                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape} Test Shape: {test_fold.shape}")
+
+            #########################################
+            #### Define the model with fold data ####
+            #########################################
+
+            model = Prophet(growth="linear")
+
+            ############################################
+            #### Fit the model with train_fold data ####
+            ############################################
+
+            kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+            model.fit(train_fold, **kwargs)
+
+            #################################################
+            #### Predict using model with test_fold data ####
+            #################################################
+
+            future_period = model.make_future_dataframe(freq="MS",periods=horizon)
+            forecast_df = model.predict(future_period)
+            ### Now compare the actuals with predictions ######
+            y_pred = forecast_df['yhat'][-horizon:]
+            if fold_number == 0:
+                y_preds = copy.deepcopy(y_pred)
+            else:
+                y_preds = y_preds.append(y_pred)
+            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[actual],y_pred,test_fold[actual])
+            print('Cross Validation window: %d completed' %(fold_number+1,))
+            rmse_folds.append(rmse_fold)
+            norm_rmse_folds.append(rmse_norm)
+
+        ######################################################
+        ### This is where you consolidate the CV results #####
+        ######################################################
+        rmse_mean = np.mean(rmse_folds)
+        print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
+        y_trues = dft[-y_preds.shape[0]:][actual]
+        cv_micro = np.sqrt(mean_squared_error(y_trues.values,
+                                              y_preds.values))
+        print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+        
+        try:
+            quick_ts_plot(y_trues, y_preds)
+        except:
+            print('Error: Not able to plot Prophet CV results')
+
+        forecast_df_folds = copy.deepcopy(y_preds)
         print("  End of Prophet Cross Validation")
+        print('Time Taken = %0.0f seconds' %((time.time()-start_time)))
 
         if self.verbose >= 1:
             print("Prophet CV DataFrame")
@@ -279,9 +281,8 @@ class BuildProphet(BuildBase):
         print('---------------------------')
         print('Final Prophet CV results:')
         print('---------------------------')
-        rmse, norm_rmse = print_dynamic_rmse(actuals, predictions, actuals)
+        rmse, norm_rmse = print_dynamic_rmse(y_trues, y_preds, y_trues)
 
-        print('Time taken (in seconds): %d' %((time.time()-start_time)))
         #return self.model, forecast, rmse, norm_rmse
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
 

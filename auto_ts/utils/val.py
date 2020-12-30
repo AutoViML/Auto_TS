@@ -171,11 +171,11 @@ def ts_model_validation(model_results):
     print('\nTest for all AR roots outside unit circle (>1): {}'.format(arroots_outside_unit_circle))
     print('\nTest for all MA roots outside unit circle (>1): {}'.format(maroots_outside_unit_circle))
 ############################################################################################################
-def quick_ts_plot(y_true, y_pred):
+def quick_ts_plot(y_true, y_pred, modelname='Prophet'):
     fig,ax = plt.subplots(figsize=(15,7))
     labels = ['actual','forecast']
     y_true.plot(ax=ax,)
     y_pred.plot(ax=ax,)
     ax.legend(labels)
-    plt.title('Prophet: Actual vs Forecast in last window of Cross Validation', fontsize=20);
+    plt.title('%s: Actual vs Forecast in expanding (training) window Cross Validation' %modelname, fontsize=20);
 ##############################################################################################
