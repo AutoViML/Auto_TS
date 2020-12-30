@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Auto_TS</title>
 </head>
 <body>
 <h1 id="auto-ts">Auto_TS: Auto_TimeSeries</h1>
@@ -126,6 +125,7 @@ predictions = model.predict(
 <p>scikit-learn</p>
 <p>FB Prophet</p>
 <p>statsmodels</p>
+<p>pmdarima</p>
 <h1 id="license">License:</h1>
 <p>Apache License 2.0</p>
 <h2 id="recommendations">Recommendations</h2>
