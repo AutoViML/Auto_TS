@@ -749,16 +749,17 @@ class auto_timeseries:
     def predict(
         self,
         testdata,
-        model: str = 'best',
+        model: str = '',
         simple: bool = False,
         ):
         """
         Predict the results
         """
 
-
         if isinstance(model, str):
-            if model.lower() == 'best' or len(self.model_type) == 1:
+            if model == '':
+                bestmodel = self.get_best_model_build()
+            elif model.lower() == 'best':
                 bestmodel = self.get_best_model_build()
             else:
                 if self.get_model_build(model) is not None:
@@ -896,13 +897,13 @@ class auto_timeseries:
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
 version_number = '0.0.25'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
-ATS = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
+model = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
                 time_interval='Month',
                 non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
                 model_type=['best'],
                 verbose=2)
 
-ATS.fit(traindata, ts_column,target)
-ATS.predict(testdata, forecast_period)
+model.fit(traindata, ts_column,target)
+model.predict(testdata, forecast_period)
 """)
 #################################################################################
