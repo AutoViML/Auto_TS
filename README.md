@@ -115,14 +115,13 @@ The next step after training the model object is to make some predictions with t
 <p>
 <code>
 predictions = model.predict(
-            testdata=test_data,
-            forecast_period=forecast_period
+            testdata = can be either test_data or forecast_period,
         )  
 </code></p>
-<br>Here are how the parameters defined:
+<br>Here are how the parameters are defined. You can choose to send either testdata in the form of a dataframe or send in an integer to decide how many periods you want to forecast.  You need only
 <ul>
 <li><b>testdata (required)</b>: It can be either a dataframe or an empty string to indicate no test data frame is available. Instead you can use the forecast_period (next).</li>
-<li><b>forecast_period (default=5)</b>: The number of time intervals ahead that you want to forecast. Type is integer.</li>
+<li><b>forecast_period (optional, default = 5)</b>: The number of time intervals ahead that you want to forecast. Type is integer.</li>
 </ul>
 <h2 id="requirements">Requirements</h2>
 <p>scikit-learn</p>
