@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Auto_TS</title>
-</head>
+<title>Auto_TS</title></head>
 <body>
 <h1 id="auto-ts">Auto_TS: Auto_TimeSeries</h1>
 <p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code.</p>
