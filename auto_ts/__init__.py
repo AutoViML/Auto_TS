@@ -896,13 +896,13 @@ class auto_timeseries:
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
 version_number = '0.0.25'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
-
-ats = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
+ATS = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
                 time_interval='Month',
                 non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
                 model_type=['best'],
                 verbose=2)
-ats.fit(traindata, ts_column,target)
-ats.predict(testdata, forecast_period)
+
+ATS.fit(traindata, ts_column,target)
+ATS.predict(testdata, forecast_period)
 """)
 #################################################################################
