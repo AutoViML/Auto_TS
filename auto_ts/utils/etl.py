@@ -68,7 +68,8 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
 
     rtype: pd.DataFrame, str, List[str]
     """
-    df = df[:]
+
+    df = copy.deepcopy(df)
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
     drops = []
     for i in range(n_in, -1, -1):

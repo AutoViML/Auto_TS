@@ -70,7 +70,7 @@ class BuildBase(ABC):
     def check_model_built(self):
         if self.model is None:
             raise AttributeError(
-                "You have trying to perform an operation that requires the model to have been fit."+
+                "You are trying to perform an operation that requires the model to have been fit."+
                 "However the model has not been fit yet. Please fit the model once before you try this operation."
             )
 

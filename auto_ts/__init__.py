@@ -201,10 +201,15 @@ class auto_timeseries:
         :type sep Optional[str]
         """
 
+        list_of_valid_time_ints = ['B','C','D','W','M','SM','BM','CBM',
+                                        'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
+                                        'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
+                                        'H','T,min','S','L,ms','U,us','N']
+
         start = time()
         print("Start of Fit.....")
 
-                ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
+        ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
         stats_scoring = 'aic'
 
         ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
@@ -350,31 +355,39 @@ class auto_timeseries:
                     return None
         else:
             print('Time Interval is given as %s' % self.time_interval)
+            if self.time_interval in list_of_valid_time_ints:
+                print('    Correct Time interval given as a valid Pandas date-range frequency...')
+            else:
+                print('    Error: You must give a valid time interval frequency from Pandas date-range frequency codes')
+                return None
 
         ################# This is where you test the data and find the time interval #######
         if self.time_interval is not None:
-            self.time_interval = self.time_interval.strip().lower()
-            if self.time_interval in ['months', 'month', 'm']:
-                self.time_interval = 'months'
-            elif self.time_interval in ['days', 'daily', 'd']:
-                self.time_interval = 'days'
-            elif self.time_interval in ['weeks', 'weekly', 'w']:
-                self.time_interval = 'weeks'
-            elif self.time_interval in ['qtr', 'quarter', 'q']:
-                self.time_interval = 'qtr'
-            elif self.time_interval in ['semi', 'semi-annual', '2q']:
-                self.time_interval = 'semi'
-            elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
-                self.time_interval = 'years'
-            elif self.time_interval in ['hours', 'hourly', 'h']:
-                self.time_interval = 'hours'
-            elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
-                self.time_interval = 'minutes'
-            elif self.time_interval in ['seconds', 'second', 'sec', 's']:
-                self.time_interval = 'seconds'
+            if self.time_interval in list_of_valid_time_ints:
+                pass
             else:
-                self.time_interval = 'months' # Default is Monthly
-                print('Time Interval not provided. Setting default as Monthly')
+                self.time_interval = self.time_interval.strip().lower()
+                if self.time_interval in ['months', 'month', 'm']:
+                    self.time_interval = 'months'
+                elif self.time_interval in ['days', 'daily', 'd']:
+                    self.time_interval = 'days'
+                elif self.time_interval in ['weeks', 'weekly', 'w']:
+                    self.time_interval = 'weeks'
+                elif self.time_interval in ['qtr', 'quarter', 'q']:
+                    self.time_interval = 'qtr'
+                elif self.time_interval in ['semi', 'semi-annual', '2q']:
+                    self.time_interval = 'semi'
+                elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
+                    self.time_interval = 'years'
+                elif self.time_interval in ['hours', 'hourly', 'h']:
+                    self.time_interval = 'hours'
+                elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
+                    self.time_interval = 'minutes'
+                elif self.time_interval in ['seconds', 'second', 'sec', 's']:
+                    self.time_interval = 'seconds'
+                else:
+                    self.time_interval = 'months' # Default is Monthly
+                    print('Time Interval not provided. Setting default as Monthly')
         else:
             print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
             return
@@ -616,7 +629,10 @@ class auto_timeseries:
             model_build = None
             model = None
             forecasts = None
-
+            if lag <= 4:
+                lag = 4 ### set the minimum lags to be at least 4 for ML models
+            elif lag >= 10:
+                lag = 10 ### set the maximum lags to be not more than 10 for ML models
             if len(preds) == 0:
                 print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
             else:
@@ -775,9 +791,10 @@ class auto_timeseries:
 
 
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
+
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
-            if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
+            if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
                 if self.ts_column in testdata.columns:
                     testdata.set_index(self.ts_column, inplace=True)
                 elif self.ts_column in testdata.index.name:
@@ -895,7 +912,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.25'
+version_number = '0.0.26'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
                 time_interval='Month',

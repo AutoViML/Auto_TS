@@ -43,30 +43,34 @@ class BuildProphet(BuildBase):
             forecast_period=forecast_period,
             verbose=verbose
         )
-
         self.time_interval = time_interval
         self.conf_int = conf_int
         self.holidays = holidays
         self.growth = growth
         self.seasonality = seasonality
+        yearly_seasonality = False
+        daily_seasonality = False
+        weekly_seasonality = False
         if self.time_interval == 'weeks':
             weekly_seasonality =  seasonality
         elif self.time_interval == 'years':
             yearly_seasonality = seasonality
         elif self.time_interval == 'days':
             daily_seasonality = seasonality
-        else:
-            yearly_seasonality=False
-            weekly_seasonality=False
-            daily_seasonality=False
-        self.model = Prophet(
-            yearly_seasonality=yearly_seasonality,
-            weekly_seasonality=weekly_seasonality,
-            daily_seasonality=daily_seasonality,
-            interval_width=self.conf_int,
-            holidays = self.holidays,
-            growth = self.growth)
+        #self.model = Prophet(
+        #    yearly_seasonality=yearly_seasonality,
+        #    weekly_seasonality=weekly_seasonality,
+        #    daily_seasonality=daily_seasonality,
+        #    interval_width=self.conf_int,
+        #    holidays = self.holidays,
+        #    growth = self.growth)
+        self.model = Prophet(growth = self.growth)
         self.univariate = None
+        self.list_of_valid_time_ints = ['B','C','D','W','M','SM','BM','CBM',
+                                        'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
+                                        'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
+                                        'H','T,min','S','L,ms','U,us','N']
+
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
         """
@@ -132,6 +136,8 @@ class BuildProphet(BuildBase):
         print("  Starting Prophet Fit")
         with SuppressStdoutStderr():
             self.model.fit(dft)
+            self.train_df = copy.deepcopy(dft)
+
         print("  End of Prophet Fit")
 
         num_obs = dft.shape[0]
@@ -155,6 +161,10 @@ class BuildProphet(BuildBase):
         ### Prophet's Time Interval translates into frequency based on the following pandas date_range alias:
         #  Link: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         ## This is done using the get_prophet_time_interval() function later.
+        if self.time_interval in self.list_of_valid_time_ints:
+            time_int = copy.deepcopy(self.time_interval)
+        else:
+            time_int = self.get_prophet_time_interval(for_cv=False)
 
         # First  Fold -->
         #   Train Set: 0:initial
@@ -166,6 +176,14 @@ class BuildProphet(BuildBase):
 
         print("  Starting Prophet Cross Validation")
         ################################################################################
+        if self.forecast_period <= 5:
+            #### Set a minimum of 5 for the number of rows in test!
+            self.forecast_period = 5
+        ### In case the number of forecast_period is too high, just reduce it so it can fit into num_obs
+        if NFOLDS*self.forecast_period > num_obs:
+            self.forecast_period = int(num_obs/(NFOLDS+1))
+            print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
+        ###########################################################################################
         cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
@@ -198,7 +216,7 @@ class BuildProphet(BuildBase):
             #### Predict using model with test_fold data ####
             #################################################
 
-            future_period = model.make_future_dataframe(freq="MS",periods=horizon)
+            future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
             forecast_df = model.predict(future_period)
             ### Now compare the actuals with predictions ######
             y_pred = forecast_df['yhat'][-horizon:]
@@ -214,15 +232,20 @@ class BuildProphet(BuildBase):
         ######################################################
         ### This is where you consolidate the CV results #####
         ######################################################
+        if self.verbose >= 1:
+            fig = model.plot(forecast_df)
         rmse_mean = np.mean(rmse_folds)
         print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
         y_trues = dft[-y_preds.shape[0]:][actual]
         cv_micro = np.sqrt(mean_squared_error(y_trues.values,
                                               y_preds.values))
         print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
-        
+
         try:
-            quick_ts_plot(y_trues, y_preds)
+            if self.verbose >= 2:
+                quick_ts_plot(y_trues, y_preds)
+            else:
+                pass
         except:
             print('Error: Not able to plot Prophet CV results')
 
@@ -341,8 +364,10 @@ class BuildProphet(BuildBase):
         ##   1. Create a dataframe with datetime index of past and future dates
 
         # Next we ask Prophet to make predictions for those dates in the dataframe along with prediction intervals
-
-        time_int = self.get_prophet_time_interval(for_cv=False)
+        if self.time_interval in self.list_of_valid_time_ints:
+            time_int = copy.deepcopy(self.time_interval)
+        else:
+            time_int = self.get_prophet_time_interval(for_cv=False)
 
         if self.univariate:
             if isinstance(testdata, int):
