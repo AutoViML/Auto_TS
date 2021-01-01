@@ -3,6 +3,7 @@ import warnings
 warnings.filterwarnings(action='ignore')
 from abc import abstractmethod
 import copy
+import pdb
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -261,11 +262,11 @@ class BuildArimaBase(BuildBase):
         Return the predictions
         """
         # Extract the dynamic predicted and true values of our time series
-
         if self.univariate:
-            if forecast_period is None:
+            if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
                 # use the forecast period used during training
-                forecast_period = self.forecast_period
+                forecast_period = testdata.shape[0]
+                self.forecast_period = testdata.shape[0]
         else:
             if testdata is None:
                 raise ValueError("SARIMAX needs testdata to make predictions, but this was not provided. Please provide to proceed.")
@@ -302,9 +303,10 @@ class BuildArimaBase(BuildBase):
                     return
 
         res_frame = res.summary_frame()
+        res_frame.rename(columns = {'mean':'yhat'}, inplace=True)
 
         if simple:
-            res_frame = res_frame['mean']
+            res_frame = res_frame['yhat']
             res_frame = res_frame.squeeze() # Convert to a pandas series object
         else:
             # Pass as is

@@ -158,7 +158,7 @@ class BuildVAR(BuildBase):
                     self.forecast_period = testdata.shape[0]
             elif isinstance(testdata, int):
                 self.forecast_period = testdata
-                
+
             forecast_period = self.forecast_period
 
         # Extract the dynamic predicted and true values of our time series
@@ -170,9 +170,10 @@ class BuildVAR(BuildBase):
 
         res = self.model.get_forecast(forecast_period)
         res_frame = res.summary_frame()
+        res_frame.rename(columns={'mean':'yhat'},inplace=True)
 
         if simple:
-            res_frame = res_frame['mean']
+            res_frame = res_frame['yhat']
             res_frame = res_frame.squeeze() # Convert to a pandas series object
         else:
             # Pass as is

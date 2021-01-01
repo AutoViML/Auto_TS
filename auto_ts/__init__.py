@@ -48,7 +48,7 @@ from .utils import colorful, load_ts_data, convert_timeseries_dataframe_to_super
 class auto_timeseries:
     def __init__(
         self,
-        forecast_period: int = 1,
+        forecast_period: int = 5,
         score_type: str = 'rmse',
         time_interval: Optional[str] = None,
         non_seasonal_pdq: Optional[Tuple]=None,
@@ -629,53 +629,56 @@ class auto_timeseries:
             model_build = None
             model = None
             forecasts = None
-            if lag <= 4:
-                lag = 4 ### set the minimum lags to be at least 4 for ML models
-            elif lag >= 10:
-                lag = 10 ### set the maximum lags to be not more than 10 for ML models
+
             if len(preds) == 0:
-                print(colorful.BOLD + '\nNo predictors available. Skipping Machine Learning model...' + colorful.END)
+                print(colorful.BOLD + f'\nCreating lag={self.seasonal_period} variable using target for Machine Learning model...' + colorful.END)
+                ### Set the lag to be 1 since we don't need too many lagged variables for univariate case
+                self.lags = self.seasonal_period
+                lag = self.seasonal_period
             else:
-                try:
-                    print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
-                    print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
-                                % (len(preds), lag))
+                print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
+                #### Do not create excess lagged variables for ML model ##########
+                if lag <= 4:
+                    lag = 4 ### set the minimum lags to be at least 4 for ML models
+                elif lag >= 10:
+                    lag = 10 ### set the maximum lags to be not more than 10 for ML models
+                print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
+                            % (len(preds), lag))
+            ####### Now make sure that there is only as few lags as needed ######
+            model_build = BuildML(
+                scoring=self.score_type,
+                forecast_period = self.forecast_period,
+                verbose=self.verbose)
+            try:
+                # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
+                model, forecasts, rmse, norm_rmse = model_build.fit(
+                    ts_df=ts_df,
+                    target_col=target,
+                    cv = cv,
+                    lags=lag
+                )
 
-                    model_build = BuildML(
-                        scoring=self.score_type,
-                        forecast_period = self.forecast_period,
-                        verbose=self.verbose
-                    )
+                if self.score_type == 'rmse':
+                    score_val = rmse
+                else:
+                    score_val = norm_rmse
+                # bestmodel = best[0]
 
-                    # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
-                    model, forecasts, rmse, norm_rmse = model_build.fit(
-                        ts_df=ts_df,
-                        target_col=target,
-                        cv = cv,
-                        lags=lag
-                    )
+                # #### Plotting actual vs predicted for ML Model #################
+                # # TODO: Move inside the Build Class
+                # plt.figure(figsize=(5, 5))
+                # plt.scatter(train.append(test)[target].values,
+                #             np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
+                # plt.xlabel('Actual')
+                # plt.ylabel('Predicted')
+                # plt.show(block=False)
+                # ############ Draw a plot of the Time Series data ######
+                # time_series_plot(dfxs[target], chart_time=self.time_interval)
 
-                    if self.score_type == 'rmse':
-                        score_val = rmse
-                    else:
-                        score_val = norm_rmse
-                    # bestmodel = best[0]
-
-                    # #### Plotting actual vs predicted for ML Model #################
-                    # # TODO: Move inside the Build Class
-                    # plt.figure(figsize=(5, 5))
-                    # plt.scatter(train.append(test)[target].values,
-                    #             np.r_[bestmodel.predict(train[preds]), bestmodel.predict(test[preds])])
-                    # plt.xlabel('Actual')
-                    # plt.ylabel('Predicted')
-                    # plt.show(block=False)
-                    # ############ Draw a plot of the Time Series data ######
-                    # time_series_plot(dfxs[target], chart_time=self.time_interval)
-
-                except Exception as e:
-                    print("Exception occurred while building ML model...")
-                    print(e)
-                    print('    For ML model, evaluation score is not available.')
+            except Exception as e:
+                print("Exception occurred while building ML model...")
+                print(e)
+                print('    For ML model, evaluation score is not available.')
 
             self.ml_dict[name]['model'] = model
             self.ml_dict[name]['forecast'] = forecasts
@@ -912,7 +915,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.26'
+version_number = '0.0.27'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
                 time_interval='Month',

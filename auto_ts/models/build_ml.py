@@ -47,6 +47,7 @@ class BuildML(BuildBase):
         # This is needed during predictions to transform the X_test
         # to a supervised learning problem.
         self.df_train_prepend: pd.DataFrame = pd.DataFrame()
+        self.train_df = pd.DataFrame()
 
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]=None, lags: int = 0):
@@ -59,27 +60,36 @@ class BuildML(BuildBase):
         self.lags = lags
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
 
-        features_dict = classify_features(ts_df, self.original_target_col)
-        cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
-        preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
-        catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
-        if len(catvars) > 0:
-            print('    Warning: Dropping Categorical variables from analysis. You can Label Encode them and try ML modeling again...')
-        preds = left_subtract(preds, catvars)
-        numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
-        self.original_preds = numvars
-        if len(numvars) > 30:
-            print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
+        if len(self.original_preds) > 0:
+            features_dict = classify_features(ts_df, self.original_target_col)
+            cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
+            preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
+            catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
+            if len(catvars) > 0:
+                print('    Warning: Dropping Categorical variables from analysis. You can Label Encode them and try ML modeling again...')
+            preds = left_subtract(preds, catvars)
+            numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
+            self.original_preds = numvars
+            if len(numvars) > 30:
+                print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
+        else:
+            preds = self.original_preds[:]
 
         ts_df = ts_df[preds+[self.original_target_col]]
 
         # Order data
         ts_df = self.order_df(ts_df)
         num_obs = ts_df.shape[0]
+        self.train_df = ts_df
 
         # Convert to supervised learning problem
-        dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
-            ts_df=ts_df, drop_zero_var = True)
+        if len(self.original_preds) == 0:
+            dfxs = create_univariate_lags_for_train(ts_df, self.original_target_col, self.lags)
+            self.transformed_target = self.original_target_col
+            self.transformed_preds = [x for x in list(dfxs) if x not in [self.original_target_col]]
+        else:
+            dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
+                    ts_df=ts_df, drop_zero_var = True)
 
         print("Fitting ML model")
         # print(f"Transformed DataFrame:")
@@ -176,7 +186,10 @@ class BuildML(BuildBase):
         ###############################################
 
         # Refit Model on entire train dataset (earlier, we only trained the model on the individual splits)
-        self.refit(ts_df=ts_df)
+        if len(self.original_preds) == 0:
+            self.model.fit(X_train, y_train)
+        else:
+            self.refit(ts_df=ts_df)
 
         # # This is the new method without the leakage
         # # Drop the y value
@@ -274,95 +287,109 @@ class BuildML(BuildBase):
         self.check_model_built()
 
         if testdata is None:
-            warnings.warn(
+            print(
                 "You have not provided the exogenous variable in order to make the prediction. " +
                 "Machine Learing based models only support multivariate time series models. " +
                 "Hence predictions will not be made.")
             return None
+        elif isinstance(testdata, int):
+            print('You cannot use integer for predict using ML model. Need to supply Pandas Series or Dataframe.')
+            return None
+        elif isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
+            try:
+                assert testdata.shape[1]
+            except:
+                print('testdata must be either a series or a dataframe.')
+                return
+            if testdata.shape[1] == 1 :
+                X_test = create_univariate_lags_for_test(testdata, self.train_df,
+                        self.original_target_col, self.lags)
+                ts_index = testdata.index
+                y_forecasted = self.model.predict(X_test)
+            else:
+                # Extract the dynamic predicted and true values of our time series
 
-        # Extract the dynamic predicted and true values of our time series
+                # Placebholder for forecasted results
+                y_forecasted: List[float] = []
 
-        # Placebholder for forecasted results
-        y_forecasted: List[float] = []
+                ts_index = testdata.index
+                # print(f"Datatime Index: {ts_index}")
 
-        ts_index = testdata.index
-        # print(f"Datatime Index: {ts_index}")
+                # STEP 1:
+                # self.df_prepend has the y column as well, but testdata does not.
+                # Need to add a dummy column to testdata before appending the 2 dataframes
+                # However, Since we are going to depend on previous values of y column to make
+                # future predictions, we can not just use all zeros for the y values
+                # (especially for forrecasts beyond the 1st prediction). So we will
+                # make one prediction at a time and then use that prediction to make the next prediction.
+                # That way, we get the most accurate prediction without leakage of informaton.
 
-        # STEP 1:
-        # self.df_prepend has the y column as well, but testdata does not.
-        # Need to add a dummy column to testdata before appending the 2 dataframes
-        # However, Since we are going to depend on previous values of y column to make
-        # future predictions, we can not just use all zeros for the y values
-        # (especially for forrecasts beyond the 1st prediction). So we will
-        # make one prediction at a time and then use that prediction to make the next prediction.
-        # That way, we get the most accurate prediction without leakage of informaton.
+                # print (f"Columns before adding dummy: {testdata.columns}")
+                testdata_with_dummy = testdata.copy(deep=True)
 
-        # print (f"Columns before adding dummy: {testdata.columns}")
-        testdata_with_dummy = testdata.copy(deep=True)
+                # Just a check to make sure user is not passing the target column to predict function.
+                if self.original_target_col in testdata_with_dummy.columns:
+                    warnings.warn("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
+                    testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
 
-        # Just a check to make sure user is not passing the target column to predict function.
-        if self.original_target_col in testdata_with_dummy.columns:
-            warnings.warn("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
-            testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
+                # Adding dummy value for target.
+                testdata_with_dummy[self.original_target_col] = np.zeros((testdata_with_dummy.shape[0],1))
 
-        # Adding dummy value for target.
-        testdata_with_dummy[self.original_target_col] = np.zeros((testdata_with_dummy.shape[0],1))
+                # Make sure column order is correct when adding the dummy column
+                testdata_with_dummy = self.order_df(testdata_with_dummy)
+                # print (f"Columns after reordering: {testdata_with_dummy.columns}")
 
-        # Make sure column order is correct when adding the dummy column
-        testdata_with_dummy = self.order_df(testdata_with_dummy)
-        # print (f"Columns after reordering: {testdata_with_dummy.columns}")
+                # STEP 2:
+                # Make prediction for each row. Then use the prediction for the next row.
 
-        # STEP 2:
-        # Make prediction for each row. Then use the prediction for the next row.
+                # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
+                ## When this is fixed in the AutoML module, we can shift and get the future index
+                ## to be in a proper time series format.
+                # print("Train Prepend")
+                # print(self.df_train_prepend)
+                # index = self.df_train_prepend.index
+                # print("Index Before")
+                # print(index)
+                # index = index.shift(testdata_with_dummy.shape[0])
+                # print("Index After")
+                # print(index)
 
-        # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
-        ## When this is fixed in the AutoML module, we can shift and get the future index
-        ## to be in a proper time series format.
-        # print("Train Prepend")
-        # print(self.df_train_prepend)
-        # index = self.df_train_prepend.index
-        # print("Index Before")
-        # print(index)
-        # index = index.shift(testdata_with_dummy.shape[0])
-        # print("Index After")
-        # print(index)
+                df_prepend = self.df_train_prepend.copy(deep=True)
+                for i in np.arange(testdata_with_dummy.shape[0]):
 
-        df_prepend = self.df_train_prepend.copy(deep=True)
-        for i in np.arange(testdata_with_dummy.shape[0]):
+                    # Append the last n_lags of the data to the row of the X_egogen that is being preducted
+                    # Note that some of this will come from the last few observations of the training data
+                    # and the rest will come from the last few observations of the X_egogen data.
+                    # print(f"Prepend shape before adding test: {df_prepend.shape}")
+                    df_prepend = df_prepend.append(testdata_with_dummy.iloc[i])
+                    # print(f"Prepend shape after adding test: {df_prepend.shape}")
+                    # print("Prepend Dataframe")
+                    # print(df_prepend)
+                    
+                    # Convert the appended dataframe to supervised learning problem
+                    dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
 
-            # Append the last n_lags of the data to the row of the X_egogen that is being preducted
-            # Note that some of this will come from the last few observations of the training data
-            # and the rest will come from the last few observations of the X_egogen data.
-            # print(f"Prepend shape before adding test: {df_prepend.shape}")
-            df_prepend = df_prepend.append(testdata_with_dummy.iloc[i])
-            # print(f"Prepend shape after adding test: {df_prepend.shape}")
-            # print("Prepend Dataframe")
-            # print(df_prepend)
+                    # Select only the predictors (transformed) from here
+                    X_test = dfxs[self.transformed_preds]
+                    # print("X_test")
+                    # print(X_test)
 
-            # Convert the appended dataframe to supervised learning problem
-            dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
+                    # Forecast
+                    y_forecasted_temp = self.model.predict(X_test)  # Numpy array
+                    # print(y_forecasted_temp)
+                    y_forecasted.append(y_forecasted_temp[0])
 
-            # Select only the predictors (transformed) from here
-            X_test = dfxs[self.transformed_preds]
-            # print("X_test")
-            # print(X_test)
+                    # Append the predicted value for use in next prediction
+                    df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[0]
 
-            # Forecast
-            y_forecasted_temp = self.model.predict(X_test)  # Numpy array
-            # print(y_forecasted_temp)
-            y_forecasted.append(y_forecasted_temp[0])
+                    # Remove 1st entry as it is not needed for next round
+                    df_prepend = df_prepend[1:]
 
-            # Append the predicted value for use in next prediction
-            df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[0]
-
-            # Remove 1st entry as it is not needed for next round
-            df_prepend = df_prepend[1:]
-
-            # print("df_prepend end of loop")
-            # print(df_prepend)
+                    # print("df_prepend end of loop")
+                    # print(df_prepend)
 
         # y_forecasted = np.array(y_forecasted)
-        res_frame = pd.DataFrame({'mean': y_forecasted})
+        res_frame = pd.DataFrame({'yhat': y_forecasted})
         res_frame.index = ts_index
         res_frame['mean_se'] = np.nan
         res_frame['mean_ci_lower'] = np.nan
@@ -821,3 +848,19 @@ def left_subtract(l1,l2):
             lst.append(i)
     return lst
 #################################################################################
+import copy
+def create_univariate_lags_for_train(df, vals, each_lag):
+    df = copy.deepcopy(df)
+    df['lag_' + str(each_lag)+"_"+ str(vals)] = df[vals].shift(each_lag)
+    return df.fillna(0)
+################################################################################
+def create_univariate_lags_for_test(test, train, vals, each_lag):
+    test = copy.deepcopy(test)
+    new_col = ['lag_' + str(each_lag)+"_"+ str(vals)]
+    new_list = []
+    for i in range(len(test)):
+         new_list.append(train[vals][:].iloc[-each_lag+i])
+    test[new_col] = 0
+    test[new_col] = np.array(new_list).reshape(-1,1)
+    return test
+################################################################################
