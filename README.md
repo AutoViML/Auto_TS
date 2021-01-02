@@ -49,21 +49,23 @@ Currently only the following two types are supported:
 (2) "normalized_rmse": Ratio of RMSE to the standard deviation of actuals</li>
 <li><b>time_interval (default is None)</b>: Used to indicate the frequency at which the data is collected.
 This is used for two purposes (1) in building the Prophet model and (2) used to impute the seasonal period for SARIMAX in case it is not provided by the user (None). Type is String.
-We use the following <a href="https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">pandas date range frequency</a> aliases that Prophet uses to make the prediction dataframe. Hence, please note that these are the list of allowed aliases for frequency:
+We use the following <a href="https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">pandas date range frequency</a> aliases that Prophet uses to make the prediction dataframe. <p>Hence, please note that these are the list of allowed aliases for frequency:
                       ['B','C','D','W','M','SM','BM','CBM',
                      'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
                      'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
                      'H','T,min','S','L,ms','U,us','N']
 
 For a start, you can test the following codes for your data and see how the results are:
-  (1) 'MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS' for monthly frequency data
-  (2) 'D', 'B', 'C' for daily frequency data
-  (3) 'W' for weekly frequency data
-  (4) 'Q', 'BQ', 'QS', 'BQS' for quarterly frequency data
-  (5) 'A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS' for yearly frequency data
-  (6) 'BH', 'H', 'h' for hourly frequency data
-  (7) 'T,min' for minute frequency data
-  (8) 'S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds' for second frequency data
+<ul>
+<li>'MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS' for monthly frequency data</li>
+<li> 'D', 'B', 'C' for daily frequency data </li>
+<li> 'W' for weekly frequency data </li>
+<li> 'Q', 'BQ', 'QS', 'BQS' for quarterly frequency data </li>
+<li> 'A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS' for yearly frequency data </li>
+<li> 'BH', 'H', 'h' for hourly frequency data </li>
+<li> 'T,min' for minute frequency data </li>
+<li> 'S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds' for second frequency data </li>
+</ul>
 Or you can leave it as None and auto_timeseries will try and impute it.
 </li>
 <li><b>non_seasonal_pdq (default = (3,1,3))</b>: Indicates the maximum value of (p, d, q) to be used in the search for statistical ARIMA models.
