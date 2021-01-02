@@ -88,14 +88,14 @@ Type is integer</li>
 <li><b>conf_int (default=0.95)</b>: Confidence Interval for building the Prophet model. Default: 0.95. Type is float.</li>
 <li><b>model_type (default: 'stats'</b>: The type(s) of model to build. Default to building only statistical models
 Can be a string or a list of models. Allowed values are:
-'best', 'prophet', 'pyflux', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
+'best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
 "prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
 "stats" will build statsmodels based ARIMA, SARIMAX and VAR models
 "ML" will build a machine learning model using Random Forests provided explanatory vars are given
 'best' will try to build all models and pick the best one
 If a list is provided, then only those models will be built
 WARNING: "best" might take some time for large data sets. We recommend that you
-choose a small sample from your data set bedfore attempting to run entire data.
+choose a small sample from your data set before attempting to run entire data.
 Type can be either: [string, list]
 </li>
 <li><b>verbose (default=0)</b>: Indicates the verbosity of printing (Default = 0). Type is integer.</li>
@@ -124,15 +124,16 @@ The next step after training the model object is to make some predictions with t
 <p>
 <code>
 predictions = model.predict(
-            testdata = can be either test_data or forecast_period,
+            testdata = can be either a dataframe or an integer signifying the forecast_period
         )  
 </code></p>
 <br>Here are how the parameters are defined. You can choose to send either testdata in the form of a dataframe or send in an integer to decide how many periods you want to forecast.  You need only
 <ul>
-<li><b>testdata (required)</b>: It can be either a dataframe or an empty string to indicate no test data frame is available. Instead you can use the forecast_period (next).</li>
-<li><b>forecast_period (optional, default = 5)</b>: The number of time intervals ahead that you want to forecast. Type is integer.</li>
+<li><b>testdata (required)</b>: It can be either a dataframe containing test data or you can use an integer standing for the forecast_period (you want).</li>
+<li><b>model (optional, default = 'best')</b>: The name of the model you want to use among the many different models you have trained. Remember that the default is the best model. But you can choose any model that you want to forecast with. Type is String.</li>
 </ul>
 <h2 id="requirements">Requirements</h2>
+<p>tscv</p>
 <p>scikit-learn</p>
 <p>FB Prophet</p>
 <p>statsmodels</p>
@@ -146,7 +147,9 @@ predictions = model.predict(
 <li>If you give Auto_Timeseries a different time interval than what the data has, it will automatically resample the data to the given time interval and use the mean of the target for the resampled period.</li>
 <li>Notice that except for filename and ts_column input arguments, which are required, all other arguments are optional.</li>
 <li>Note that optionally you can give a separator for the data in your file. Default is comma (",").</li>
-<li>“time_interval” options are: ‘Days’, ‘Weeks’, ‘Months’, ‘Qtr’, ‘Year’, ‘Minutes’, ‘Hours’, ‘Seconds’.</li>
+<li>“time_interval” options are any codes that you can find in this page below.
+<a href="https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">Pandas date-range frequency aliases</a>
+</li>
 <li>Optionally, you can give seasonal_period as any integer that measures the seasonality in the data. If not given, seasonal_period is assumed automatically as follows: Months = 12, Days = 30, Weeks = 52, Qtr = 4, Year = 1, Hours = 24, Minutes = 60 and Seconds = 60.</li>
 <li>If you want to give your own non-seasonal order, please input it as non_seasonal_pdq and for seasonal order, use seasonal_PDQ as the input. Use tuples. For example, seasonal_PDQ = (2,1,2) and non_seasonal_pdq = (0,0,3). It will accept only tuples. The default is None and Auto_Timeseries will automatically search for the best p,d,q (for Non Seasonal) and P, D, Q (for Seasonal) orders by searching for all parameters from 0 to 12 for each value of p,d,q and 0-3 for each P, Q and 0-1 for D.</li>
 </ul>
