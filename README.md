@@ -120,14 +120,15 @@ model.fit(
 </li>
 <li><b>sep (default=",")</b>: Sep is the separator in your traindata file. If your separator is ",", "\t", ";", make sure you enter it here. If not, it is ignored.</li>
 </ul>
-The next step after training the model object is to make some predictions with test data:
+The next step after training the model object is to make some predictions with test data:<br>
 <p>
 <code>
 predictions = model.predict(
-            testdata = can be either a dataframe or an integer signifying the forecast_period
+            testdata = can be either a dataframe or an integer signifying the forecast_period,
+            model = 'best' or any other string that stands for the trained model
         )  
 </code></p>
-<br>Here are how the parameters are defined. You can choose to send either testdata in the form of a dataframe or send in an integer to decide how many periods you want to forecast.  You need only
+Here are how the parameters are defined. You can choose to send either testdata in the form of a dataframe or send in an integer to decide how many periods you want to forecast.  You need only
 <ul>
 <li><b>testdata (required)</b>: It can be either a dataframe containing test data or you can use an integer standing for the forecast_period (you want).</li>
 <li><b>model (optional, default = 'best')</b>: The name of the model you want to use among the many different models you have trained. Remember that the default is the best model. But you can choose any model that you want to forecast with. Type is String.</li>
