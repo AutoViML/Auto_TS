@@ -365,7 +365,7 @@ class BuildML(BuildBase):
                     # print(f"Prepend shape after adding test: {df_prepend.shape}")
                     # print("Prepend Dataframe")
                     # print(df_prepend)
-                    
+
                     # Convert the appended dataframe to supervised learning problem
                     dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
 
@@ -854,13 +854,15 @@ def create_univariate_lags_for_train(df, vals, each_lag):
     df['lag_' + str(each_lag)+"_"+ str(vals)] = df[vals].shift(each_lag)
     return df.fillna(0)
 ################################################################################
+import copy
 def create_univariate_lags_for_test(test, train, vals, each_lag):
     test = copy.deepcopy(test)
+    max_length = min((len(train), len(test)))
     new_col = ['lag_' + str(each_lag)+"_"+ str(vals)]
     new_list = []
-    for i in range(len(test)):
+    for i in range(max_length):
          new_list.append(train[vals][:].iloc[-each_lag+i])
     test[new_col] = 0
-    test[new_col] = np.array(new_list).reshape(-1,1)
+    test[:max_length][new_col] = np.array(new_list).reshape(-1,1)
     return test
 ################################################################################

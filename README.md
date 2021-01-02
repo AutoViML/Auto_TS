@@ -47,34 +47,41 @@ Here are how the input parameters defined:<br>
 Currently only the following two types are supported:
 (1) "rmse": Root Mean Squared Error (RMSE)
 (2) "normalized_rmse": Ratio of RMSE to the standard deviation of actuals</li>
-<li><b>time_interval (default=None)</b>: Used to indicate the frequency at which the data is collected
+<li><b>time_interval (default is None)</b>: Used to indicate the frequency at which the data is collected.
 This is used for two purposes (1) in building the Prophet model and (2) used to impute the seasonal period for SARIMAX in case it is not provided by the user (None). Type is String.
-Allowed values are:
-  (1) 'months', 'month', 'm' for monthly frequency data
-  (2) 'days', 'daily', 'd' for daily freuency data
-  (3) 'weeks', 'weekly', 'w' for weekly frequency data
-  (4) 'qtr', 'quarter', 'q' for quarterly frequency data
-  (5) 'years', 'year', 'annual', 'y', 'a' for yearly frequency data
-  (6) 'hours', 'hourly', 'h' for hourly frequency data
-  (7) 'minutes', 'minute', 'min', 'n' for minute frequency data
-  (8) 'seconds', 'second', 'sec', 's' for second frequency data
-You can leave it blank and auto_timeseries will impute it.
+We use the following <a href="https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">pandas date range frequency</a> aliases that Prophet uses to make the prediction dataframe. Hence, please note that these are the list of allowed aliases for frequency:
+                      ['B','C','D','W','M','SM','BM','CBM',
+                     'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
+                     'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
+                     'H','T,min','S','L,ms','U,us','N']
+
+For a start, you can test the following codes for your data and see how the results are:
+  (1) 'MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS' for monthly frequency data
+  (2) 'D', 'B', 'C' for daily frequency data
+  (3) 'W' for weekly frequency data
+  (4) 'Q', 'BQ', 'QS', 'BQS' for quarterly frequency data
+  (5) 'A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS' for yearly frequency data
+  (6) 'BH', 'H', 'h' for hourly frequency data
+  (7) 'T,min' for minute frequency data
+  (8) 'S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds' for second frequency data
+Or you can leave it as None and auto_timeseries will try and impute it.
 </li>
 <li><b>non_seasonal_pdq (default = (3,1,3))</b>: Indicates the maximum value of (p, d, q) to be used in the search for statistical ARIMA models.
 If None, then the following values are assumed max_p = 3, max_d = 1, max_q = 3. Type is Tuple.</li>
 <li><b>seasonality (default=False)</b>: Used in the building of the SARIMAX model only at this time. True or False. Type is bool.</li>
-<li><b>seasonal_period (default is None)</b>: Indicates the seasonality period in the data.
+<li><b>seasonal_period (default is None)</b>: Indicates the seasonal period in your data. This depends on the peak (or valley) period that occurs regularly in your data.
 Used in the building of the SARIMAX model only at this time.
 There is no impact of this argument if seasonality is set to False
 If None, the program will try to infer this from the time_interval (frequency) of the data
-(1) If frequency = Monthly, then seasonal_period = 12
-(1) If frequency = Daily, then seasonal_period = 30
-(1) If frequency = Weekly, then seasonal_period = 52
-(1) If frequency = Quarterly, then seasonal_period = 4
-(1) If frequency = Yearly, then seasonal_period = 1
-(1) If frequency = Hourly, then seasonal_period = 24
-(1) If frequency = Minutes, then seasonal_period = 60
-(1) If frequency = Seconds, then seasonal_period = 60
+We assume the following as defaults but feel free to change them.
+(1) If frequency is Monthly, then seasonal_period is assumed to be 12
+(1) If frequency is Daily, then seasonal_period is assumed to be 30 (but it could be 7)
+(1) If frequency is Weekly, then seasonal_period is assumed to be 52
+(1) If frequency is Quarterly, then seasonal_period is assumed to be 4
+(1) If frequency is Yearly, then seasonal_period is assumed to be 1
+(1) If frequency is Hourly, then seasonal_period is assumed to be 24
+(1) If frequency is Minutes, then seasonal_period is assumed to be 60
+(1) If frequency is Seconds, then seasonal_period is assumed to be 60
 Type is integer</li>
 <li><b>conf_int (default=0.95)</b>: Confidence Interval for building the Prophet model. Default: 0.95. Type is float.</li>
 <li><b>model_type (default: 'stats'</b>: The type(s) of model to build. Default to building only statistical models
