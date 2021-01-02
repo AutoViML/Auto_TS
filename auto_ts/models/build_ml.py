@@ -14,7 +14,10 @@ from sklearn.model_selection import (ShuffleSplit, StratifiedShuffleSplit, # typ
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis # type: ignore
 from sklearn.ensemble import (BaggingRegressor, ExtraTreesRegressor,  # type: ignore
                              RandomForestClassifier, ExtraTreesClassifier,  # type: ignore
-                             AdaBoostRegressor, AdaBoostClassifier) # type: ignore
+                             AdaBoostRegressor, AdaBoostClassifier, # type: ignore
+                             RandomForestClassifier, RandomForestRegressor) # type: ignore
+from sklearn.metrics import mean_squared_error
+
 from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV # type: ignore
 from sklearn.svm import LinearSVC, SVR, LinearSVR # type: ignore
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: ignore
@@ -22,7 +25,7 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: 
 from .build_base import BuildBase
 
 # helper functions
-from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised
+from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised, print_ts_model_stats
 import pdb
 
 class BuildML(BuildBase):
@@ -67,9 +70,9 @@ class BuildML(BuildBase):
             catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
             if len(catvars) > 0:
                 print('    Warning: Dropping Categorical variables from analysis. You can Label Encode them and try ML modeling again...')
-            preds = left_subtract(preds, catvars)
             numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
             self.original_preds = numvars
+            preds = copy.deepcopy(numvars)
             if len(numvars) > 30:
                 print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
         else:
@@ -98,9 +101,6 @@ class BuildML(BuildBase):
         # print(f"Transformed Predictors: {self.transformed_preds}")
 
 
-        ## create Voting models
-        estimators = []
-
         #######################################
         #### Cross Validation across Folds ####
         #######################################
@@ -124,72 +124,96 @@ class BuildML(BuildBase):
 
         X_train = dfxs[self.transformed_preds]
         y_train = dfxs[self.transformed_target]
+        dft = dfxs[self.transformed_preds+[self.transformed_target]]
 
         # Decide NUM_ESTIMATORS for trees
-        if len(X_train) <= 100000 or X_train.shape[1] < 50:
-            NUMS = 50
+        if len(X_train) <= 100000 or dft.shape[1] < 50:
+            NUMS = 200
         else:
-            NUMS = 20
+            NUMS = 100
 
         if self.scoring == '':
             self.scoring = 'neg_root_mean_squared_error'
         elif self.scoring == 'rmse':
             self.scoring = 'neg_root_mean_squared_error'
 
-        ts_cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        print('Running Cross Validation using RandomForestRegressor model..')
+        ################################################################################
+        num_obs = dft.shape[0]
+        if self.forecast_period <= 5:
+            #### Set a minimum of 5 for the number of rows in test!
+            self.forecast_period = 5
+        ### In case the number of forecast_period is too high, just reduce it so it can fit into num_obs
+        if NFOLDS*self.forecast_period > num_obs:
+            self.forecast_period = int(num_obs/(NFOLDS+1))
+            print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
+        ###########################################################################################
+        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        y_preds = pd.DataFrame()
+        print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
+        start_time = time.time()
+        rmse_folds = []
+        norm_rmse_folds = []
+        y_trues = copy.deepcopy(y_train)
 
+        for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
+            train_fold = dft.iloc[train_index]
+            test_fold = dft.iloc[test_index]
+            horizon = len(test_fold)
 
-        if self.verbose >= 1:
-            print('Running multiple models...')
+            if self.verbose >= 1:
+                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape} Test Shape: {test_fold.shape}")
 
-        model5 = SVR(C=0.1, kernel='rbf', degree=2)
-        results1 = cross_val_score(model5, X_train, y_train, cv=ts_cv, scoring=self.scoring)
-        estimators.append(('SVR', model5, abs(results1.mean()), abs(results1)  ))
+            #########################################
+            #### Define the model with fold data ####
+            #########################################
 
-        model6 = AdaBoostRegressor(
-            base_estimator=DecisionTreeRegressor(
-            min_samples_leaf=2, max_depth=1, random_state=seed),
-            n_estimators=NUMS, random_state=seed
-        )
-        results2 = cross_val_score(model6, X_train, y_train, cv=ts_cv, scoring=self.scoring)
-        estimators.append(('Extra Trees', model6, abs(results2.mean()), abs(results2)  ))
+            model = RandomForestRegressor(n_estimators=NUMS, random_state=99)
 
-        model7 = LinearSVR(random_state=seed)
-        results3 = cross_val_score(model7, X_train, y_train, cv=ts_cv, scoring=self.scoring)
-        estimators.append(('LinearSVR', model7, abs(results3.mean()), abs(results3)  ))
+            ############################################
+            #### Fit the model with train_fold data ####
+            ############################################
 
-        ## Create an ensemble model ####
-        ensemble = BaggingRegressor(DecisionTreeRegressor(random_state=seed),
-                                    n_estimators=NUMS, random_state=seed)
-        results4 = cross_val_score(ensemble, X_train, y_train, cv=ts_cv, scoring=self.scoring)
-        estimators.append(('Bagging', ensemble, abs(results4.mean()), abs(results4)  ))
+            model.fit(train_fold[self.transformed_preds], train_fold[self.transformed_target])
 
-        if self.verbose == 1:
-            print('    Instance Based = %0.4f \n    Boosting = %0.4f\n    Linear Model = %0.4f \n    Bagging = %0.4f' %(
-            abs(results1.mean())/y_train.std(), abs(results2.mean())/y_train.std(),
-            abs(results3.mean())/y_train.std(), abs(results4.mean())/y_train.std()))
+            #################################################
+            #### Predict using model with test_fold data ####
+            #################################################
 
-        besttype = sorted(estimators, key=lambda x: x[2], reverse=False)[0][0]
-        # print(f"Best Model: {besttype}")
+            forecast_df = model.predict(test_fold[self.transformed_preds])
 
-        self.model = sorted(estimators, key=lambda x: x[2], reverse=False)[0][1]
-        bestscore = sorted(estimators, key=lambda x: x[2], reverse=False)[0][2]/y_train.std()
-        rmse_folds = sorted(estimators, key=lambda x: x[2], reverse=False)[0][3]
-        norm_rmse_folds = rmse_folds/y_train.values.std()  # Same as what was there in print_dynamic_rmse()
+            ### Now compare the actuals with predictions ######
+            y_pred = forecast_df[-horizon:]
+            if fold_number == 0:
+                y_preds = pd.DataFrame(y_pred, columns=['Predicted'])
+            else:
+                y_preds = y_preds.append(pd.DataFrame(y_pred, columns=['Predicted'])).reset_index(drop=True)
+            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[self.transformed_target],y_pred,test_fold[self.transformed_target])
+            print('Cross Validation window: %d completed' %(fold_number+1,))
+            rmse_folds.append(rmse_fold)
+            norm_rmse_folds.append(rmse_norm)
 
-        if self.verbose == 1:
-            print('Best Model = %s with %0.2f Normalized RMSE score\n' % (besttype, bestscore))
-
+        ######################################################
+        ### This is where you consolidate the CV results #####
+        ######################################################
+        rmse_mean = np.mean(rmse_folds)
+        cv_size = y_preds.values.ravel().shape[0]
+        print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel())
+        print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
+        cv_micro = np.sqrt(mean_squared_error(y_trues.values[-cv_size:], y_preds.values.ravel()))
+        print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
 
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
+        self.model = model
 
         # Refit Model on entire train dataset (earlier, we only trained the model on the individual splits)
+        # Convert to supervised learning problem
         if len(self.original_preds) == 0:
             self.model.fit(X_train, y_train)
         else:
-            self.refit(ts_df=ts_df)
+            self.refit(ts_df)
 
         # # This is the new method without the leakage
         # # Drop the y value
@@ -305,6 +329,12 @@ class BuildML(BuildBase):
                 X_test = create_univariate_lags_for_test(testdata, self.train_df,
                         self.original_target_col, self.lags)
                 ts_index = testdata.index
+                try:
+                    assert self.original_target_col in list(X_test)
+                    X_test.drop(self.original_target_col,axis=1, inplace=True)
+                except:
+                    pass
+                ##### Now we make predictions #############
                 y_forecasted = self.model.predict(X_test)
             else:
                 # Extract the dynamic predicted and true values of our time series
@@ -577,25 +607,9 @@ def classify_features(dfte, depVar, verbose=0):
             print('    List of variables removed: %s' %(IDcols+cols_delete+discrete_string_vars))
     #############  Check if there are too many columns to visualize  ################
     ppt = pprint.PrettyPrinter(indent=4)
-    if verbose==1 and len(cols_list) <= max_cols_analyzed:
+    if verbose>=1 and len(cols_list) <= max_cols_analyzed:
         marthas_columns(dft,verbose)
-        print("   Columns to delete:")
-        ppt.pprint('   %s' % cols_delete)
-        print("   Boolean variables %s ")
-        ppt.pprint('   %s' % bool_vars)
-        print("   Categorical variables %s ")
-        ppt.pprint('   %s' % categorical_vars)
-        print("   Continuous variables %s " )
-        ppt.pprint('   %s' % continuous_vars)
-        print("   Discrete string variables %s " )
-        ppt.pprint('   %s' % discrete_string_vars)
-        print("   Date and time variables %s " )
-        ppt.pprint('   %s' % date_vars)
-        print("   ID variables %s ")
-        ppt.pprint('   %s' % IDcols)
-        print("   Target variable %s ")
-        ppt.pprint('   %s' % depVar)
-    elif verbose==1 and len(cols_list) > max_cols_analyzed:
+    elif verbose>=1 and len(cols_list) > max_cols_analyzed:
         print('   Total columns > %d, too numerous to list.' %max_cols_analyzed)
     features_dict = dict([('IDcols',IDcols),('cols_delete',cols_delete),('bool_vars',bool_vars),('categorical_vars',categorical_vars),
                         ('continuous_vars',continuous_vars),('discrete_string_vars',discrete_string_vars),
@@ -612,16 +626,15 @@ def marthas_columns(data,verbose=0):
     if data.shape[1] > 30:
         print('Too many columns to print')
     else:
-        if verbose==1:
-            print('Data Set columns info:')
-            for col in data.columns:
-                print('* %s: %d nulls, %d unique vals, most common: %s' % (
-                        col,
-                        data[col].isnull().sum(),
-                        data[col].nunique(),
-                        data[col].value_counts().head(2).to_dict()
-                    ))
-            print('--------------------------------------------------------------------')
+        print('Data Set columns info:')
+        for col in data.columns:
+            print('* %s: %d nulls, %d unique vals, most common: %s' % (
+                    col,
+                    data[col].isnull().sum(),
+                    data[col].nunique(),
+                    data[col].value_counts().head(2).to_dict()
+                ))
+        print('--------------------------------------------------------------------')
 ################################################################################
 ######### NEW And FAST WAY to CLASSIFY COLUMNS IN A DATA SET #######
 ################################################################################
@@ -800,31 +813,6 @@ def classify_columns(df_preds, verbose=0):
     ###############  This is where you print all the types of variables ##############
     ####### Returns 8 vars in the following order: continuous_vars,int_vars,cat_vars,
     ###  string_bool_vars,discrete_string_vars,nlp_vars,date_or_id_vars,cols_delete
-    if verbose == 1:
-        print("    Number of Numeric Columns = ", len(continuous_vars))
-        print("    Number of Integer-Categorical Columns = ", len(int_vars))
-        print("    Number of String-Categorical Columns = ", len(cat_vars))
-        print("    Number of Factor-Categorical Columns = ", len(factor_vars))
-        print("    Number of String-Boolean Columns = ", len(string_bool_vars))
-        print("    Number of Numeric-Boolean Columns = ", len(num_bool_vars))
-        print("    Number of Discrete String Columns = ", len(discrete_string_vars))
-        print("    Number of NLP String Columns = ", len(nlp_vars))
-        print("    Number of Date Time Columns = ", len(date_vars))
-        print("    Number of ID Columns = ", len(id_vars))
-        print("    Number of Columns to Delete = ", len(cols_delete))
-    if verbose == 2:
-        marthas_columns(df_preds,verbose=1)
-        print("    Numeric Columns: %s" %continuous_vars[:max_cols_to_print])
-        print("    Integer-Categorical Columns: %s" %int_vars[:max_cols_to_print])
-        print("    String-Categorical Columns: %s" %cat_vars[:max_cols_to_print])
-        print("    Factor-Categorical Columns: %s" %factor_vars[:max_cols_to_print])
-        print("    String-Boolean Columns: %s" %string_bool_vars[:max_cols_to_print])
-        print("    Numeric-Boolean Columns: %s" %num_bool_vars[:max_cols_to_print])
-        print("    Discrete String Columns: %s" %discrete_string_vars[:max_cols_to_print])
-        print("    NLP text Columns: %s" %nlp_vars[:max_cols_to_print])
-        print("    Date Time Columns: %s" %date_vars[:max_cols_to_print])
-        print("    ID Columns: %s" %id_vars[:max_cols_to_print])
-        print("    Columns that will not be considered in modeling: %s" %cols_delete[:max_cols_to_print])
     ##### now collect all the column types and column names into a single dictionary to return!
     len_sum_all_cols = reduce(add,[len(v) for v in sum_all_cols.values()])
     if len_sum_all_cols == orig_cols_total:
@@ -863,6 +851,6 @@ def create_univariate_lags_for_test(test, train, vals, each_lag):
     for i in range(max_length):
          new_list.append(train[vals][:].iloc[-each_lag+i])
     test[new_col] = 0
-    test[:max_length][new_col] = np.array(new_list).reshape(-1,1)
+    test.loc[:max_length,new_col] = np.array(new_list)
     return test
 ################################################################################

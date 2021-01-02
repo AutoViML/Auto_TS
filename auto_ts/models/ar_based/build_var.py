@@ -77,7 +77,7 @@ class BuildVAR(BuildBase):
         ts_df = ts_df[[self.original_target_col] + self.original_preds]
 
         self.find_best_parameters(data = ts_df)
-
+        
         #######################################
         #### Cross Validation across Folds ####
         #######################################
@@ -122,7 +122,7 @@ class BuildVAR(BuildBase):
             forecast_df = self.predict(simple=False)
             forecast_df_folds.append(forecast_df)
 
-            rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], forecast_df['mean'].values, ts_train.iloc[:, 0])
+            rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], forecast_df['yhat'].values, ts_train.iloc[:, 0])
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
 
@@ -170,6 +170,7 @@ class BuildVAR(BuildBase):
 
         res = self.model.get_forecast(forecast_period)
         res_frame = res.summary_frame()
+
         res_frame.rename(columns={'mean':'yhat'},inplace=True)
 
         if simple:

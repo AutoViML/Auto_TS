@@ -1,19 +1,20 @@
+from itertools import cycle
 import numpy as np # type: ignore
 import pandas as pd # type: ignore
 import matplotlib.dates as mdates # type: ignore
 from itertools import cycle
 import matplotlib.pyplot as plt # type: ignore
 import seaborn as sns # type: ignore
-# This gives an error when running from a python script. 
+# This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 # get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # TSA from Statsmodels
 import statsmodels.tsa.api as smt # type: ignore
-
+import pdb
 
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
-                     chart_time='years'):
+                     chart_freq='years'):
     """
     Plot a Time Series along with how it will look after differencing and what its
     AR/MA lags will be by viewing the ACF and PACF, along with its histogram.
@@ -21,6 +22,25 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     to be Pandas datetime. It assumes that you want to see default lags of 31.
     But you can modify it to suit.
     """
+    if chart_freq in ['MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS']:
+        chart_time = 'months'
+    elif chart_freq in ['D', 'B', 'C']:
+        chart_time = 'days'
+    elif chart_freq in ['W']:
+        chart_time = 'weeks'
+    elif chart_freq in ['Q', 'BQ', 'QS', 'BQS']:
+        chart_time = 'quarters'
+    elif chart_freq in ['A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS']:
+        chart_time = 'years'
+    elif chart_freq in ['BH', 'H', 'h']:
+        chart_time = 'hours'
+    elif chart_freq in ['T,min']:
+        chart_time = 'minutes'
+    elif chart_freq in ['S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds']:
+        chart_time = 'seconds'
+    else:
+        print('chart frequency not known. Continuing...')
+        return
     colors = cycle('byrcmgkbyrcmgkbyrcmgkbyrcmgkbyr')
     fig = plt.figure(figsize=(20, 20))
     grid = plt.GridSpec(3, 2, wspace=0.5, hspace=0.5)
@@ -86,10 +106,9 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     [ax.set_xlim(0) for ax in [acf_ax, pacf_ax]]
     plt.show(block=False)
 
-
 def using_where(x):
     return np.where(x == 1, 'g', 'r')
-
+#################################################################################
 
 def top_correlation_to_name(stocks, column_name, searchstring, top=5):
     """
@@ -160,6 +179,15 @@ def top_correlation_to_name(stocks, column_name, searchstring, top=5):
     plt.tight_layout()
     plt.show(block=False)
 
+################################################################################
+def pretty_print_table(dfo):
+    from io import StringIO
+    import prettytable
+    output = StringIO()
+    dfo.to_csv(output)
+    output.seek(0)
+    pt = prettytable.from_csv(output)
+    print(pt)
 
 def test_stationarity(timeseries, maxlag=2, regression='c', autolag=None,
                       window=None, plot=False, verbose=False):
@@ -181,41 +209,63 @@ def test_stationarity(timeseries, maxlag=2, regression='c', autolag=None,
         regression = 'c'
     if verbose:
         print('Running Augmented Dickey-Fuller test with paramters:')
-        print('maxlag: {}'.format(maxlag))
-        print('regression: {}'.format(regression))
-        print('autolag: {}'.format(autolag))
+        print('    maxlag: {}'.format(maxlag),'regression: {}'.format(regression),'autolag: {}'.format(autolag))
     alpha = 0.05
     if plot:
-        if window is None:
-            window = 4
-        # Determing rolling statistics
-        rolmean = timeseries.rolling(window=window, center=False).mean()
-        rolstd = timeseries.rolling(window=window, center=False).std()
-        # Plot rolling statistics:
-        orig = plt.plot(timeseries, color='blue', label='Original')
-        mean = plt.plot(rolmean, color='red', label='Rolling Mean ({})'.format(window))
-        std = plt.plot(rolstd, color='black', label='Rolling Std ({})'.format(window))
-        plt.legend(loc='best')
-        plt.title('Rolling Mean & Standard Deviation')
-        plt.show(block=False)
+        try:
+            if window is None:
+                window = 4
+            # Determing rolling statistics
+            rolmean = timeseries.rolling(window=window, center=False).mean()
+            rolstd = timeseries.rolling(window=window, center=False).std()
+            # Plot rolling statistics:
+            orig = plt.plot(timeseries, color='blue', label='Original')
+            mean = plt.plot(rolmean, color='red', label='Rolling Mean ({})'.format(window))
+            std = plt.plot(rolstd, color='black', label='Rolling Std ({})'.format(window))
+            plt.legend(loc='best')
+            plt.title('Rolling Mean & Standard Deviation')
+            plt.show(block=False)
+        except:
+            print('Data must have date-time as index to plot!')
+            return
     # Perform Augmented Dickey-Fuller test:
     try:
+        ### Use Statsmodels for tests ###########
         dftest = smt.adfuller(timeseries, maxlag=maxlag, regression=regression, autolag=autolag)
         dfoutput = pd.Series(dftest[0:4], index=['Test Statistic',
                                                  'p-value',
                                                  '#Lags Used',
                                                  'Number of Observations Used',
-                                                 ])
+                                                 ],name='Dickey-Fuller Augmented Test')
         for key, value in dftest[4].items():
             dfoutput['Critical Value (%s)' % key] = value
         if verbose:
             print('Results of Augmented Dickey-Fuller Test:')
-            print(dfoutput)
+            pretty_print_table(dfoutput)
         if dftest[1] >= alpha:
-            print(' this series is non-stationary')
+            print(' this series is non-stationary. Trying test again after differencing...')
+            timeseries = pd.Series(timeseries).diff(1).dropna().values
+            dftest = smt.adfuller(timeseries, maxlag=maxlag, regression=regression, autolag=autolag)
+            dfoutput = pd.Series(dftest[0:4], index=['Test Statistic',
+                                                     'p-value',
+                                                     '#Lags Used',
+                                                     'Number of Observations Used',
+                                                     ],name='Dickey-Fuller Augmented Test')
+            for key, value in dftest[4].items():
+                dfoutput['Critical Value (%s)' % key] = value
+            if verbose:
+                print('After differencing=1, results of Augmented Dickey-Fuller Test:')
+                pretty_print_table(dfoutput)
+            if dftest[1] >= alpha:
+                print(' this series is not stationary')
+                return False
+            else:
+                print(' this series is stationary')
+                return True
         else:
             print(' this series is stationary')
-        return dfoutput
+            return True
     except:
-        print('Augment Dickey-Fuller test gives an error')
+        print('Error: Stationary test failed. Data must be np.array. Check your input and try stationary test again')
         return
+################################################################################

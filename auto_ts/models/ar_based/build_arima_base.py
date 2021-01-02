@@ -24,7 +24,8 @@ from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 
 
 class BuildArimaBase(BuildBase):
-    def __init__(self, scoring, seasonality=False, seasonal_period=None, p_max=12, d_max=2, q_max=12, forecast_period=2, verbose=0):
+    def __init__(self, scoring, seasonality=False, seasonal_period=None, p_max=12,
+            d_max=2, q_max=12, forecast_period=5, verbose=0):
         """
         Base class for building any ARIMA model
         Definitely applicable to SARIMAX and auto_arima with seasonality
@@ -93,6 +94,18 @@ class BuildArimaBase(BuildBase):
         forecast_df_folds = []
 
         NFOLDS = self.get_num_folds_from_cv(cv)
+
+        #########################################################################
+        num_obs = ts_df.shape[0]
+        if self.forecast_period <= 5:
+            #### Set a minimum of 5 for the number of rows in test!
+            self.forecast_period = 5
+        ### In case the number of forecast_period is too high, just reduce it so it can fit into num_obs
+        if NFOLDS*self.forecast_period > num_obs:
+            self.forecast_period = int(num_obs/(NFOLDS+1))
+            print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
+        #########################################################################
+
         cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
@@ -120,6 +133,7 @@ class BuildArimaBase(BuildBase):
             ### for SARIMAX and Auto_ARIMA, you don't have to restore differences since it predicts like actuals.###
             y_true = concatenated['original']
             y_pred = concatenated['predicted']
+
             if self.verbose >= 1:
                 print('Static Forecasts:')
                 # Since you are differencing the data, some original data points will not be available
@@ -142,15 +156,15 @@ class BuildArimaBase(BuildBase):
 
 
         # This is taking the std of entire dataset and using that to normalize
-        # vs. other approach that was using std of individual folds to stansardize.
+        # vs. other approach that was using std of individual folds to standardize.
         # Technically this is not correct, but in order to do Apples:Aples compatison with ML
-        # (sklearn) based cross_val_score, we need to do this since we dont get indicidual folds
+        # (sklearn) based cross_val_score, we need to do this since we dont get individual folds
         # back for cross_val_score. If at a later point in time, we can get this, then,
         # we can revert back to dividing by individual fold std values.
         norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
 
-        # print(f"SARIMAX Norm RMSE (Original): {norm_rmse_folds}")
-        # print(f"SARIMAX Norm RMSE (New): {norm_rmse_folds2}")
+        print(f"\nSARIMAX RMSE (all folds): {np.mean(rmse_folds):.4f}")
+        print(f"SARIMAX Norm RMSE (all folds): {(np.mean(norm_rmse_folds2)*100):.0f}%\n")
 
         ###############################################
         #### Refit the model on the entire dataset ####
