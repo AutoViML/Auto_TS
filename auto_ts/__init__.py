@@ -927,14 +927,13 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.28'
+version_number = '0.0.29'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
-model = auto_timeseries(score_type='rmse', forecast_period=forecast_period,
-                time_interval='Month',
+model = auto_timeseries(score_type='rmse',
+                time_interval='M',
                 non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
                 model_type=['best'],
                 verbose=2)
-
 model.fit(traindata, ts_column,target)
 model.predict(testdata, model='best')
 """)

@@ -42,6 +42,7 @@ class BuildML(BuildBase):
         # Specific to ML model
         # These are needed so that during prediction later, the data can be transformed correctly
         self.lags: int = 0
+        self.univariate = False
 
         self.transformed_target: str = ""
         self.transformed_preds: List[str] = []
@@ -64,6 +65,7 @@ class BuildML(BuildBase):
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
 
         if len(self.original_preds) > 0:
+            self.univariate = False
             features_dict = classify_features(ts_df, self.original_target_col)
             cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
             preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
@@ -76,6 +78,7 @@ class BuildML(BuildBase):
             if len(numvars) > 30:
                 print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
         else:
+            self.univariate = True
             preds = self.original_preds[:]
 
         ts_df = ts_df[preds+[self.original_target_col]]
@@ -86,7 +89,7 @@ class BuildML(BuildBase):
         self.train_df = ts_df
 
         # Convert to supervised learning problem
-        if len(self.original_preds) == 0:
+        if self.univariate:
             dfxs = create_univariate_lags_for_train(ts_df, self.original_target_col, self.lags)
             self.transformed_target = self.original_target_col
             self.transformed_preds = [x for x in list(dfxs) if x not in [self.original_target_col]]
@@ -96,6 +99,10 @@ class BuildML(BuildBase):
 
         print("Fitting ML model")
         print('\n    List of variables used in training Model = %s' %self.transformed_preds)
+        if len(self.transformed_preds) > 1:
+            self.univariate = False
+        else:
+            self.univariate = True
         # print(f"Transformed DataFrame:")
         # print(dfxs.info())
         # print(f"Transformed Target: {self.transformed_target}")
@@ -211,7 +218,7 @@ class BuildML(BuildBase):
 
         # Refit Model on entire train dataset (earlier, we only trained the model on the individual splits)
         # Convert to supervised learning problem
-        if len(self.original_preds) == 0:
+        if self.univariate:
             self.model.fit(X_train, y_train)
         else:
             self.refit(ts_df)
@@ -322,7 +329,7 @@ class BuildML(BuildBase):
             return None
         elif isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
 
-            if testdata.shape[1] == 1 or testdata.shape[1] == 0:
+            if self.univariate:
                 X_test = create_univariate_lags_for_test(testdata, self.train_df,
                         self.original_target_col, self.lags)
                 ts_index = testdata.index

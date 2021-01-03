@@ -16,8 +16,7 @@ def load_ts_data(filename, ts_column, sep, target):
         print('First loading %s and then setting %s as date time index...' % (filename, ts_column))
         for codex in codes_list:
             try:
-                df = pd.read_csv(filename, index_col=None, sep=sep, encoding=codex)
-                df.index = pd.to_datetime(df.pop(ts_column))
+                df = pd.read_csv(filename,index_col=ts_column, parse_dates=True)
                 break
             except:
                 print('    Encoder %s or Date time type not working for reading this file...' % codex)
