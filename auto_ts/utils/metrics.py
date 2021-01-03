@@ -69,7 +69,7 @@ def print_mape(y: np.array, y_hat: np.array) -> float:
     except:
         return np.nan
 
-def print_ts_model_stats(actuals: np.array, predicted: np.array) -> Tuple[float, float, float]:
+def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model") -> Tuple[float, float, float]:
     """
     This program prints and returns MAE, RMSE, MAPE.
     If you like the MAE and RMSE as a percentage of something, just give that number
@@ -82,7 +82,7 @@ def print_ts_model_stats(actuals: np.array, predicted: np.array) -> Tuple[float,
     dfplot.columns = ['Actual','Forecast']
     plt.plot(dfplot)
     plt.legend(['actual','forecast'])
-    plt.title('Random Forest: Actual vs Forecast in expanding (training) Window Cross Validation', fontsize=20)
+    plt.title('%s: Actual vs Forecast in expanding (training) Window Cross Validation' %title, fontsize=20)
     print('\n-------------------------------------------')
     print('Model Cross Validation Results:')
     print('-------------------------------------------')

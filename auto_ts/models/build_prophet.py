@@ -33,7 +33,8 @@ class BuildProphet(BuildBase):
     """Class to build a Prophet Model
     """
     def __init__(
-            self, forecast_period, time_interval, scoring, verbose, conf_int, holidays, growth, seasonality
+            self, forecast_period, time_interval, seasonal_period, scoring, verbose,
+             conf_int, holidays, growth, seasonality, **kwargs
         ):
         """
         Automatically build a Prophet Model
@@ -44,6 +45,7 @@ class BuildProphet(BuildBase):
             verbose=verbose
         )
         self.time_interval = time_interval
+        self.seasonal_period = seasonal_period
         self.conf_int = conf_int
         self.holidays = holidays
         self.growth = growth
@@ -70,7 +72,13 @@ class BuildProphet(BuildBase):
                                         'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
                                         'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
                                         'H','T,min','S','L,ms','U,us','N']
-
+        if kwargs:
+            for key, value in zip(kwargs.keys(),kwargs.values()):
+                if key == 'seasonality_mode':
+                    self.seasonality = True
+                    key = value
+                else:
+                    key = value
 
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
         """
@@ -134,6 +142,17 @@ class BuildProphet(BuildBase):
                 self.model.add_regressor(name)
 
         print("  Starting Prophet Fit")
+
+        if self.seasonality:
+            prophet_seasonality, prophet_period, fourier_order, prior_scale = get_prophet_seasonality(
+                                        self.time_interval, self.seasonal_period)
+            self.model.add_seasonality(name=prophet_seasonality,
+                            period=prophet_period, fourier_order=fourier_order, prior_scale= prior_scale)
+            print('       Adding %s seasonality to Prophet with period=%d, fourier_order=%d and prior_scale=%0.2f' %(
+                                        prophet_seasonality, prophet_period, fourier_order, prior_scale))
+        else:
+            print('      No seasonality assumed since seasonality flag is set to False')
+
         with SuppressStdoutStderr():
             self.model.fit(dft)
             self.train_df = copy.deepcopy(dft)
@@ -424,20 +443,11 @@ class BuildProphet(BuildBase):
         If True, this will return the format needed to be passed to the cross-validation object
         """
         if self.time_interval in ['months', 'month', 'm']:
-            if for_cv:
-                time_int = 'M'
-            else:
-                time_int = 'M'
+            time_int = 'M'
         elif self.time_interval in ['days', 'daily', 'd']:
-            if for_cv:
-                time_int = 'days'
-            else:
-                time_int = 'D'
+            time_int = 'D'
         elif self.time_interval in ['weeks', 'weekly', 'w']:
-            if for_cv:
-                time_int = 'W'
-            else:
-                time_int = 'W'
+            time_int = 'W'
         # TODO: Add time_int for other options if they are different for CV and for future forecasts
         elif self.time_interval in ['qtr', 'quarter', 'q']:
             time_int = 'Q'
@@ -451,7 +461,6 @@ class BuildProphet(BuildBase):
             time_int = 'S'
         else:
             time_int = 'W'
-
         return time_int
 
     def prep_col_names_for_prophet(self, ts_df: pd.DataFrame, test: bool = False) -> pd.DataFrame:
@@ -558,3 +567,67 @@ def easy_cross_validation(train, target, initial, horizon, period):
         print('Error: Not able to plot Prophet CV results')
     return y_trues, y_preds, rmse_means, norm_rmse_means
 ##################################################################################
+def get_prophet_seasonality(time_int, seasonal_period):
+    """
+    This returns the prophet seasonality if sent in the time interval.
+    """
+    prophet_seasonality = None
+    if seasonal_period is not None:
+        prophet_period = seasonal_period
+    if time_int in [ 'MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS']:
+        prophet_seasonality = 'monthly'
+        if seasonal_period is None:
+            prophet_period = 30.5
+        fourier_order = 12
+        prior_scale = 0.1
+    elif time_int in ['D', 'B', 'C']:
+        prophet_seasonality = 'daily'
+        if seasonal_period is None:
+            prophet_period = 1
+        fourier_order = 15
+        prior_scale = 0.1
+    elif time_int in ['W']:
+        prophet_seasonality = 'weekly'
+        if seasonal_period is None:
+            prophet_period = 7
+        fourier_order = 20
+        prior_scale = 0.1
+    elif time_int in ['Q', 'BQ', 'QS', 'BQS']:
+        prophet_seasonality = 'quarterly'
+        if seasonal_period is None:
+            prophet_period = 365.25/4
+        fourier_order = 5
+        prior_scale = 0.1
+    elif time_int in ['A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS']:
+        prophet_seasonality = 'yearly'
+        if seasonal_period is None:
+            prophet_period = 365.25
+        fourier_order = 5
+        prior_scale = 0.1
+    elif time_int in ['BH', 'H', 'h']:
+        prophet_seasonality = 'hourly'
+        if seasonal_period is None:
+            prophet_period = 24
+        fourier_order = 5
+        prior_scale = 0.1
+    elif time_int in ['T,min']:
+        prophet_seasonality = 'hourly'
+        if seasonal_period is None:
+            prophet_period = 24
+        fourier_order = 12
+        prior_scale = 0.1
+    elif time_int in ['S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds']:
+        prophet_seasonality = 'hourly'
+        if seasonal_period is None:
+            prophet_period = 24
+        fourier_order = 12
+        prior_scale = 0.1
+    else:
+        #### Monthly is the default ###
+        prophet_seasonality = 'monthly'
+        if seasonal_period is None:
+            prophet_period = 30.5
+        fourier_order = 12
+        prior_scale = 0.1
+    return prophet_seasonality, prophet_period, fourier_order, prior_scale
+#################################################################################

@@ -206,7 +206,7 @@ class BuildML(BuildBase):
         ######################################################
         rmse_mean = np.mean(rmse_folds)
         cv_size = y_preds.values.ravel().shape[0]
-        print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel())
+        print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel(),"Random Forest")
         print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
         cv_micro = np.sqrt(mean_squared_error(y_trues.values[-cv_size:], y_preds.values.ravel()))
         print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)

@@ -75,17 +75,29 @@ class auto_timeseries:
         :type str
 
         :param time_interval Used to indicate the frequency at which the data is collected
-        This is used for 2 purposes (1) in building the Prophet model and (2) used to impute
-        the seasonal period for SARIMAX in case it is not provided by the user (None)
-        Allowed values are:
-          (1) 'months', 'month', 'm' for monthly frequency data
-          (2) 'days', 'daily', 'd' for daily frequency data
-          (3) 'weeks', 'weekly', 'w' for weekly frequency data
-          (4) 'qtr', 'quarter', 'q' for quarterly frequency data
-          (5) 'years', 'year', 'annual', 'y', 'a' for yearly frequency data
-          (6) 'hours', 'hourly', 'h' for hourly frequency data
-          (7) 'minutes', 'minute', 'min', 'n' for minute frequency data
-          (8) 'seconds', 'second', 'sec', 's' for second frequency data
+        This is used for two purposes (1) in building the Prophet model and (2) used to impute the seasonal period for SARIMAX in case it is not provided by the user (None). Type is String.
+        We use the following codes from Pandas date-range frequency codes link:
+        source: "https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases">pandas date range frequency
+        These are the same codes that Prophet uses to make the prediction dataframe.
+
+        Hence, please note that these are the list of allowed aliases for time_interval
+                              ['B','C','D','W','M','SM','BM','CBM',
+                             'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
+                             'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
+                             'H','T,min','S','L,ms','U,us','N']
+
+        For a start, you can test the following codes for your data and see how the results are:
+
+        (1) 'MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS' for monthly frequency data
+        (2) 'D', 'B', 'C' for daily frequency data
+        (3) 'W' for weekly frequency data
+        (4) 'Q', 'BQ', 'QS', 'BQS' for quarterly frequency data
+        (5) 'A,Y', 'BA,BY', 'AS,YS', 'BAS,YAS' for yearly frequency data
+        (6) 'BH', 'H', 'h' for hourly frequency data
+        (7) 'T,min' for minute frequency data
+        (8) 'S', 'L,milliseconds', 'U,microseconds', 'N,nanoseconds' for second frequency data
+
+        Or you can leave it as None and auto_timeseries will try and impute it.
         :type time_interval Optional[str]
 
         :param: non_seasonal_pdq Indicates the maximum value of p, d, q to be used in the search for "stats" based models.
@@ -99,14 +111,15 @@ class auto_timeseries:
         Used in the building of the SARIMAX model only at this time.
         There is no impact of this argument if seasonality is set to False
         If None, the program will try to infer this from the time_interval (frequency) of the data
-        (1) If frequency = Monthly, then seasonal_period = 12
-        (1) If frequency = Daily, then seasonal_period = 30
-        (1) If frequency = Weekly, then seasonal_period = 52
-        (1) If frequency = Quarterly, then seasonal_period = 4
-        (1) If frequency = Yearly, then seasonal_period = 1
-        (1) If frequency = Hourly, then seasonal_period = 24
-        (1) If frequency = Minutes, then seasonal_period = 60
-        (1) If frequency = Seconds, then seasonal_period = 60
+        We assume the following as defaults but feel free to change them.
+        (1) If frequency is Monthly, then seasonal_period is assumed to be 12
+        (2) If frequency is Daily, then seasonal_period is assumed to be 30 (but it could be 7)
+        (3) If frequency is Weekly, then seasonal_period is assumed to be 52
+        (4) If frequency is Quarterly, then seasonal_period is assumed to be 4
+        (5) If frequency is Yearly, then seasonal_period is assumed to be 1
+        (6) If frequency is Hourly, then seasonal_period is assumed to be 24
+        (7) If frequency is Minutes, then seasonal_period is assumed to be 60
+        (8) If frequency is Seconds, then seasonal_period is assumed to be 60
         :type seasonal_period int
 
         :param conf_int: Confidence Interval for building the Prophet model. Default: 0.95
@@ -377,25 +390,25 @@ class auto_timeseries:
             else:
                 self.time_interval = self.time_interval.strip().lower()
                 if self.time_interval in ['months', 'month', 'm']:
-                    self.time_interval = 'months'
+                    self.time_interval = 'M'
                 elif self.time_interval in ['days', 'daily', 'd']:
-                    self.time_interval = 'days'
+                    self.time_interval = 'D'
                 elif self.time_interval in ['weeks', 'weekly', 'w']:
-                    self.time_interval = 'weeks'
+                    self.time_interval = 'W'
                 elif self.time_interval in ['qtr', 'quarter', 'q']:
-                    self.time_interval = 'qtr'
+                    self.time_interval = 'Q'
                 elif self.time_interval in ['semi', 'semi-annual', '2q']:
-                    self.time_interval = 'semi'
+                    self.time_interval = '2Q'
                 elif self.time_interval in ['years', 'year', 'annual', 'y', 'a']:
-                    self.time_interval = 'years'
+                    self.time_interval = 'Y,A'
                 elif self.time_interval in ['hours', 'hourly', 'h']:
-                    self.time_interval = 'hours'
+                    self.time_interval = 'H'
                 elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
-                    self.time_interval = 'minutes'
+                    self.time_interval = 'M'
                 elif self.time_interval in ['seconds', 'second', 'sec', 's']:
-                    self.time_interval = 'seconds'
+                    self.time_interval = 'S'
                 else:
-                    self.time_interval = 'months' # Default is Monthly
+                    self.time_interval = 'M' # Default is Monthly
                     print('Time Interval not provided. Setting default as Monthly')
         else:
             print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
@@ -457,7 +470,7 @@ class auto_timeseries:
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
                 model_build = BuildProphet(
-                    self.forecast_period, self.time_interval,
+                    self.forecast_period, self.time_interval, self.seasonal_period,
                     self.score_type, self.verbose, self.conf_int, self.holidays, self.growth,
                     self.seasonality)
                 model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
