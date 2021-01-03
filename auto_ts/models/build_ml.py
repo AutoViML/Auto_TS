@@ -95,6 +95,7 @@ class BuildML(BuildBase):
                     ts_df=ts_df, drop_zero_var = True)
 
         print("Fitting ML model")
+        print('\n    List of variables used in training Model = %s' %self.transformed_preds)
         # print(f"Transformed DataFrame:")
         # print(dfxs.info())
         # print(f"Transformed Target: {self.transformed_target}")
@@ -320,15 +321,13 @@ class BuildML(BuildBase):
             print('You cannot use integer for predict using ML model. Need to supply Pandas Series or Dataframe.')
             return None
         elif isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
-            try:
-                assert testdata.shape[1]
-            except:
-                print('testdata must be either a series or a dataframe.')
-                return
-            if testdata.shape[1] == 1 :
+
+            if testdata.shape[1] == 1 or testdata.shape[1] == 0:
                 X_test = create_univariate_lags_for_test(testdata, self.train_df,
                         self.original_target_col, self.lags)
                 ts_index = testdata.index
+                print('\nList of variables used in training Model = %s' %self.transformed_preds)
+                X_test = X_test[self.transformed_preds]
                 try:
                     assert self.original_target_col in list(X_test)
                     X_test.drop(self.original_target_col,axis=1, inplace=True)
@@ -851,6 +850,9 @@ def create_univariate_lags_for_test(test, train, vals, each_lag):
     for i in range(max_length):
          new_list.append(train[vals][:].iloc[-each_lag+i])
     test[new_col] = 0
-    test.loc[:max_length,new_col] = np.array(new_list)
+    try:
+        test.loc[:max_length,new_col] = np.array(new_list)
+    except:
+        test.loc[:max_length,new_col] = np.array(new_list).reshape(-1,1)
     return test
 ################################################################################
