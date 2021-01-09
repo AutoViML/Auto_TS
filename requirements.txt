@@ -18,7 +18,7 @@ matplotlib
 seaborn
 
 # Stats libraries
-scikit-learn==0.22.2
+scikit-learn
 statsmodels
 
 # Auto-Arima

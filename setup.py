@@ -21,7 +21,7 @@ setuptools.setup(
         "pandas",
         "matplotlib",
         "seaborn",
-        "scikit-learn==0.22.2",
+        "scikit-learn",
         "fbprophet",
         "statsmodels",
         "prettytable",
