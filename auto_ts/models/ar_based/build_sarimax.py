@@ -4,7 +4,7 @@ from pandas.core.generic import NDFrame # type:ignore
 
 import matplotlib.pyplot as plt # type: ignore
 
-from tscv import GapWalkForward # type: ignore
+#from tscv import GapWalkForward # type: ignore
 
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore

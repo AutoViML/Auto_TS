@@ -17,7 +17,8 @@ sns.set(style="white", color_codes=True)
 
 from statsmodels.tsa.statespace.varmax import VARMAX # type: ignore
 
-from tscv import GapWalkForward # type: ignore
+#from tscv import GapWalkForward # type: ignore
+from sklearn.model_selection import TimeSeriesSplit
 
 # helper functions
 from ...utils import print_dynamic_rmse
@@ -77,7 +78,7 @@ class BuildVAR(BuildBase):
         ts_df = ts_df[[self.original_target_col] + self.original_preds]
 
         self.find_best_parameters(data = ts_df)
-        
+
         #######################################
         #### Cross Validation across Folds ####
         #######################################
@@ -87,7 +88,8 @@ class BuildVAR(BuildBase):
         forecast_df_folds = []
 
         NFOLDS = self.get_num_folds_from_cv(cv)
-        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
             ts_test = ts_df.iloc[test]

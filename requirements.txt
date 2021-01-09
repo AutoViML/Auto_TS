@@ -11,7 +11,6 @@
 numpy
 pandas
 scipy
-tscv
 prettytable
 
 # Viz libs

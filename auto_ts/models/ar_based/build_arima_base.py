@@ -11,7 +11,8 @@ from pandas.core.generic import NDFrame # type:ignore
 
 import matplotlib.pyplot as plt # type: ignore
 
-from tscv import GapWalkForward # type: ignore
+#from tscv import GapWalkForward # type: ignore
+from sklearn.model_selection import TimeSeriesSplit
 
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
@@ -105,8 +106,7 @@ class BuildArimaBase(BuildBase):
             self.forecast_period = int(num_obs/(NFOLDS+1))
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         #########################################################################
-
-        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
             ts_test = ts_df.iloc[test]

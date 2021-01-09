@@ -5,7 +5,8 @@ import logging
 import copy
 import time
 import numpy as np
-from tscv import GapWalkForward # type: ignore
+#from tscv import GapWalkForward # type: ignore
+from sklearn.model_selection import TimeSeriesSplit
 
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
@@ -203,7 +204,8 @@ class BuildProphet(BuildBase):
             self.forecast_period = int(num_obs/(NFOLDS+1))
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
-        cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
