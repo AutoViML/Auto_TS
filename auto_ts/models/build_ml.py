@@ -17,6 +17,9 @@ from sklearn.ensemble import (BaggingRegressor, ExtraTreesRegressor,  # type: ig
                              RandomForestClassifier, ExtraTreesClassifier,  # type: ignore
                              AdaBoostRegressor, AdaBoostClassifier, # type: ignore
                              RandomForestClassifier, RandomForestRegressor) # type: ignore
+
+from xgboost import XGBRegressor, XGBClassifier
+from xgboost import plot_importance
 from sklearn.metrics import mean_squared_error
 
 from sklearn.linear_model import LinearRegression, LogisticRegression, RidgeCV # type: ignore
@@ -30,7 +33,7 @@ from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_da
 import pdb
 
 class BuildML(BuildBase):
-    def __init__(self, scoring: str = '', forecast_period: int = 2, verbose: int = 0):
+    def __init__(self, scoring: str = '', forecast_period: int = 2, ts_column: str = '', verbose: int = 0):
         """
         Automatically build a ML Model
         """
@@ -44,6 +47,7 @@ class BuildML(BuildBase):
         # These are needed so that during prediction later, the data can be transformed correctly
         self.lags: int = 0
         self.univariate = False
+        self.ts_column = ts_column
 
         self.transformed_target: str = ""
         self.transformed_preds: List[str] = []
@@ -55,7 +59,7 @@ class BuildML(BuildBase):
         self.train_df = pd.DataFrame()
 
 
-    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int]=None, lags: int = 0):
+    def fit(self, ts_df: pd.DataFrame, target_col: str, ts_column:str, cv: Optional[int]=None, lags: int = 0):
         """
         Build a Time Series Model using Machine Learning models.
         Quickly builds and runs multiple models for a clean data set (only numerics).
@@ -64,6 +68,7 @@ class BuildML(BuildBase):
         self.original_target_col = target_col
         self.lags = lags
         self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+        self.ts_column = ts_column
 
         if len(self.original_preds) > 0:
             self.univariate = False
@@ -82,21 +87,16 @@ class BuildML(BuildBase):
             self.univariate = True
             preds = self.original_preds[:]
 
+
         ts_df = ts_df[preds+[self.original_target_col]]
 
         # Order data
         ts_df = self.order_df(ts_df)
         num_obs = ts_df.shape[0]
         self.train_df = ts_df
-
         # Convert to supervised learning problem
-        if self.univariate:
-            dfxs = create_univariate_lags_for_train(ts_df, self.original_target_col, self.lags)
-            self.transformed_target = self.original_target_col
-            self.transformed_preds = [x for x in list(dfxs) if x not in [self.original_target_col]]
-        else:
-            dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
-                    ts_df=ts_df, drop_zero_var = True)
+        dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
+                ts_df=ts_df, drop_zero_var = True)
 
         print("Fitting ML model")
         print('\n    List of variables used in training Model = %s' %self.transformed_preds)
@@ -146,7 +146,7 @@ class BuildML(BuildBase):
         elif self.scoring == 'rmse':
             self.scoring = 'neg_root_mean_squared_error'
 
-        print('Running Cross Validation using RandomForestRegressor model..')
+        print('\nRunning Cross Validation using XGBoost model..')
         ################################################################################
         num_obs = dft.shape[0]
         if self.forecast_period <= 5:
@@ -178,14 +178,23 @@ class BuildML(BuildBase):
             #### Define the model with fold data ####
             #########################################
 
-            model = RandomForestRegressor(n_estimators=NUMS, random_state=99)
-
+            #model = RandomForestRegressor(n_estimators=NUMS, random_state=99)
+            model = XGBRegressor(n_estimators=400, verbosity=None, random_state=0)
+            nums = int(0.9*train_fold.shape[0])
+            if nums <= 1:
+                nums = 2
             ############################################
             #### Fit the model with train_fold data ####
             ############################################
 
-            model.fit(train_fold[self.transformed_preds], train_fold[self.transformed_target])
+            X_train_fold, y_train_fold = train_fold[:nums][self.transformed_preds], train_fold[:nums][self.transformed_target]
+            X_test_fold, y_test_fold = train_fold[nums:][self.transformed_preds], train_fold[nums:][self.transformed_target]
 
+            #model.fit(train_fold[self.transformed_preds], train_fold[self.transformed_target])
+            model.fit(X_train_fold, y_train_fold,
+                    eval_set=[(X_train_fold, y_train_fold), (X_test_fold, y_test_fold)],
+                    early_stopping_rounds=50,verbose=False,
+                    )
             #################################################
             #### Predict using model with test_fold data ####
             #################################################
@@ -206,6 +215,7 @@ class BuildML(BuildBase):
         ######################################################
         ### This is where you consolidate the CV results #####
         ######################################################
+        _ = plot_importance(model, height=0.9)
         rmse_mean = np.mean(rmse_folds)
         cv_size = y_preds.values.ravel().shape[0]
         print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel(),"Random Forest")
@@ -265,6 +275,7 @@ class BuildML(BuildBase):
         into a supervised learning problem.
         rtype: pd.DataFrame, str, List[str]
         """
+
         dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
             ts_df[self.original_preds+[self.original_target_col]],
             self.original_preds+[self.original_target_col],
@@ -274,7 +285,7 @@ class BuildML(BuildBase):
 
         # Append the time series features (derived from the time series index)
         # None ts_column will use the index
-        dfxs = create_time_series_features(dtf=dfxs, ts_column=None, drop_zero_var=drop_zero_var)
+        dfxs = create_time_series_features(dfxs, transformed_target_name, ts_column=None, drop_zero_var=drop_zero_var)
 
         # Overwrite with new ones
         # transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
@@ -317,6 +328,7 @@ class BuildML(BuildBase):
         X_egogen is a must, hence we can use the number of rows in X_egogen
         to get the forecast period.
         """
+        print('For large datasets: ML predictions will take time since it has to predict each row and use that for future predictions...')
 
         self.check_model_built()
 
@@ -330,101 +342,87 @@ class BuildML(BuildBase):
             print('You cannot use integer for predict using ML model. Need to supply Pandas Series or Dataframe.')
             return None
         elif isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
+            ############### This is to make sure that we don't make a mistake in train vs predict ####
+            # Extract the dynamic predicted and true values of our time series
 
-            if self.univariate:
-                X_test = create_univariate_lags_for_test(testdata, self.train_df,
-                        self.original_target_col, self.lags)
-                ts_index = testdata.index
-                print('\nList of variables used in training Model = %s' %self.transformed_preds)
-                X_test = X_test[self.transformed_preds]
-                try:
-                    assert self.original_target_col in list(X_test)
-                    X_test.drop(self.original_target_col,axis=1, inplace=True)
-                except:
-                    pass
-                ##### Now we make predictions #############
-                y_forecasted = self.model.predict(X_test)
-            else:
-                # Extract the dynamic predicted and true values of our time series
+            # Placebholder for forecasted results
+            y_forecasted: List[float] = []
 
-                # Placebholder for forecasted results
-                y_forecasted: List[float] = []
+            ts_index = testdata.index
+            # print(f"Datatime Index: {ts_index}")
 
-                ts_index = testdata.index
-                # print(f"Datatime Index: {ts_index}")
+            # STEP 1:
+            # self.df_prepend has the y column as well, but testdata does not.
+            # Need to add a dummy column to testdata before appending the 2 dataframes
+            # However, Since we are going to depend on previous values of y column to make
+            # future predictions, we can not just use all zeros for the y values
+            # (especially for forrecasts beyond the 1st prediction). So we will
+            # make one prediction at a time and then use that prediction to make the next prediction.
+            # That way, we get the most accurate prediction without leakage of informaton.
 
-                # STEP 1:
-                # self.df_prepend has the y column as well, but testdata does not.
-                # Need to add a dummy column to testdata before appending the 2 dataframes
-                # However, Since we are going to depend on previous values of y column to make
-                # future predictions, we can not just use all zeros for the y values
-                # (especially for forrecasts beyond the 1st prediction). So we will
-                # make one prediction at a time and then use that prediction to make the next prediction.
-                # That way, we get the most accurate prediction without leakage of informaton.
+            # print (f"Columns before adding dummy: {testdata.columns}")
+            testdata_with_dummy = testdata.copy(deep=True)
 
-                # print (f"Columns before adding dummy: {testdata.columns}")
-                testdata_with_dummy = testdata.copy(deep=True)
+            # Just a check to make sure user is not passing the target column to predict function.
+            if self.original_target_col in testdata_with_dummy.columns:
+                warnings.warn("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
+                testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
 
-                # Just a check to make sure user is not passing the target column to predict function.
-                if self.original_target_col in testdata_with_dummy.columns:
-                    warnings.warn("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
-                    testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
+            # Adding dummy value for target.
+            testdata_with_dummy[self.original_target_col] = np.zeros((testdata_with_dummy.shape[0],1))
 
-                # Adding dummy value for target.
-                testdata_with_dummy[self.original_target_col] = np.zeros((testdata_with_dummy.shape[0],1))
+            # Make sure column order is correct when adding the dummy column
+            testdata_with_dummy = self.order_df(testdata_with_dummy)
+            # print (f"Columns after reordering: {testdata_with_dummy.columns}")
 
-                # Make sure column order is correct when adding the dummy column
-                testdata_with_dummy = self.order_df(testdata_with_dummy)
-                # print (f"Columns after reordering: {testdata_with_dummy.columns}")
+            # STEP 2:
+            # Make prediction for each row. Then use the prediction for the next row.
 
-                # STEP 2:
-                # Make prediction for each row. Then use the prediction for the next row.
+            # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
+            ## When this is fixed in the AutoML module, we can shift and get the future index
+            ## to be in a proper time series format.
+            # print("Train Prepend")
+            # print(self.df_train_prepend)
+            # index = self.df_train_prepend.index
+            # print("Index Before")
+            # print(index)
+            # index = index.shift(testdata_with_dummy.shape[0])
+            # print("Index After")
+            # print(index)
 
-                # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
-                ## When this is fixed in the AutoML module, we can shift and get the future index
-                ## to be in a proper time series format.
-                # print("Train Prepend")
-                # print(self.df_train_prepend)
-                # index = self.df_train_prepend.index
-                # print("Index Before")
-                # print(index)
-                # index = index.shift(testdata_with_dummy.shape[0])
-                # print("Index After")
-                # print(index)
+            df_prepend = self.df_train_prepend.copy(deep=True)
+            for i in np.arange(testdata_with_dummy.shape[0]):
 
-                df_prepend = self.df_train_prepend.copy(deep=True)
-                for i in np.arange(testdata_with_dummy.shape[0]):
+                # Append the last n_lags of the data to the row of the X_egogen that is being preducted
+                # Note that some of this will come from the last few observations of the training data
+                # and the rest will come from the last few observations of the X_egogen data.
+                # print(f"Prepend shape before adding test: {df_prepend.shape}")
+                df_prepend = df_prepend.append(testdata_with_dummy.iloc[i])
+                # print(f"Prepend shape after adding test: {df_prepend.shape}")
+                # print("Prepend Dataframe")
+                # print(df_prepend)
 
-                    # Append the last n_lags of the data to the row of the X_egogen that is being preducted
-                    # Note that some of this will come from the last few observations of the training data
-                    # and the rest will come from the last few observations of the X_egogen data.
-                    # print(f"Prepend shape before adding test: {df_prepend.shape}")
-                    df_prepend = df_prepend.append(testdata_with_dummy.iloc[i])
-                    # print(f"Prepend shape after adding test: {df_prepend.shape}")
-                    # print("Prepend Dataframe")
-                    # print(df_prepend)
+                # Convert the appended dataframe to supervised learning problem
+                dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
 
-                    # Convert the appended dataframe to supervised learning problem
-                    dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
+                # Select only the predictors (transformed) from here
+                X_test = dfxs[self.transformed_preds]
+                # print("X_test")
+                # print(X_test)
 
-                    # Select only the predictors (transformed) from here
-                    X_test = dfxs[self.transformed_preds]
-                    # print("X_test")
-                    # print(X_test)
+                # Forecast
+                y_forecasted_temp = self.model.predict(X_test)  # Numpy array
+                # print(y_forecasted_temp)
+                y_forecasted.append(y_forecasted_temp[0])
 
-                    # Forecast
-                    y_forecasted_temp = self.model.predict(X_test)  # Numpy array
-                    # print(y_forecasted_temp)
-                    y_forecasted.append(y_forecasted_temp[0])
+                # Append the predicted value for use in next prediction
+                df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[0]
 
-                    # Append the predicted value for use in next prediction
-                    df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[0]
+                # Remove 1st entry as it is not needed for next round
+                df_prepend = df_prepend[1:]
 
-                    # Remove 1st entry as it is not needed for next round
-                    df_prepend = df_prepend[1:]
-
-                    # print("df_prepend end of loop")
-                    # print(df_prepend)
+                # print("df_prepend end of loop")
+                # print(df_prepend)
 
         # y_forecasted = np.array(y_forecasted)
         res_frame = pd.DataFrame({'yhat': y_forecasted})
@@ -432,6 +430,7 @@ class BuildML(BuildBase):
         res_frame['mean_se'] = np.nan
         res_frame['mean_ci_lower'] = np.nan
         res_frame['mean_ci_upper'] = np.nan
+        print('    ML predictions completed')
 
         if simple:
             return res_frame['mean']
@@ -439,7 +438,7 @@ class BuildML(BuildBase):
             return res_frame
 
 ###############################################################################################
-def create_time_series_features(dtf, ts_column: Optional[str]=None, drop_zero_var: bool = False):
+def create_time_series_features(dft, targets, ts_column: Optional[str]=None, drop_zero_var: bool = False):
     """
     This creates between 8 and 10 date time features for each date variable.
     The number of features depends on whether it is just a year variable
@@ -447,8 +446,9 @@ def create_time_series_features(dtf, ts_column: Optional[str]=None, drop_zero_va
     create all these features using just the date time column that you send in.
     It returns the entire dataframe with added variables as output.
     """
-    dtf = copy.deepcopy(dtf)
-
+    time_preds = [x for x in list(dft) if x != targets]
+    dtf = dft[time_preds]
+    dtf_target = dft[[targets]]
     try:
         # ts_column = None assumes that that index is the time series index
         reset_index = False
@@ -492,7 +492,10 @@ def create_time_series_features(dtf, ts_column: Optional[str]=None, drop_zero_va
     except Exception as e:
         print(e)
         print('Error in Processing %s column for date time features. Continuing...' %ts_column)
-
+    try:
+        dtf = dtf.join(dtf_target)
+    except:
+        print('Error in creating time-series features...Continuing')
     return dtf
 ##############################################################################################
 def create_ts_features(
@@ -518,11 +521,14 @@ def create_ts_features(
     dt_adds = []
     try:
         df[tscol+'_hour'] = df[tscol].dt.hour.astype(int)
-        df[tscol+'_minute'] = df[tscol].dt.minute.astype(int)
         dt_adds.append(tscol+'_hour')
+    except:
+        print('    Error in creating hour time feature. Continuing...')
+    try:
+        df[tscol+'_minute'] = df[tscol].dt.minute.astype(int)
         dt_adds.append(tscol+'_minute')
     except:
-        print('    Error in creating hour-second derived features. Continuing...')
+        print('    Error in creating minute time feature. Continuing...')
     try:
         df[tscol+'_dayofweek'] = df[tscol].dt.dayofweek.astype(int)
         dt_adds.append(tscol+'_dayofweek')

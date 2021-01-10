@@ -12,6 +12,7 @@ numpy
 pandas
 scipy
 prettytable
+xgboost
 
 # Viz libs
 matplotlib

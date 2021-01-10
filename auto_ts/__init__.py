@@ -254,7 +254,7 @@ class auto_timeseries:
             print("\nYou have provided a list as the 'ts_column' argument. Will pick the first value as the 'ts_column' name.")
             ts_column = ts_column[0]
 
-
+        ### Now you need to save the time series column
         self.ts_column = ts_column
 
         # Check 'target' type
@@ -329,7 +329,7 @@ class auto_timeseries:
         #### This is where the program tries to tease out the time period in the data set ####
         ######################################################################################
         if self.time_interval is None:
-            print("Time Interval between obserations has not been provided. Auto_TS will try to infer this now...")
+            print("Time Interval between observations has not been provided. Auto_TS will try to infer this now...")
             ts_index = pd.to_datetime(ts_df.index)
             diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
             diffdays = diff.days
@@ -670,15 +670,18 @@ class auto_timeseries:
                 print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
                             % (len(preds), lag))
             ####### Now make sure that there is only as few lags as needed ######
+            
             model_build = BuildML(
                 scoring=self.score_type,
                 forecast_period = self.forecast_period,
+                ts_column = self.ts_column,
                 verbose=self.verbose)
             try:
                 # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
                 model, forecasts, rmse, norm_rmse = model_build.fit(
                     ts_df=ts_df,
                     target_col=target,
+                    ts_column = self.ts_column,
                     cv = cv,
                     lags=lag
                 )
@@ -940,7 +943,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.31'
+version_number = '0.0.32'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',

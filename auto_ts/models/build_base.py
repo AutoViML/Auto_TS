@@ -13,7 +13,6 @@ class BuildBase(ABC):
         self.forecast_period = forecast_period
         self.verbose = verbose
         self.model = None
-
         self.original_target_col: str = ""
         self.original_preds: List[str] = []
 

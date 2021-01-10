@@ -94,7 +94,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
     #	drop rows with NaN values
     df.dropna(inplace=True, axis=0)
     #	put it all together
-    target = target+'(t)'
+    df.rename(columns={target+'(t)':target},inplace=True)
     if dropT:
         ### If dropT is true, all the "t" series of the target column (in case it is in the namevars)
         ### will be removed if you don't want the target to learn from its "t" values.
