@@ -106,13 +106,14 @@ class BuildArimaBase(BuildBase):
             self.forecast_period = int(num_obs/(NFOLDS+1))
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         #########################################################################
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+        max_trainsize = len(ts_df) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
             ts_test = ts_df.iloc[test]
 
             if self.verbose >= 1:
-                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape} Test Shape: {ts_test.shape}")
+                print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
 
             ### this is needed for static forecasts ####################
             # TODO: Check if this needs to be fixed to pick usimg self.original_target_col

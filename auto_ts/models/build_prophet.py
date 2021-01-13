@@ -205,7 +205,8 @@ class BuildProphet(BuildBase):
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+        max_trainsize = len(dft) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
@@ -216,9 +217,7 @@ class BuildProphet(BuildBase):
             train_fold = dft.iloc[train_index]
             test_fold = dft.iloc[test_index]
             horizon = len(test_fold)
-
-            if self.verbose >= 1:
-                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape} Test Shape: {test_fold.shape}")
+            print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
 
             #########################################
             #### Define the model with fold data ####
@@ -253,8 +252,7 @@ class BuildProphet(BuildBase):
         ######################################################
         ### This is where you consolidate the CV results #####
         ######################################################
-        if self.verbose >= 1:
-            fig = model.plot(forecast_df)
+        fig = model.plot(forecast_df)
         rmse_mean = np.mean(rmse_folds)
         print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
         y_trues = dft[-y_preds.shape[0]:][actual]

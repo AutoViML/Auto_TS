@@ -89,13 +89,14 @@ class BuildVAR(BuildBase):
 
         NFOLDS = self.get_num_folds_from_cv(cv)
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+
+        max_trainsize = len(ts_df) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
             ts_test = ts_df.iloc[test]
 
-            if self.verbose >= 1:
-                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape} Test Shape: {ts_test.shape}")
+            print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
 
             #########################################
             #### Define the model with fold data ####
@@ -116,12 +117,7 @@ class BuildVAR(BuildBase):
                 print(f'Error: VAR Fit on Fold: {fold_number+1} unsuccessful.')
                 return bestmodel, None, np.inf, np.inf
 
-            if self.verbose >= 1:
-                self.model.plot_diagnostics(figsize=(16, 12))
-                axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
-                axis.set(xlabel='Time Steps', title='Impulse Response Functions')
-
-            forecast_df = self.predict(simple=False)
+            forecast_df = self.predict(ts_test.shape[0],simple=False)
             forecast_df_folds.append(forecast_df)
 
             rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0], forecast_df['yhat'].values, ts_train.iloc[:, 0])
@@ -129,6 +125,9 @@ class BuildVAR(BuildBase):
             norm_rmse_folds.append(norm_rmse)
 
         norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+        self.model.plot_diagnostics(figsize=(16, 12))
+        axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
+        axis.set(xlabel='Time Steps', title='VAR model Impulse Response Functions')
 
         ###############################################
         #### Refit the model on the entire dataset ####

@@ -670,7 +670,7 @@ class auto_timeseries:
                 print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
                             % (len(preds), lag))
             ####### Now make sure that there is only as few lags as needed ######
-            
+
             model_build = BuildML(
                 scoring=self.score_type,
                 forecast_period = self.forecast_period,
@@ -943,7 +943,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.32'
+version_number = '0.0.33'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',
