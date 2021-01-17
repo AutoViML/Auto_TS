@@ -168,7 +168,10 @@ class BuildML(BuildBase):
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
+<<<<<<< HEAD
         #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24
+=======
+>>>>>>> 1f12d6bf18ae88fce840391af97761d37580595a
         max_trainsize = len(dft) - self.forecast_period
         cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         y_preds = pd.DataFrame()
@@ -187,8 +190,7 @@ class BuildML(BuildBase):
                 test_fold = dft.iloc[test_index]
             horizon = len(test_fold)
 
-            if self.verbose >= 1:
-                print(f"\n\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape} Test Shape: {test_fold.shape}")
+            print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
 
             #########################################
             #### Define the model with fold data ####
@@ -235,7 +237,7 @@ class BuildML(BuildBase):
         ######################################################
         ### This is where you consolidate the CV results #####
         ######################################################
-        _ = plot_importance(model, height=0.9)
+        _ = plot_importance(model, height=0.9,importance_type='gain', title='XGBoost Feature Importance by Gain')
         rmse_mean = np.mean(rmse_folds)
         cv_size = y_preds.values.ravel().shape[0]
         print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel(),"Random Forest")
