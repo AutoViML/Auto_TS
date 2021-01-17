@@ -72,13 +72,21 @@ class BuildML(BuildBase):
 
         if len(self.original_preds) > 0:
             self.univariate = False
-            features_dict = classify_features(ts_df, self.original_target_col)
-            cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
-            preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
-            catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
+            if type(ts_df) == dask.dataframe.core.DataFrame:
+                continuous_vars = ts_df.select_dtypes('number').columns.tolist()
+                numvars = [x for x in continuous_vars if x not in [target_col]]
+                preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+                catvars = ts_df.select_dtypes('object').columns.tolist() + ts_df.select_dtypes('category').columns.tolist()
+                if len(catvars) > 0:
+                    print('    Warning: Dropping Categorical variables %s. You can Label Encode them and try ML modeling again...' %catvars)
+            else:
+                features_dict = classify_features(ts_df, self.original_target_col)
+                cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
+                preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
+                catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
+                numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
             if len(catvars) > 0:
-                print('    Warning: Dropping Categorical variables from analysis. You can Label Encode them and try ML modeling again...')
-            numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
+                print('    Warning: Dropping Categorical variables %s. You can Label Encode them and try ML modeling again...' %catvars)
             self.original_preds = numvars
             preds = copy.deepcopy(numvars)
             if len(numvars) > 30:
@@ -87,16 +95,19 @@ class BuildML(BuildBase):
             self.univariate = True
             preds = self.original_preds[:]
 
-
         ts_df = ts_df[preds+[self.original_target_col]]
 
         # Order data
         ts_df = self.order_df(ts_df)
-        num_obs = ts_df.shape[0]
+        if type(ts_df) == dask.dataframe.core.DataFrame:
+            num_obs = ts_df.shape[0].compute()
+        else:
+            num_obs = ts_df.shape[0]
         self.train_df = ts_df
         # Convert to supervised learning problem
         dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
                 ts_df=ts_df, drop_zero_var = True)
+
 
         print("Fitting ML model")
         print('\n    List of variables used in training Model = %s' %self.transformed_preds)
@@ -148,7 +159,6 @@ class BuildML(BuildBase):
 
         print('\nRunning Cross Validation using XGBoost model..')
         ################################################################################
-        num_obs = dft.shape[0]
         if self.forecast_period <= 5:
             #### Set a minimum of 5 for the number of rows in test!
             self.forecast_period = 5
@@ -158,17 +168,23 @@ class BuildML(BuildBase):
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24
+        max_trainsize = len(dft) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
         rmse_folds = []
         norm_rmse_folds = []
         y_trues = copy.deepcopy(y_train)
-
+        pdb.set_trace()
         for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            train_fold = dft.iloc[train_index]
-            test_fold = dft.iloc[test_index]
+            if type(dft) == dask.dataframe.core.DataFrame:
+                train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
+                test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
+            else:
+                train_fold = dft.iloc[train_index]
+                test_fold = dft.iloc[test_index]
             horizon = len(test_fold)
 
             if self.verbose >= 1:
@@ -180,7 +196,11 @@ class BuildML(BuildBase):
 
             #model = RandomForestRegressor(n_estimators=NUMS, random_state=99)
             model = XGBRegressor(n_estimators=400, verbosity=None, random_state=0)
-            nums = int(0.9*train_fold.shape[0])
+            if type(dft) == dask.dataframe.core.DataFrame:
+                nums = int(0.9*len(train_index))
+            else:
+                nums = int(0.9*train_fold.shape[0])
+
             if nums <= 1:
                 nums = 2
             ############################################
@@ -284,8 +304,12 @@ class BuildML(BuildBase):
         )
 
         # Append the time series features (derived from the time series index)
-        # None ts_column will use the index
-        dfxs = create_time_series_features(dfxs, transformed_target_name, ts_column=None, drop_zero_var=drop_zero_var)
+        if type(dfxs) == dask.dataframe.core.DataFrame:
+            ### In this case the index is in the Dask Dataframe
+            dfxs = create_ts_features_dask(df=dfxs, tscol=self.ts_column, drop_zero_var=False, return_original=True)
+        else:
+            ### In this case it is a Pandas dataframe - None ts_column will use the index
+            dfxs = create_time_series_features(dfxs, transformed_target_name, ts_column=None, drop_zero_var=drop_zero_var)
 
         # Overwrite with new ones
         # transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
@@ -405,6 +429,7 @@ class BuildML(BuildBase):
                 # Convert the appended dataframe to supervised learning problem
                 dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
 
+
                 # Select only the predictors (transformed) from here
                 X_test = dfxs[self.transformed_preds]
                 # print("X_test")
@@ -438,6 +463,8 @@ class BuildML(BuildBase):
             return res_frame
 
 ###############################################################################################
+import dask
+import dask.dataframe as dd
 def create_time_series_features(dft, targets, ts_column: Optional[str]=None, drop_zero_var: bool = False):
     """
     This creates between 8 and 10 date time features for each date variable.
@@ -446,6 +473,7 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
     create all these features using just the date time column that you send in.
     It returns the entire dataframe with added variables as output.
     """
+    reset_index = False
     time_preds = [x for x in list(dft) if x != targets]
     dtf = dft[time_preds]
     dtf_target = dft[[targets]]
@@ -455,10 +483,14 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
         if ts_column is None:
             reset_index = True
             ts_column = dtf.index.name
-            dtf.reset_index(inplace=True)
+            dtf = dtf.reset_index()
 
         ### In some extreme cases, date time vars are not processed yet and hence we must fill missing values here!
-        if dtf[ts_column].isnull().sum() > 0:
+        if type(dft) == dask.dataframe.core.DataFrame:
+            null_nums = dtf[ts_column].isnull().sum().compute()
+        else:
+            null_nums = dtf[ts_column].isnull().sum()
+        if  null_nums > 0:
             # missing_flag = True
             new_missing_col = ts_column + '_Missing_Flag'
             dtf[new_missing_col] = 0
@@ -469,25 +501,32 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
             dtf[ts_column] = dtf[ts_column].astype(int)
 
         ### if we have already found that it was a date time var, then leave it as it is. Thats good enough!
-
-        items = dtf[ts_column].apply(str).apply(len).values
-        #### In some extreme cases,
-        if all(items[0] == item for item in items):
-            if items[0] == 4:
+        if type(dft) == dask.dataframe.core.DataFrame:
+            if dtf[ts_column].apply(len).compute()[0] == 4:
                 ### If it is just a year variable alone, you should leave it as just a year!
-                dtf[ts_column] = pd.to_datetime(dtf[ts_column],format='%Y')
+                dtf[ts_column] = dd.to_datetime(dtf[ts_column],format='%Y')
             else:
                 ### if it is not a year alone, then convert it into a date time variable
-                dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
+                dtf = create_ts_features_dask(df=dtf, tscol=ts_column, drop_zero_var=drop_zero_var, return_original=True)
         else:
-            dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
+            items = dtf[ts_column].apply(str).apply(len).values
+            #### In some extreme cases,
+            if all(items[0] == item for item in items):
+                if items[0] == 4:
+                    ### If it is just a year variable alone, you should leave it as just a year!
+                    dtf[ts_column] = pd.to_datetime(dtf[ts_column],format='%Y')
+                else:
+                    ### if it is not a year alone, then convert it into a date time variable
+                    dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
+            else:
+                dtf[ts_column] = pd.to_datetime(dtf[ts_column], infer_datetime_format=True)
 
-        dtf = create_ts_features(df=dtf, tscol=ts_column, drop_zero_var=drop_zero_var, return_original=True)
+                dtf = create_ts_features(df=dtf, tscol=ts_column, drop_zero_var=drop_zero_var, return_original=True)
 
         # If you had reset the index earlier, set it back before returning
         # to  make it consistent with the dataframe that was sent as input
         if reset_index:
-            dtf.set_index(ts_column, inplace=True)
+            dtf = dtf.set_index(ts_column)
 
     except Exception as e:
         print(e)
@@ -498,6 +537,61 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
         print('Error in creating time-series features...Continuing')
     return dtf
 ##############################################################################################
+def create_ts_features_dask(
+    df,
+    tscol,
+    drop_zero_var: bool = True,
+    return_original: bool = True) -> pd.DataFrame:
+    """
+    This takes in input a DASK or pandas dataframe and a date time index - if not it will fail
+
+    :param drop_zero_var If True, it will drop any features that have zero variance
+    :type drop_zero_var bool
+
+    :param return_original If True, it will return the original dataframe concatenated with the derived features
+    else, it will just return the derived features
+    :type return_original bool
+
+    :rtype pd.DataFrame
+    """
+    df_org = copy.deepcopy(df)
+    dt_adds = []
+    try:
+        df[tscol+'_hour'] = df.index.hour.values
+        dt_adds.append(tscol+'_hour')
+    except:
+        print('    Error in creating hour time feature. Continuing...')
+    try:
+        df[tscol+'_minute'] = df.index.minute.values
+        dt_adds.append(tscol+'_minute')
+    except:
+        print('    Error in creating minute time feature. Continuing...')
+    try:
+        df[tscol+'_dayofweek'] = df.index.dayofweek.values
+        dt_adds.append(tscol+'_dayofweek')
+        df[tscol+'_quarter'] = df.index.quarter.values
+        dt_adds.append(tscol+'_quarter')
+        df[tscol+'_month'] = df.index.month.values
+        dt_adds.append(tscol+'_month')
+        df[tscol+'_year'] = df.index.year.values
+        dt_adds.append(tscol+'_year')
+        df[tscol+'_dayofyear'] = df.index.dayofyear.values
+        dt_adds.append(tscol+'_dayofyear')
+        df[tscol+'_dayofmonth'] = df.index.day.values
+        dt_adds.append(tscol+'_dayofmonth')
+        df[tscol+'_weekofyear'] = df.index.weekofyear.values
+        dt_adds.append(tscol+'_weekofyear')
+        weekends = (df[tscol+'_dayofweek'] == 5) | (df[tscol+'_dayofweek'] == 6)
+        df[tscol+'_weekend'] = 0
+        df[tscol+'_weekend'] = df[tscol+'_weekend'].mask(weekends, 1)
+        dt_adds.append(tscol+'_weekend')
+    except:
+        print('    Error in creating date time derived features. Continuing...')
+
+    #df = df[dt_adds].fillna(0).astype(int)
+
+    return df
+################################################################################
 def create_ts_features(
     df,
     tscol,

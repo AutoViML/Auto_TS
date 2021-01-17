@@ -3,6 +3,8 @@ import pandas as pd  # type: ignore
 import copy
 import pdb
 from sklearn.model_selection import TimeSeriesSplit  # type: ignore
+import dask
+import dask.dataframe as dd
 
 ##### This function loads a time series data and sets the index as a time series
 def load_ts_data(filename, ts_column, sep, target):
@@ -12,30 +14,40 @@ def load_ts_data(filename, ts_column, sep, target):
     path to the file.
     """
     if isinstance(filename, str):
-        codes_list = ['utf-8', 'iso-8859-1', 'cp1252', 'latin1']
         print('First loading %s and then setting %s as date time index...' % (filename, ts_column))
-        for codex in codes_list:
-            try:
-                df = pd.read_csv(filename,index_col=ts_column, parse_dates=True)
-                break
-            except:
-                print('    Encoder %s or Date time type not working for reading this file...' % codex)
-                continue
+        try:
+            dft = dd.read_csv(filename, blocksize=100e6)
+            print('    Loaded %s into a Dask dataframe ...' % filename)
+        except:
+            dft = pd.read_csv(filename,index_col=ts_column, parse_dates=True)
+            print('    Loaded %s into pandas dataframe. Dask dataframe type not working for this file...' % filename)
     else:
         ### If filename is not a string, it must be a dataframe and can be loaded
-        dft = copy.deepcopy(filename)
-        if type(dft.index) == pd.DatetimeIndex:
-            return dft
+        if filename.shape[0] < 100000:
+            dft = copy.deepcopy(filename)
+            print('    Loaded pandas dataframe...')
         else:
-            try:
+            dft =   dd.from_pandas(filename, npartitions=1)
+            print('    Converted pandas dataframe into a Dask dataframe ...' )
+    #### Now check if DFT has an index. If not, set one ############
+    if type(dft.index) == pd.DatetimeIndex:
+        return dft
+    elif dft.index.dtype == '<M8[ns]':
+        return dft
+    else:
+        try:
+            if type(dft) == dask.dataframe.core.DataFrame:
+                dft.index = dd.to_datetime(dft[ts_column])
+                dft = dft.drop(ts_column, axis=1)
+            else:
                 dft.index = pd.to_datetime(dft.pop(ts_column))
-                preds = [x for x in list(dft) if x not in [target]]
-                df = dft[[target]+preds]
-            except Exception as e:
-                print(e)
-                print('Error: Could not convert Time Series column to an index. Please check your input and try again')
-                return ''
-    return df
+            preds = [x for x in list(dft) if x not in [target]]
+            df = dft[[target]+preds]
+        except Exception as e:
+            print(e)
+            print('Error: Could not convert Time Series column to an index. Please check your input and try again')
+            return ''
+    return dft
 
 
 def time_series_split(ts_df):
@@ -72,13 +84,14 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
     """
 
     df = copy.deepcopy(df)
+    int_vars  = df.select_dtypes(include='integer').columns.tolist()
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
     drops = []
     for i in range(n_in, -1, -1):
         if i == 0:
             for var in namevars:
                 addname = var + '(t)'
-                df.rename(columns={var:addname}, inplace=True)
+                df = df.rename(columns={var:addname})
                 drops.append(addname)
         else:
             for var in namevars:
@@ -92,9 +105,13 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
             addname = var + '(t+' + str(i) + ')'
             df[addname] = df[var].shift(-i)
     #	drop rows with NaN values
-    df.dropna(inplace=True, axis=0)
+    df = df.dropna()
+
+    ### Make sure that whatever vars came in as integers return back as integers!
+    df[int_vars] = df[int_vars].astype(np.int64)
+
     #	put it all together
-    df.rename(columns={target+'(t)':target},inplace=True)
+    df = df.rename(columns={target+'(t)':target})
     if dropT:
         ### If dropT is true, all the "t" series of the target column (in case it is in the namevars)
         ### will be removed if you don't want the target to learn from its "t" values.

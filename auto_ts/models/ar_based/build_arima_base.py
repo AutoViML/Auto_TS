@@ -106,7 +106,9 @@ class BuildArimaBase(BuildBase):
             self.forecast_period = int(num_obs/(NFOLDS+1))
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         #########################################################################
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn v 0.0.24
+        max_trainsize = len(ts_df) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
             ts_train = ts_df.iloc[train]
             ts_test = ts_df.iloc[test]

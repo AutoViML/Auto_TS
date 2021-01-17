@@ -279,7 +279,11 @@ class auto_timeseries:
                             Please convert your ts_column into a pandas date-time and try again""" %self.ts_column)
                         return None
                     else:
-                        print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
+                        if type(ts_df) == dask.dataframe.core.DataFrame:
+                            print('    Dask Dataframe loaded successfully. Shape of data set = (%s,%s)' %(
+                                                ts_df.shape[0].compute(),ts_df.shape[1]))
+                        else:
+                            print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
                 except Exception:
                     print('File could not be loaded. Check the path or filename and try again')
                     return None
@@ -292,7 +296,11 @@ class auto_timeseries:
                     Please convert your input into a date-time column  and try again""" %self.ts_column)
                 return None
             else:
-                print('    Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
+                if type(ts_df) == dask.dataframe.core.DataFrame:
+                    print('    Dask Dataframe loaded successfully. Shape of data set = (%s,%s)' %(
+                                        ts_df.shape[0].compute(),ts_df.shape[1]))
+                else:
+                    print('    pandas Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
         else:
             print('File name is an empty string. Please check your input and try again')
             return None
@@ -670,7 +678,7 @@ class auto_timeseries:
                 print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
                             % (len(preds), lag))
             ####### Now make sure that there is only as few lags as needed ######
-            
+
             model_build = BuildML(
                 scoring=self.score_type,
                 forecast_period = self.forecast_period,

@@ -205,7 +205,9 @@ class BuildProphet(BuildBase):
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period)
+        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn 0.0.24
+        max_trainsize = len(dft) - self.forecast_period
+        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
