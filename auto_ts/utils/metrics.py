@@ -30,8 +30,8 @@ def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.arra
     rmse = np.sqrt(np.mean((actuals - predicted)**2))
     norm_rmse = rmse/original.std()
     if toprint:
-        print('    RMSE = {:,.2f}'.format(rmse))
-        print('    Std Deviation of Originals = {:,.2f}'.format(original.std()))
+        print('    Root Mean Squared Error predictions vs actuals = {:,.2f}'.format(rmse))
+        print('    Std Deviation of actuals = {:,.2f}'.format(actuals.std()))
         print('    Normalized RMSE = %0.0f%%' %(100*norm_rmse))
     return rmse, norm_rmse
 

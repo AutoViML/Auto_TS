@@ -13,6 +13,7 @@ pandas
 scipy
 prettytable
 xgboost
+dask
 
 # Viz libs
 matplotlib

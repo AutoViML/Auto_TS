@@ -8,6 +8,8 @@ import pdb
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
+import dask
+import dask.dataframe as dd
 
 import matplotlib.pyplot as plt # type: ignore
 
@@ -97,7 +99,11 @@ class BuildArimaBase(BuildBase):
         NFOLDS = self.get_num_folds_from_cv(cv)
 
         #########################################################################
-        num_obs = ts_df.shape[0]
+        if type(ts_df) == dask.dataframe.core.DataFrame:
+            num_obs = ts_df.shape[0].compute()
+        else:
+            num_obs = ts_df.shape[0]
+
         if self.forecast_period <= 5:
             #### Set a minimum of 5 for the number of rows in test!
             self.forecast_period = 5
@@ -110,8 +116,12 @@ class BuildArimaBase(BuildBase):
         max_trainsize = len(ts_df) - self.forecast_period
         cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         for fold_number, (train, test) in enumerate(cv.split(ts_df)):
-            ts_train = ts_df.iloc[train]
-            ts_test = ts_df.iloc[test]
+            if type(ts_df) == dask.dataframe.core.DataFrame:
+                ts_train = ts_df.head(len(train_index)) ## now they become pandas dataframes!
+                ts_test = ts_df.tail(len(test_index)) ### now they become pandas dataframes!
+            else:
+                ts_train = ts_df.iloc[train]
+                ts_test = ts_df.iloc[test]
 
             if self.verbose >= 1:
                 print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
@@ -140,7 +150,7 @@ class BuildArimaBase(BuildBase):
                 print('Static Forecasts:')
                 # Since you are differencing the data, some original data points will not be available
                 # Hence taking from first available value.
-                print_static_rmse(y_true, y_pred, verbose=self.verbose)
+                print_static_rmse(y_true.values, y_pred.values, verbose=self.verbose)
                 #quick_ts_plot(y_true, y_pred)
 
             # Extract the dynamic predicted and true values of our time series
@@ -148,7 +158,7 @@ class BuildArimaBase(BuildBase):
             forecast_df_folds.append(forecast_df)
 
 
-            rmse, norm_rmse = print_static_rmse(y_true, y_pred, verbose=0) ## don't print this time
+            rmse, norm_rmse = print_static_rmse(y_true.values, y_pred.values, verbose=0) ## don't print this time
             rmse_folds.append(rmse)
             norm_rmse_folds.append(norm_rmse)
 

@@ -12,6 +12,9 @@ sns.set(style="white", color_codes=True)
 # TSA from Statsmodels
 import statsmodels.tsa.api as smt # type: ignore
 import pdb
+import copy
+import dask
+import dask.dataframe as dd
 
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
                      chart_freq='years'):
@@ -22,6 +25,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     to be Pandas datetime. It assumes that you want to see default lags of 31.
     But you can modify it to suit.
     """
+    y = copy.deepcopy(y)
     if chart_freq in ['MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS']:
         chart_time = 'months'
     elif chart_freq in ['D', 'B', 'C']:
@@ -52,6 +56,9 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     acf_ax = plt.subplot(grid[2, 0])
     pacf_ax = plt.subplot(grid[2, 1])
     ### Draw multiple kinds of graphs here to each subplot axis ###
+
+    if type(y) == dask.dataframe.core.DataFrame or type(y) == dask.dataframe.core.Series:
+            y = y.head(len(y)) ## this converts it into a pandas Series
     if chart_type == 'line':
         y.plot(ax=ts_ax, color=next(colors))
     else:

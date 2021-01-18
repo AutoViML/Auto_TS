@@ -15,6 +15,8 @@ import pdb
 # Tabular Data
 import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
+import dask
+import dask.dataframe as dd
 
 # Modeling
 from sklearn.exceptions import DataConversionWarning # type: ignore
@@ -951,7 +953,7 @@ class auto_timeseries:
         return all([True if elem in in_list else False for elem in what_list])
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.33'
+version_number = '0.0.34'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',

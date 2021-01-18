@@ -11,6 +11,8 @@ from sklearn.model_selection import TimeSeriesSplit
 import pandas as pd # type: ignore
 from pandas.core.generic import NDFrame # type:ignore
 import pdb
+import dask
+import dask.dataframe as dd
 
 import matplotlib.pyplot as plt # type: ignore
 
@@ -160,7 +162,11 @@ class BuildProphet(BuildBase):
 
         print("  End of Prophet Fit")
 
-        num_obs = dft.shape[0]
+        if type(dft) == dask.dataframe.core.DataFrame:
+            num_obs = dft.shape[0].compute()
+        else:
+            num_obs = dft.shape[0]
+
         NFOLDS = self.get_num_folds_from_cv(cv)
 
         if self.verbose >= 2:
@@ -215,8 +221,9 @@ class BuildProphet(BuildBase):
         norm_rmse_folds = []
         y_trues = pd.DataFrame()
         for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            train_fold = dft.iloc[train_index]
-            test_fold = dft.iloc[test_index]
+            train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
+            test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
+
             horizon = len(test_fold)
             print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
 
@@ -240,12 +247,13 @@ class BuildProphet(BuildBase):
             future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
             forecast_df = model.predict(future_period)
             ### Now compare the actuals with predictions ######
+            
             y_pred = forecast_df['yhat'][-horizon:]
             if fold_number == 0:
                 y_preds = copy.deepcopy(y_pred)
             else:
                 y_preds = y_preds.append(y_pred)
-            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[actual],y_pred,test_fold[actual])
+            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[actual].values,y_pred.values,test_fold[actual].values)
             print('Cross Validation window: %d completed' %(fold_number+1,))
             rmse_folds.append(rmse_fold)
             norm_rmse_folds.append(rmse_norm)

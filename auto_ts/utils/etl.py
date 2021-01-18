@@ -1,4 +1,5 @@
 from typing import List
+import numpy as np
 import pandas as pd  # type: ignore
 import copy
 import pdb
@@ -82,21 +83,26 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
 
     rtype: pd.DataFrame, str, List[str]
     """
-
+    
     df = copy.deepcopy(df)
     int_vars  = df.select_dtypes(include='integer').columns.tolist()
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
     drops = []
+    int_changes = []
     for i in range(n_in, -1, -1):
         if i == 0:
             for var in namevars:
                 addname = var + '(t)'
                 df = df.rename(columns={var:addname})
                 drops.append(addname)
+                if var in int_vars:
+                    int_changes.append(addname)
         else:
             for var in namevars:
                 addname = var + '(t-' + str(i) + ')'
                 df[addname] = df[var].shift(i)
+                if var in int_vars:
+                    int_changes.append(addname)
     ## forecast sequence (t, t+1,... t+n)
     if n_out == 0:
         n_out = False
@@ -108,7 +114,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
     df = df.dropna()
 
     ### Make sure that whatever vars came in as integers return back as integers!
-    df[int_vars] = df[int_vars].astype(np.int64)
+    df[int_changes] = df[int_changes].astype(np.int64)
 
     #	put it all together
     df = df.rename(columns={target+'(t)':target})
