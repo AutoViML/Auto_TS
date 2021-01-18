@@ -24,7 +24,7 @@ from fbprophet.plot import plot_cross_validation_metric
 from .build_base import BuildBase
 
 # helper functions
-from ..utils import print_dynamic_rmse, quick_ts_plot
+from ..utils import print_dynamic_rmse, quick_ts_plot, print_ts_model_stats
 from ..utils.logging import SuppressStdoutStderr
 
 #### Suppress INFO messages from FB Prophet!
@@ -169,10 +169,6 @@ class BuildProphet(BuildBase):
 
         NFOLDS = self.get_num_folds_from_cv(cv)
 
-        if self.verbose >= 2:
-            print(f"NumObs: {num_obs}")
-            print(f"NFOLDS: {NFOLDS}")
-
         #########################################################################################
         # NOTE: This change to the FB recommendation will cause the cv folds from facebook to
         # be incompatible with the folds from the other models (in terms of periods of evaluation
@@ -211,18 +207,27 @@ class BuildProphet(BuildBase):
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn 0.0.24
         max_trainsize = len(dft) - self.forecast_period
-        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
+        try:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
+        except:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
         y_preds = pd.DataFrame()
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
         rmse_folds = []
         norm_rmse_folds = []
-        y_trues = pd.DataFrame()
+
+        concatenated = pd.DataFrame()
+        extra_concatenated = pd.DataFrame()
+
+        if type(dft) == dask.dataframe.core.DataFrame:
+            dft = dft.head(len(dft)) ### this converts dask into a pandas dataframe
+
         for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
-            test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
+            dftx = dft.head(len(train_index)+len(test_index))
+            train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+            test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
             horizon = len(test_fold)
             print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
@@ -247,13 +252,20 @@ class BuildProphet(BuildBase):
             future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
             forecast_df = model.predict(future_period)
             ### Now compare the actuals with predictions ######
-            
+
             y_pred = forecast_df['yhat'][-horizon:]
+
+            concatenated = pd.DataFrame(np.c_[test_fold[actual].values,
+                        y_pred.values], columns=['original', 'predicted'],index=test_fold.index)
+
             if fold_number == 0:
-                y_preds = copy.deepcopy(y_pred)
+                extra_concatenated = copy.deepcopy(concatenated)
             else:
-                y_preds = y_preds.append(y_pred)
-            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[actual].values,y_pred.values,test_fold[actual].values)
+                extra_concatenated = extra_concatenated.append(concatenated)
+
+            rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
+                                        concatenated['original'].values)
+
             print('Cross Validation window: %d completed' %(fold_number+1,))
             rmse_folds.append(rmse_fold)
             norm_rmse_folds.append(rmse_norm)
@@ -262,32 +274,22 @@ class BuildProphet(BuildBase):
         ### This is where you consolidate the CV results #####
         ######################################################
         fig = model.plot(forecast_df)
-        rmse_mean = np.mean(rmse_folds)
-        print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
-        y_trues = dft[-y_preds.shape[0]:][actual]
-        cv_micro = np.sqrt(mean_squared_error(y_trues.values,
-                                              y_preds.values))
-        print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+        #rmse_mean = np.mean(rmse_folds)
+        #print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
+
+
+        #cv_micro = np.sqrt(mean_squared_error(y_trues.values, y_preds.values))
+        #print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
 
         try:
-            if self.verbose >= 2:
-                quick_ts_plot(y_trues, y_preds)
-            else:
-                pass
+            print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], "Prophet")
         except:
             print('Error: Not able to plot Prophet CV results')
 
-        forecast_df_folds = copy.deepcopy(y_preds)
-        print("  End of Prophet Cross Validation")
+        forecast_df_folds = extra_concatenated['predicted'].values
+        #print("  End of Prophet Cross Validation")
         print('Time Taken = %0.0f seconds' %((time.time()-start_time)))
 
-        if self.verbose >= 1:
-            print("Prophet CV DataFrame")
-            #print(performance_metrics(df_cv).head())
-        if self.verbose >= 2:
-            print("Prophet plotting CV Metrics")
-            #_ = plot_cross_validation_metric(df_cv, metric=self.scoring)
-            #plt.show()
 
         #num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 
@@ -329,10 +331,6 @@ class BuildProphet(BuildBase):
         #     print('Error in FB Prophet components forecast. Continuing...')
 
         #rmse, norm_rmse = print_dynamic_rmse(dfa['y'], dfa['yhat'], dfa['y'])
-        print('---------------------------')
-        print('Final Prophet CV results:')
-        print('---------------------------')
-        rmse, norm_rmse = print_dynamic_rmse(y_trues, y_preds, y_trues)
 
         #return self.model, forecast, rmse, norm_rmse
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds

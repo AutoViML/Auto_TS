@@ -22,7 +22,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 from ..build_base import BuildBase
 
 # helper functions
-from ...utils import colorful, print_static_rmse, print_dynamic_rmse
+from ...utils import colorful, print_static_rmse, print_dynamic_rmse, print_ts_model_stats
 from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
 
 
@@ -82,6 +82,9 @@ class BuildArimaBase(BuildBase):
         auto_arima_model = self.find_best_parameters(data = ts_df)
         self.model = auto_arima_model
 
+        if self.seasonal_period <= 1:
+            self.seasonal_period = 2 ### Sarimax cannot have seasonal period 1 or below.
+
         if self.verbose >= 1:
             print(f"\n\nBest Parameters:")
             print(f"p: {self.best_p}, d: {self.best_d}, q: {self.best_q}")
@@ -112,16 +115,23 @@ class BuildArimaBase(BuildBase):
             self.forecast_period = int(num_obs/(NFOLDS+1))
             print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         #########################################################################
-        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn v 0.0.24
+        extra_concatenated = pd.DataFrame()
+        concatenated = pd.DataFrame()
+
         max_trainsize = len(ts_df) - self.forecast_period
-        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
-        for fold_number, (train, test) in enumerate(cv.split(ts_df)):
-            if type(ts_df) == dask.dataframe.core.DataFrame:
-                ts_train = ts_df.head(len(train_index)) ## now they become pandas dataframes!
-                ts_test = ts_df.tail(len(test_index)) ### now they become pandas dataframes!
-            else:
-                ts_train = ts_df.iloc[train]
-                ts_test = ts_df.iloc[test]
+        try:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
+        except:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
+
+        if type(ts_df) == dask.dataframe.core.DataFrame:
+            ts_df = dft.head(len(ts_df)) ### this converts dask into a pandas dataframe
+
+        for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
+            dftx = ts_df.head(len(train_index)+len(test_index))
+            ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+            ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
+
 
             if self.verbose >= 1:
                 print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
@@ -139,8 +149,14 @@ class BuildArimaBase(BuildBase):
 
             y_forecasted = self.model.predict(ts_test.shape[0],exog)
 
-            concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
+            if fold_number == 0:
+                concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
                             y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
+                extra_concatenated = copy.deepcopy(concatenated)
+            else:
+                concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
+                            y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
+                extra_concatenated = extra_concatenated.append(concatenated)
 
             ### for SARIMAX and Auto_ARIMA, you don't have to restore differences since it predicts like actuals.###
             y_true = concatenated['original']
@@ -183,8 +199,9 @@ class BuildArimaBase(BuildBase):
         ###############################################
         self.refit(ts_df=ts_df)
 
-        if self.verbose >= 1:
-            print(self.model.summary())
+        print(self.model.summary())
+
+        print_ts_model_stats(extra_concatenated['original'],extra_concatenated['predicted'], "auto_SARIMAX")
 
         # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2

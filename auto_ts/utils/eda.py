@@ -196,7 +196,8 @@ def pretty_print_table(dfo):
     pt = prettytable.from_csv(output)
     print(pt)
 
-def test_stationarity(timeseries, maxlag=2, regression='c', autolag=None,
+import copy
+def test_stationarity(timeseries, maxlag=31, regression='c', autolag='BIC',
                       window=None, plot=False, verbose=False):
     """
     Check unit root stationarity of a time series array or an entire dataframe.
@@ -208,6 +209,9 @@ def test_stationarity(timeseries, maxlag=2, regression='c', autolag=None,
     Function: http://statsmodels.sourceforge.net/devel/generated/statsmodels.tsa.stattools.adfuller.html
     window argument is only required for plotting rolling functions. Default=4.
     """
+    timeseries = copy.deepcopy(timeseries)
+    if len(timeseries) <= int(1.5*maxlag):
+        maxlag = 5  ## set it to a low number
     # set defaults (from function page)
     if type(timeseries) == pd.DataFrame:
         print('modifying time series dataframe into an array to test')

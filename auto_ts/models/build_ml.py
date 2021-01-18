@@ -102,10 +102,12 @@ class BuildML(BuildBase):
 
         # Order data
         ts_df = self.order_df(ts_df)
+
         if type(ts_df) == dask.dataframe.core.DataFrame:
             num_obs = ts_df.shape[0].compute()
         else:
             num_obs = ts_df.shape[0]
+
         self.train_df = ts_df
         # Convert to supervised learning problem
         dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
@@ -141,7 +143,7 @@ class BuildML(BuildBase):
         ### In case the number of forecast_period is too high, just reduce it so it can fit into num_obs
         if NFOLDS*self.forecast_period > num_obs:
             self.forecast_period = int(num_obs/10)
-            print('    Cutting forecast period by 90 percent to %d to enable cross_validation' %self.forecast_period)
+            print('    Forecast period too high. Cutting by 90%% to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################
 
         seed = 99
@@ -162,30 +164,30 @@ class BuildML(BuildBase):
             self.scoring = 'neg_root_mean_squared_error'
 
         print('\nRunning Cross Validation using XGBoost model..')
-        ################################################################################
-        if self.forecast_period <= 5:
-            #### Set a minimum of 5 for the number of rows in test!
-            self.forecast_period = 5
-        ### In case the number of forecast_period is too high, just reduce it so it can fit into num_obs
-        if NFOLDS*self.forecast_period > num_obs:
-            self.forecast_period = int(num_obs/(NFOLDS+1))
-            print('Lowering forecast period to %d to enable cross_validation' %self.forecast_period)
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24
         max_trainsize = len(dft) - self.forecast_period
-        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
-        y_preds = pd.DataFrame()
+        try:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
+        except:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
+
         print('Max. iterations using expanding window cross validation = %d' %NFOLDS)
         start_time = time.time()
         rmse_folds = []
         norm_rmse_folds = []
         y_trues = copy.deepcopy(y_train)
+        concatenated = pd.DataFrame()
+        extra_concatenated = pd.DataFrame()
+
+        if type(dft) == dask.dataframe.core.DataFrame:
+            dft = dft.head(len(dft)) ### this converts dask into a pandas dataframe
 
         for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
-            test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
-            
+            dftx = dft.head(len(train_index)+len(test_index))
+            train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+            test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
+
             horizon = len(test_fold)
 
             print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
@@ -230,12 +232,19 @@ class BuildML(BuildBase):
 
             ### Now compare the actuals with predictions ######
             y_pred = forecast_df[-horizon:]
+            ### y_pred is already an array - so keep that in mind!
+
+            concatenated = pd.DataFrame(np.c_[test_fold[self.transformed_target].values,
+                        y_pred], columns=['original', 'predicted'],index=test_fold.index)
+
             if fold_number == 0:
-                y_preds = pd.DataFrame(y_pred, columns=['Predicted'])
+                extra_concatenated = copy.deepcopy(concatenated)
             else:
-                y_preds = y_preds.append(pd.DataFrame(y_pred, columns=['Predicted'])).reset_index(drop=True)
-            rmse_fold, rmse_norm = print_dynamic_rmse(test_fold[self.transformed_target].values,y_pred,
-                                    test_fold[self.transformed_target].values)
+                extra_concatenated = extra_concatenated.append(concatenated)
+
+            rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
+                                        concatenated['original'].values)
+
             print('Cross Validation window: %d completed' %(fold_number+1,))
             rmse_folds.append(rmse_fold)
             norm_rmse_folds.append(rmse_norm)
@@ -244,12 +253,12 @@ class BuildML(BuildBase):
         ### This is where you consolidate the CV results #####
         ######################################################
         _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
-        rmse_mean = np.mean(rmse_folds)
-        cv_size = y_preds.values.ravel().shape[0]
+
         if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
             y_trues = y_trues.head(len(y_trues))
-        cv_micro, cv_micro_pct = print_ts_model_stats(y_trues.values[-cv_size:], y_preds.values.ravel(),'%s' %model_name)
-        print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
+
+        cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
+
         print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
         #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
 

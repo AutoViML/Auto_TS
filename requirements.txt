@@ -13,14 +13,14 @@ pandas
 scipy
 prettytable
 xgboost
-dask
+dask>=2.30.0
 
 # Viz libs
 matplotlib
 seaborn
 
 # Stats libraries
-scikit-learn
+scikit-learn>=0.24.0
 statsmodels
 
 # Auto-Arima

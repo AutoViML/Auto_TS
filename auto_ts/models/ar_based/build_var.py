@@ -93,14 +93,18 @@ class BuildVAR(BuildBase):
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn version 0.0.24
         max_trainsize = len(ts_df) - self.forecast_period
-        cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
-        for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
-            if type(ts_df) == dask.dataframe.core.DataFrame:
-                ts_train = ts_df.head(len(train_index)) ## now they become pandas dataframes!
-                ts_test = ts_df.tail(len(test_index)) ### now they become pandas dataframes!
-            else:
-                ts_train = ts_df.iloc[test_index]
-                ts_test = ts_df.iloc[test_index]
+        try:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
+        except:
+            cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
+
+        if type(ts_df) == dask.dataframe.core.DataFrame:
+            ts_df = dft.head(len(ts_df)) ### this converts dask into a pandas dataframe
+
+        for fold_number, (train, test) in enumerate(cv.split(ts_df)):
+            dftx = ts_df.head(len(train_index)+len(test_index))
+            ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+            ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
             print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
 

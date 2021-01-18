@@ -316,7 +316,7 @@ class auto_timeseries:
         preds = [x for x in list(ts_df) if x not in [self.ts_column, target]]
 
         try:
-            time_series_plot(ts_df[target], lags=self.seasonal_period, title='Original Time Series',
+            time_series_plot(ts_df[target], lags=31, title='Original Time Series',
                     chart_type='line', chart_freq=self.time_interval)
         except:
             print('Could not draw time series plot of data set. Continuing')
