@@ -183,12 +183,9 @@ class BuildML(BuildBase):
         y_trues = copy.deepcopy(y_train)
 
         for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            if type(dft) == dask.dataframe.core.DataFrame:
-                train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
-                test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
-            else:
-                train_fold = dft.iloc[train_index]
-                test_fold = dft.iloc[test_index]
+            train_fold = dft.head(len(train_index)) ## now they become pandas dataframes!
+            test_fold = dft.tail(len(test_index)) ### now they become pandas dataframes!
+            
             horizon = len(test_fold)
 
             print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
@@ -320,11 +317,18 @@ class BuildML(BuildBase):
         into a supervised learning problem.
         rtype: pd.DataFrame, str, List[str]
         """
+        if self.lags <= 1:
+            n_in = 1
+        elif self.lags >= 4:
+            n_in = 4
+        else:
+            n_in = 1
+
         dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
             ts_df[self.original_preds+[self.original_target_col]],
             self.original_preds+[self.original_target_col],
             self.original_target_col,
-            n_in=self.lags, n_out=0, dropT=False
+            n_in=n_in, n_out=0, dropT=False
                             )
 
         # Append the time series features (derived from the time series index)

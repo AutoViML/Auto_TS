@@ -92,6 +92,7 @@ def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model") 
     rmse = print_rmse(actuals, predicted)
     mape = print_mape(actuals, predicted)
     print("    MAPE (Mean Absolute Percent Error) = %0.0f%%" %(mape))
+    print("    RMSE (Root Mean Squared Error) = %0.04f" %(rmse))
     # Normalized RMSE print('RMSE = {:,.Of}'.format(rmse))
     print('    Normalized RMSE (MinMax) = %0.0f%%' %(100*rmse/abs(actuals.max()-actuals.min())))
     rmse_asp = (np.sqrt(mean_squared_error(actuals,predicted))/number_as_percentage)*100
