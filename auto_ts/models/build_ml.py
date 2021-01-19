@@ -252,16 +252,18 @@ class BuildML(BuildBase):
         ######################################################
         ### This is where you consolidate the CV results #####
         ######################################################
-        _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
+        try:
+            _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
 
-        if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
-            y_trues = y_trues.head(len(y_trues))
+            if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
+                y_trues = y_trues.head(len(y_trues))
 
-        cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
+            cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
 
-        print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
-        #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
-
+            print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+            #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
+        except:
+            print('Could not plot ML results due to error. Continuing...')
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
