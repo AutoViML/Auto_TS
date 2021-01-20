@@ -101,7 +101,7 @@ class BuildVAR(BuildBase):
         if type(ts_df) == dask.dataframe.core.DataFrame:
             ts_df = dft.head(len(ts_df)) ### this converts dask into a pandas dataframe
 
-        for fold_number, (train, test) in enumerate(cv.split(ts_df)):
+        for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
             dftx = ts_df.head(len(train_index)+len(test_index))
             ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
             ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
@@ -128,7 +128,7 @@ class BuildVAR(BuildBase):
                 return bestmodel, None, np.inf, np.inf
 
             forecast_df = self.predict(ts_test.shape[0],simple=False)
-            forecast_df_folds.append(forecast_df)
+            forecast_df_folds.append(forecast_df['yhat'].values)
 
             rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0].values, forecast_df['yhat'].values,
                                         ts_train.iloc[:, 0].values)

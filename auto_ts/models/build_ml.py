@@ -58,7 +58,7 @@ class BuildML(BuildBase):
         # This saves the last `self.lags` of the original train dataframe
         # This is needed during predictions to transform the X_test
         # to a supervised learning problem.
-        self.df_train_prepend: pd.DataFrame = pd.DataFrame()
+        self.df_train_prepend = pd.DataFrame()
         self.train_df = pd.DataFrame()
 
 
@@ -108,7 +108,7 @@ class BuildML(BuildBase):
         else:
             num_obs = ts_df.shape[0]
 
-        self.train_df = ts_df
+        #self.train_df = ts_df  # you don't want to store the entire train_df in model
         # Convert to supervised learning problem
         dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
                 ts_df=ts_df, drop_zero_var = True)
@@ -229,6 +229,7 @@ class BuildML(BuildBase):
             #################################################
 
             forecast_df = model.predict(test_fold[self.transformed_preds])
+            forecast_df_folds.append(forecast_df)
 
             ### Now compare the actuals with predictions ######
             y_pred = forecast_df[-horizon:]
@@ -284,8 +285,10 @@ class BuildML(BuildBase):
                     X_train = X_train.head(len(X_train)) ## this converts it to a pandas dataframe
                     self.model.fit(X_train, y_trues)
             else:
-                #self.model.fit(X_train, y_train)
-                self.refit(ts_df)
+                self.model.fit(X_train, y_train)
+
+        # Save last `self.lags` which will be used for predictions later
+        self.df_train_prepend = ts_df[-self.lags:]
 
         print('    Time taken to train model (in seconds) = %0.0f' %(time.time()-start_time))
         # # This is the new method without the leakage
@@ -334,6 +337,8 @@ class BuildML(BuildBase):
             n_in = 4
         else:
             n_in = 1
+
+        self.lags = copy.deepcopy(n_in)
 
         dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
             ts_df[self.original_preds+[self.original_target_col]],
@@ -435,6 +440,9 @@ class BuildML(BuildBase):
             testdata_with_dummy = self.order_df(testdata_with_dummy)
             # print (f"Columns after reordering: {testdata_with_dummy.columns}")
 
+            df_prepend = self.df_train_prepend.copy(deep=True)
+            df_prepend = self.order_df(df_prepend)
+
             # STEP 2:
             # Make prediction for each row. Then use the prediction for the next row.
 
@@ -450,15 +458,15 @@ class BuildML(BuildBase):
             # print("Index After")
             # print(index)
 
-            common_cols = self.original_preds + [self.original_target_col]
 
-            if type(self.train_df) == dask.dataframe.core.DataFrame:
-                traindf = self.train_df.head(self.forecast_period) ## convert from DASK to pandas
-                df_prepend = traindf[common_cols]
-            else:
-                df_prepend = self.df_train_prepend.copy(deep=True)
+            #### Leave this out since we don't want to store the entire train_df in the model
+            #if type(self.train_df) == dask.dataframe.core.DataFrame:
+            #    traindf = self.train_df.head(self.forecast_period) ## convert from DASK to pandas
+            #    df_prepend = traindf[common_cols]
+            #else:
 
-            testdata_with_dummy = testdata_with_dummy[common_cols]
+
+            ### Make sure that the column orders are the same ####
             #dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
             #dfxs = dfxs.tail(len(testdata_with_dummy))
             #X_test = dfxs[self.transformed_preds]

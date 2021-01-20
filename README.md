@@ -101,8 +101,7 @@ Type can be either: [string, list]
 <li><b>verbose (default=0)</b>: Indicates the verbosity of printing (Default = 0). Type is integer.</li>
 </ol>
 The next step after defining the model object is to fit it with some real data:
-<p>
-<code>
+<p><code><br>
 model.fit(
             traindata=train_data,
             ts_column=ts_column,
@@ -121,10 +120,9 @@ model.fit(
 <li><b>sep (default=",")</b>: Sep is the separator in your traindata file. If your separator is ",", "\t", ";", make sure you enter it here. If not, it is ignored.</li>
 </ul>
 The next step after training the model object is to make some predictions with test data:<br>
-<p>
-<code>
+<p><code><br>
 predictions = model.predict(
-            testdata = can be either a dataframe or an integer signifying the forecast_period,
+            testdata = can be either a dataframe or an integer standing for the forecast_period,
             model = 'best' or any other string that stands for the trained model
         )  
 </code></p>
@@ -134,11 +132,12 @@ Here are how the parameters are defined. You can choose to send either testdata 
 <li><b>model (optional, default = 'best')</b>: The name of the model you want to use among the many different models you have trained. Remember that the default is the best model. But you can choose any model that you want to forecast with. Type is String.</li>
 </ul>
 <h2 id="requirements">Requirements</h2>
-<p>tscv</p>
+<p>dask</p>
 <p>scikit-learn</p>
 <p>FB Prophet</p>
 <p>statsmodels</p>
 <p>pmdarima</p>
+<p>XGBoost</p>
 <h1 id="license">License:</h1>
 <p>Apache License 2.0</p>
 <h2 id="recommendations">Recommendations</h2>
