@@ -7,7 +7,7 @@
 ![auto-ts](logo.png)
 
 <h1 id="auto-ts">Auto_TS: Auto_TimeSeries</h1>
-<p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code.</p>
+<p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code. Now updated with Dask.</p>
 <p>Auto_timeseries is a complex model building utility for time series data. Since it automates many
 Tasks involved in a complex endeavor, it assumes many intelligent defaults. But you can change them.
 Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
