@@ -17,11 +17,11 @@ def load_ts_data(filename, ts_column, sep, target):
     if isinstance(filename, str):
         print('First loading %s and then setting %s as date time index...' % (filename, ts_column))
         try:
-            dft = dd.read_csv(filename, blocksize=100e6)
-            print('    Loaded %s into a Dask dataframe ...' % filename)
-        except:
             dft = pd.read_csv(filename,index_col=ts_column, parse_dates=True)
             print('    Loaded %s into pandas dataframe. Dask dataframe type not working for this file...' % filename)
+        except:
+            dft = dd.read_csv(filename, blocksize=100e6)
+            print('    Too big to fit into pandas. Hence loaded file %s into a Dask dataframe ...' % filename)
     else:
         ### If filename is not a string, it must be a dataframe and can be loaded
         if filename.shape[0] < 100000:
@@ -83,7 +83,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
 
     rtype: pd.DataFrame, str, List[str]
     """
-    
+
     df = copy.deepcopy(df)
     int_vars  = df.select_dtypes(include='integer').columns.tolist()
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
