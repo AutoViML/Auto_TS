@@ -79,8 +79,6 @@ class BuildVAR(BuildBase):
 
         ts_df = ts_df[[self.original_target_col] + self.original_preds]
 
-        self.find_best_parameters(data = ts_df)
-
         #######################################
         #### Cross Validation across Folds ####
         #######################################
@@ -88,7 +86,13 @@ class BuildVAR(BuildBase):
         rmse_folds = []
         norm_rmse_folds = []
         forecast_df_folds = []
+        norm_rmse_folds2 = []
 
+        ### Creating a new way to skip cross validation when trying to run auto-ts multiple times. ###
+        if cv == 0:
+            cv_in = 0
+        else:
+            cv_in = copy.deepcopy(cv)
         NFOLDS = self.get_num_folds_from_cv(cv)
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         #cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### sklearn version 0.0.24
@@ -101,44 +105,52 @@ class BuildVAR(BuildBase):
         if type(ts_df) == dask.dataframe.core.DataFrame:
             ts_df = dft.head(len(ts_df)) ### this converts dask into a pandas dataframe
 
-        for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
-            dftx = ts_df.head(len(train_index)+len(test_index))
-            ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
-            ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
-
-            print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
-
-            #########################################
-            #### Define the model with fold data ####
-            #########################################
-            y_train = ts_train.iloc[:, [0, self.best_d]]
+        if  cv_in == 0:
+            print('Skipping cross validation steps since cross_validation = %s' %cv_in)
+            self.find_best_parameters(data = ts_df)
+            y_train = ts_df.iloc[:, [0, self.best_d]]
             bestmodel = self.get_best_model(y_train)
+            self.model = bestmodel.fit(disp=False)
+        else:
+            for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
+                dftx = ts_df.head(len(train_index)+len(test_index))
+                ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+                ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
-            ######################################
-            #### Fit the model with fold data ####
-            ######################################
+                print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
+                self.find_best_parameters(data = ts_train)
 
-            if self.verbose >= 1:
-                print(f'Fitting best VAR model on Fold: {fold_number+1}')
-            try:
-                self.model = bestmodel.fit(disp=False)
-            except Exception as e:
-                print(e)
-                print(f'Error: VAR Fit on Fold: {fold_number+1} unsuccessful.')
-                return bestmodel, None, np.inf, np.inf
+                #########################################
+                #### Define the model with fold data ####
+                #########################################
+                y_train = ts_train.iloc[:, [0, self.best_d]]
+                bestmodel = self.get_best_model(y_train)
 
-            forecast_df = self.predict(ts_test.shape[0],simple=False)
-            forecast_df_folds.append(forecast_df['yhat'].values)
+                ######################################
+                #### Fit the model with fold data ####
+                ######################################
 
-            rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0].values, forecast_df['yhat'].values,
-                                        ts_train.iloc[:, 0].values)
-            rmse_folds.append(rmse)
-            norm_rmse_folds.append(norm_rmse)
+                if self.verbose >= 1:
+                    print(f'Fitting best VAR model on Fold: {fold_number+1}')
+                try:
+                    self.model = bestmodel.fit(disp=False)
+                except Exception as e:
+                    print(e)
+                    print(f'Error: VAR Fit on Fold: {fold_number+1} unsuccessful.')
+                    return bestmodel, None, np.inf, np.inf
 
-        norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
-        self.model.plot_diagnostics(figsize=(16, 12))
-        axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
-        axis.set(xlabel='Time Steps', title='VAR model Impulse Response Functions')
+                forecast_df = self.predict(ts_test.shape[0],simple=False)
+                forecast_df_folds.append(forecast_df['yhat'].values)
+
+                rmse, norm_rmse = print_dynamic_rmse(ts_test.iloc[:, 0].values, forecast_df['yhat'].values,
+                                            ts_train.iloc[:, 0].values)
+                rmse_folds.append(rmse)
+                norm_rmse_folds.append(norm_rmse)
+
+            norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+            self.model.plot_diagnostics(figsize=(16, 12))
+            axis = self.model.impulse_responses(12, orthogonalized=True).plot(figsize=(12, 4))
+            axis.set(xlabel='Time Steps', title='VAR model Impulse Response Functions')
 
         ###############################################
         #### Refit the model on the entire dataset ####

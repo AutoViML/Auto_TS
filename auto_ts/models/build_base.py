@@ -75,7 +75,9 @@ class BuildBase(ABC):
 
     def get_num_folds_from_cv(self, cv):
         if cv is None:
-            NFOLDS = 1
+            NFOLDS = 2
+        elif cv == 0:
+            NFOLDS = 2
         else:
             NFOLDS = cv
 

@@ -134,7 +134,11 @@ class BuildML(BuildBase):
         rmse_folds = []
         norm_rmse_folds = []
         forecast_df_folds = []  # TODO: See if this can be retreived somehow
-
+        ### Creating a new way to skip cross validation when trying to run auto-ts multiple times. ###
+        if cv == 0:
+            cv_in = 0
+        else:
+            cv_in = copy.deepcopy(cv)
         NFOLDS = self.get_num_folds_from_cv(cv)
         ###########################################################################
         if self.forecast_period <= 5:
@@ -182,89 +186,97 @@ class BuildML(BuildBase):
 
         if type(dft) == dask.dataframe.core.DataFrame:
             dft = dft.head(len(dft)) ### this converts dask into a pandas dataframe
-
-        for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            dftx = dft.head(len(train_index)+len(test_index))
-            train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
-            test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
-
-            horizon = len(test_fold)
-
-            print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
-
-            #########################################
-            #### Define the model with fold data ####
-            #########################################
-            ## If XGBoost is present in machine, use it. Otherwise use RandomForestRegressor
+        #### If cross validation is zero, then it means cross validation needs to be skipped
+        if  cv_in == 0:
+            print('Skipping cross validation steps since cross_validation = %s' %cv_in)
             try:
                 model_name = 'XGBoost'
                 model = XGBRegressor(n_estimators=400, verbosity=None, random_state=0)
             except:
                 model_name = 'Random Forest'
                 model = RandomForestRegressor(n_estimators=200, random_state=99)
+        else:
+            for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
+                dftx = dft.head(len(train_index)+len(test_index))
+                train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+                test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
-            if type(dft) == dask.dataframe.core.DataFrame:
-                nums = int(0.9*len(train_index))
-            else:
-                nums = int(0.9*train_fold.shape[0])
+                horizon = len(test_fold)
 
-            if nums <= 1:
-                nums = 2
-            ############################################
-            #### Fit the model with train_fold data ####
-            ############################################
+                print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
 
-            X_train_fold, y_train_fold = train_fold[:nums][self.transformed_preds], train_fold[:nums][self.transformed_target]
-            X_test_fold, y_test_fold = train_fold[nums:][self.transformed_preds], train_fold[nums:][self.transformed_target]
-            if model_name == 'XGBoost':
-                model.fit(X_train_fold, y_train_fold,
-                    eval_set=[(X_train_fold, y_train_fold), (X_test_fold, y_test_fold)],
-                    early_stopping_rounds=50,verbose=False,
-                    )
-            else:
-                ## This is for Random Forest regression
-                model.fit(X_train_fold, y_train_fold)
-            #################################################
-            #### Predict using model with test_fold data ####
-            #################################################
+                #########################################
+                #### Define the model with fold data ####
+                #########################################
+                ## If XGBoost is present in machine, use it. Otherwise use RandomForestRegressor
+                try:
+                    model_name = 'XGBoost'
+                    model = XGBRegressor(n_estimators=400, verbosity=None, random_state=0)
+                except:
+                    model_name = 'Random Forest'
+                    model = RandomForestRegressor(n_estimators=200, random_state=99)
 
-            forecast_df = model.predict(test_fold[self.transformed_preds])
-            forecast_df_folds.append(forecast_df)
+                if type(dft) == dask.dataframe.core.DataFrame:
+                    nums = int(0.9*len(train_index))
+                else:
+                    nums = int(0.9*train_fold.shape[0])
 
-            ### Now compare the actuals with predictions ######
-            y_pred = forecast_df[-horizon:]
-            ### y_pred is already an array - so keep that in mind!
+                if nums <= 1:
+                    nums = 2
+                ############################################
+                #### Fit the model with train_fold data ####
+                ############################################
 
-            concatenated = pd.DataFrame(np.c_[test_fold[self.transformed_target].values,
-                        y_pred], columns=['original', 'predicted'],index=test_fold.index)
+                X_train_fold, y_train_fold = train_fold[:nums][self.transformed_preds], train_fold[:nums][self.transformed_target]
+                X_test_fold, y_test_fold = train_fold[nums:][self.transformed_preds], train_fold[nums:][self.transformed_target]
+                if model_name == 'XGBoost':
+                    model.fit(X_train_fold, y_train_fold,
+                        eval_set=[(X_train_fold, y_train_fold), (X_test_fold, y_test_fold)],
+                        early_stopping_rounds=50,verbose=False,
+                        )
+                else:
+                    ## This is for Random Forest regression
+                    model.fit(X_train_fold, y_train_fold)
+                #################################################
+                #### Predict using model with test_fold data ####
+                #################################################
 
-            if fold_number == 0:
-                extra_concatenated = copy.deepcopy(concatenated)
-            else:
-                extra_concatenated = extra_concatenated.append(concatenated)
+                forecast_df = model.predict(test_fold[self.transformed_preds])
+                forecast_df_folds.append(forecast_df)
 
-            rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
-                                        concatenated['original'].values)
+                ### Now compare the actuals with predictions ######
+                y_pred = forecast_df[-horizon:]
+                ### y_pred is already an array - so keep that in mind!
 
-            print('Cross Validation window: %d completed' %(fold_number+1,))
-            rmse_folds.append(rmse_fold)
-            norm_rmse_folds.append(rmse_norm)
+                concatenated = pd.DataFrame(np.c_[test_fold[self.transformed_target].values,
+                            y_pred], columns=['original', 'predicted'],index=test_fold.index)
 
-        ######################################################
-        ### This is where you consolidate the CV results #####
-        ######################################################
-        try:
-            _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
+                if fold_number == 0:
+                    extra_concatenated = copy.deepcopy(concatenated)
+                else:
+                    extra_concatenated = extra_concatenated.append(concatenated)
 
-            if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
-                y_trues = y_trues.head(len(y_trues))
+                rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
+                                            concatenated['original'].values)
 
-            cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
+                print('Cross Validation window: %d completed' %(fold_number+1,))
+                rmse_folds.append(rmse_fold)
+                norm_rmse_folds.append(rmse_norm)
+            ######################################################
+            ### This is where you consolidate the CV results #####
+            ######################################################
+            try:
+                _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
 
-            print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
-            #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
-        except:
-            print('Could not plot ML results due to error. Continuing...')
+                if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
+                    y_trues = y_trues.head(len(y_trues))
+
+                cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
+
+                print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+                #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
+            except:
+                print('Could not plot ML results due to error. Continuing...')
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################

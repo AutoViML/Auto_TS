@@ -156,17 +156,17 @@ class BuildProphet(BuildBase):
         else:
             print('      No seasonality assumed since seasonality flag is set to False')
 
-        with SuppressStdoutStderr():
-            self.model.fit(dft)
-            self.train_df = copy.deepcopy(dft)
-
-        print("  End of Prophet Fit")
 
         if type(dft) == dask.dataframe.core.DataFrame:
             num_obs = dft.shape[0].compute()
         else:
             num_obs = dft.shape[0]
 
+        ### Creating a new way to skip cross validation when trying to run auto-ts multiple times. ###
+        if cv == 0:
+            cv_in = 0
+        else:
+            cv_in = copy.deepcopy(cv)
         NFOLDS = self.get_num_folds_from_cv(cv)
 
         #########################################################################################
@@ -217,6 +217,7 @@ class BuildProphet(BuildBase):
         start_time = time.time()
         rmse_folds = []
         norm_rmse_folds = []
+        forecast_df_folds = []
 
         concatenated = pd.DataFrame()
         extra_concatenated = pd.DataFrame()
@@ -224,72 +225,82 @@ class BuildProphet(BuildBase):
         if type(dft) == dask.dataframe.core.DataFrame:
             dft = dft.head(len(dft)) ### this converts dask into a pandas dataframe
 
-        for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-            dftx = dft.head(len(train_index)+len(test_index))
-            train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
-            test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
-
-            horizon = len(test_fold)
-            print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
-
-            #########################################
-            #### Define the model with fold data ####
-            #########################################
-
+        if  cv_in == 0:
+            print('Skipping cross validation steps since cross_validation = %s' %cv_in)
             model = Prophet(growth="linear")
-
-            ############################################
-            #### Fit the model with train_fold data ####
-            ############################################
-
             kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
-            model.fit(train_fold, **kwargs)
+        else:
+            for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
+                dftx = dft.head(len(train_index)+len(test_index))
+                train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+                test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
-            #################################################
-            #### Predict using model with test_fold data ####
-            #################################################
+                horizon = len(test_fold)
+                print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
 
-            future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
-            forecast_df = model.predict(future_period)
-            ### Now compare the actuals with predictions ######
+                #########################################
+                #### Define the model with fold data ####
+                #########################################
 
-            y_pred = forecast_df['yhat'][-horizon:]
+                model = Prophet(growth="linear")
 
-            concatenated = pd.DataFrame(np.c_[test_fold[actual].values,
-                        y_pred.values], columns=['original', 'predicted'],index=test_fold.index)
+                ############################################
+                #### Fit the model with train_fold data ####
+                ############################################
 
-            if fold_number == 0:
-                extra_concatenated = copy.deepcopy(concatenated)
-            else:
-                extra_concatenated = extra_concatenated.append(concatenated)
+                kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+                model.fit(train_fold, **kwargs)
 
-            rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
-                                        concatenated['original'].values)
+                #################################################
+                #### Predict using model with test_fold data ####
+                #################################################
 
-            print('Cross Validation window: %d completed' %(fold_number+1,))
-            rmse_folds.append(rmse_fold)
-            norm_rmse_folds.append(rmse_norm)
+                future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
+                forecast_df = model.predict(future_period)
+                ### Now compare the actuals with predictions ######
 
-        ######################################################
-        ### This is where you consolidate the CV results #####
-        ######################################################
-        fig = model.plot(forecast_df)
-        #rmse_mean = np.mean(rmse_folds)
-        #print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
+                y_pred = forecast_df['yhat'][-horizon:]
+
+                concatenated = pd.DataFrame(np.c_[test_fold[actual].values,
+                            y_pred.values], columns=['original', 'predicted'],index=test_fold.index)
+
+                if fold_number == 0:
+                    extra_concatenated = copy.deepcopy(concatenated)
+                else:
+                    extra_concatenated = extra_concatenated.append(concatenated)
+
+                rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
+                                            concatenated['original'].values)
+
+                print('Cross Validation window: %d completed' %(fold_number+1,))
+                rmse_folds.append(rmse_fold)
+                norm_rmse_folds.append(rmse_norm)
+
+            ######################################################
+            ### This is where you consolidate the CV results #####
+            ######################################################
+            fig = model.plot(forecast_df)
+            #rmse_mean = np.mean(rmse_folds)
+            #print('Average CV RMSE over %d windows (macro) = %0.5f' %(fold_number+1,rmse_mean))
 
 
-        #cv_micro = np.sqrt(mean_squared_error(y_trues.values, y_preds.values))
-        #print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+            #cv_micro = np.sqrt(mean_squared_error(y_trues.values, y_preds.values))
+            #print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
 
-        try:
-            print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], "Prophet")
-        except:
-            print('Error: Not able to plot Prophet CV results')
+            try:
+                print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], "Prophet")
+            except:
+                print('Error: Not able to plot Prophet CV results')
 
-        forecast_df_folds = extra_concatenated['predicted'].values
-        #print("  End of Prophet Cross Validation")
-        print('Time Taken = %0.0f seconds' %((time.time()-start_time)))
+            forecast_df_folds = extra_concatenated['predicted'].values
+            #print("  End of Prophet Cross Validation")
+            print('Time Taken = %0.0f seconds' %((time.time()-start_time)))
 
+        #### Now you need to fit Prophet on the whole train data set ##########
+        dftx = dft.head(len(dft))
+        self.model = model
+        self.model.fit(dftx, **kwargs)
+        print("  End of Prophet Fit")
 
         #num_obs_folds = df_cv.groupby('cutoff')['ds'].count()
 

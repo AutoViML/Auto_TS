@@ -79,8 +79,6 @@ class BuildArimaBase(BuildBase):
         # ## Added temporarily
         # ts_train = ts_df.iloc[:-self.forecast_period]
         # self.find_best_parameters(data = ts_train)
-        auto_arima_model = self.find_best_parameters(data = ts_df)
-        self.model = auto_arima_model
 
         if self.seasonal_period <= 1:
             self.seasonal_period = 2 ### Sarimax cannot have seasonal period 1 or below.
@@ -99,6 +97,11 @@ class BuildArimaBase(BuildBase):
         norm_rmse_folds = []
         forecast_df_folds = []
 
+        ### Creating a new way to skip cross validation when trying to run auto-ts multiple times. ###
+        if cv == 0:
+            cv_in = 0
+        else:
+            cv_in = copy.deepcopy(cv)
         NFOLDS = self.get_num_folds_from_cv(cv)
 
         #########################################################################
@@ -117,7 +120,8 @@ class BuildArimaBase(BuildBase):
         #########################################################################
         extra_concatenated = pd.DataFrame()
         concatenated = pd.DataFrame()
-
+        norm_rmse_folds2 = []
+        
         max_trainsize = len(ts_df) - self.forecast_period
         try:
             cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
@@ -127,81 +131,87 @@ class BuildArimaBase(BuildBase):
         if type(ts_df) == dask.dataframe.core.DataFrame:
             ts_df = dft.head(len(ts_df)) ### this converts dask into a pandas dataframe
 
-        for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
-            dftx = ts_df.head(len(train_index)+len(test_index))
-            ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
-            ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
+        if  cv_in == 0:
+            print('Skipping cross validation steps since cross_validation = %s' %cv_in)
+        else:
+            for fold_number, (train_index, test_index) in enumerate(cv.split(ts_df)):
+                dftx = ts_df.head(len(train_index)+len(test_index))
+                ts_train = dftx.head(len(train_index)) ## now train will be the first segment of dftx
+                ts_test = dftx.tail(len(test_index)) ### now test will be right after train in dftx
 
 
-            if self.verbose >= 1:
-                print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
+                if self.verbose >= 1:
+                    print(f"\nFold Number: {fold_number+1} --> Train Shape: {ts_train.shape[0]} Test Shape: {ts_test.shape[0]}")
 
-            ### this is needed for static forecasts ####################
-            # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
-            y_truth = ts_train[:]  #  TODO: Note that this is only univariate analysis
+                ### this is needed for static forecasts ####################
+                # TODO: Check if this needs to be fixed to pick usimg self.original_target_col
+                y_truth = ts_train[:]  #  TODO: Note that this is only univariate analysis
 
-            if len(self.original_preds) == 0:
-                exog = None
-            elif len(self.original_preds) == 1:
-                exog = ts_test[self.original_preds[0]].values.reshape(-1, 1)
-            else:
-                exog = ts_test[self.original_preds].values
+                if len(self.original_preds) == 0:
+                    exog = None
+                elif len(self.original_preds) == 1:
+                    exog = ts_test[self.original_preds[0]].values.reshape(-1, 1)
+                else:
+                    exog = ts_test[self.original_preds].values
 
-            y_forecasted = self.model.predict(ts_test.shape[0],exog)
+                auto_arima_model = self.find_best_parameters(data = ts_train)
+                self.model = auto_arima_model
+                y_forecasted = self.model.predict(ts_test.shape[0],exog)
 
-            if fold_number == 0:
-                concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
-                            y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
-                extra_concatenated = copy.deepcopy(concatenated)
-            else:
-                concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
-                            y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
-                extra_concatenated = extra_concatenated.append(concatenated)
+                if fold_number == 0:
+                    concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
+                                y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
+                    extra_concatenated = copy.deepcopy(concatenated)
+                else:
+                    concatenated = pd.DataFrame(np.c_[ts_test[self.original_target_col].values,
+                                y_forecasted], columns=['original', 'predicted'],index=ts_test.index)
+                    extra_concatenated = extra_concatenated.append(concatenated)
 
-            ### for SARIMAX and Auto_ARIMA, you don't have to restore differences since it predicts like actuals.###
-            y_true = concatenated['original']
-            y_pred = concatenated['predicted']
+                ### for SARIMAX and Auto_ARIMA, you don't have to restore differences since it predicts like actuals.###
+                y_true = concatenated['original']
+                y_pred = concatenated['predicted']
 
-            if self.verbose >= 1:
-                print('Static Forecasts:')
-                # Since you are differencing the data, some original data points will not be available
-                # Hence taking from first available value.
-                print_static_rmse(y_true.values, y_pred.values, verbose=self.verbose)
-                #quick_ts_plot(y_true, y_pred)
+                if self.verbose >= 1:
+                    print('Static Forecasts:')
+                    # Since you are differencing the data, some original data points will not be available
+                    # Hence taking from first available value.
+                    print_static_rmse(y_true.values, y_pred.values, verbose=self.verbose)
+                    #quick_ts_plot(y_true, y_pred)
 
-            # Extract the dynamic predicted and true values of our time series
-            forecast_df = copy.deepcopy(y_forecasted)
-            forecast_df_folds.append(forecast_df)
-
-
-            rmse, norm_rmse = print_static_rmse(y_true.values, y_pred.values, verbose=0) ## don't print this time
-            rmse_folds.append(rmse)
-            norm_rmse_folds.append(norm_rmse)
-
-            # TODO: Convert rmse_folds, rmse_norm_folds, forecasts_folds into base class attributes
-            # TODO: Add gettes and seters for these class attributes.
-            # This will ensure consistency across various model build types.
+                # Extract the dynamic predicted and true values of our time series
+                forecast_df = copy.deepcopy(y_forecasted)
+                forecast_df_folds.append(forecast_df)
 
 
-        # This is taking the std of entire dataset and using that to normalize
-        # vs. other approach that was using std of individual folds to standardize.
-        # Technically this is not correct, but in order to do Apples:Aples compatison with ML
-        # (sklearn) based cross_val_score, we need to do this since we dont get individual folds
-        # back for cross_val_score. If at a later point in time, we can get this, then,
-        # we can revert back to dividing by individual fold std values.
-        norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+                rmse, norm_rmse = print_static_rmse(y_true.values, y_pred.values, verbose=0) ## don't print this time
+                rmse_folds.append(rmse)
+                norm_rmse_folds.append(norm_rmse)
 
-        print(f"\nSARIMAX RMSE (all folds): {np.mean(rmse_folds):.4f}")
-        print(f"SARIMAX Norm RMSE (all folds): {(np.mean(norm_rmse_folds2)*100):.0f}%\n")
+                # TODO: Convert rmse_folds, rmse_norm_folds, forecasts_folds into base class attributes
+                # TODO: Add gettes and seters for these class attributes.
+                # This will ensure consistency across various model build types.
+
+
+            # This is taking the std of entire dataset and using that to normalize
+            # vs. other approach that was using std of individual folds to standardize.
+            # Technically this is not correct, but in order to do Apples:Aples compatison with ML
+            # (sklearn) based cross_val_score, we need to do this since we dont get individual folds
+            # back for cross_val_score. If at a later point in time, we can get this, then,
+            # we can revert back to dividing by individual fold std values.
+            norm_rmse_folds2 = rmse_folds/ts_df[self.original_target_col].values.std()  # Same as what was there in print_dynamic_rmse()
+
+            print(f"\nSARIMAX RMSE (all folds): {np.mean(rmse_folds):.4f}")
+            print(f"SARIMAX Norm RMSE (all folds): {(np.mean(norm_rmse_folds2)*100):.0f}%\n")
+            print_ts_model_stats(extra_concatenated['original'],extra_concatenated['predicted'], "auto_SARIMAX")
 
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
+        auto_arima_model = self.find_best_parameters(data = ts_df)
+        self.model = auto_arima_model
         self.refit(ts_df=ts_df)
 
         print(self.model.summary())
-
-        print_ts_model_stats(extra_concatenated['original'],extra_concatenated['predicted'], "auto_SARIMAX")
 
         # return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds2

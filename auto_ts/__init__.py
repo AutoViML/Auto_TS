@@ -226,7 +226,8 @@ class auto_timeseries:
         print("Start of Fit.....")
 
         ### first test the data for Stationary-ness #############
-        test_stationarity(traindata[target].values, plot=False, verbose=True)
+        if self.verbose >= 1:
+            test_stationarity(traindata[target].values, plot=False, verbose=True)
 
         ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
         stats_scoring = 'aic'
@@ -315,11 +316,11 @@ class auto_timeseries:
 
         preds = [x for x in list(ts_df) if x not in [self.ts_column, target]]
 
-        try:
+        if self.verbose >= 1:
             time_series_plot(ts_df[target], lags=31, title='Original Time Series',
                     chart_type='line', chart_freq=self.time_interval)
-        except:
-            print('Could not draw time series plot of data set. Continuing')
+        else:
+            print('No time series plot since verbose = 0. Continuing')
         ##################################################################################################
         ### Turn the time series index into a variable and calculate the difference.
         ### If the difference is not in days, then it is a hourly or minute based time series
@@ -598,7 +599,9 @@ class auto_timeseries:
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
             if ts_df.shape[0] > 1000 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
+                print(colorful.BOLD + '\n===============================================' + colorful.END)
                 print("Skipping VAR Model since dataset is > 1000 rows and it will take too long")
+                print(colorful.BOLD + '===============================================' + colorful.END)
             else:
                 print("\n")
                 print("="*50)
@@ -735,7 +738,10 @@ class auto_timeseries:
         best_model_dict = self.ml_dict[best_model_name]
         if best_model_dict is not None:
             cv_scores = best_model_dict.get(self.score_type)
-            mean_cv_score = self.__get_mean_cv_score(cv_scores)
+            if len(cv_scores) == 0:
+                mean_cv_score =  np.inf
+            else:
+                mean_cv_score = self.__get_mean_cv_score(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
 
         end = time()
@@ -760,7 +766,10 @@ class auto_timeseries:
             if not isinstance(cv_scores, List):
                 cv_scores = [cv_scores]
 
-            f1_stats[key] = sum(cv_scores)/len(cv_scores)
+            if len(cv_scores) == 0:
+                    f1_stats[key] = np.inf
+            else:
+                f1_stats[key] = sum(cv_scores)/len(cv_scores)
 
         best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]
         return best_model_name
@@ -882,7 +891,14 @@ class auto_timeseries:
                     model_dict_single_model = local_ml_dict.get(model_name)
                     if model_dict_single_model is not None:
                         cv_scores = model_dict_single_model.get(self.score_type)
-                        mean_cv_score = self.__get_mean_cv_score(cv_scores)
+                        #### This is quite complicated since we have to make sure it doesn't blow up
+                        if cv_scores == np.inf:
+                            mean_cv_score =  np.inf
+                        elif isinstance(cv_scores, list):
+                            if len(cv_scores) == 0:
+                                mean_cv_score =  np.inf
+                        else:
+                            mean_cv_score = self.__get_mean_cv_score(cv_scores)
                         # if isinstance(cv_scores, float):
                         #     mean_cv_score = cv_scores
                         # else: # Assuming List
