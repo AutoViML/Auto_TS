@@ -14,11 +14,11 @@ Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA,
 and Scikit-Learn ML. It will automatically select the best model which gives best score specified.
 </p>
 <p>New version 0.0.35 onwards has major updates: You can now load your file into Dask dataframes. Just provide the name of your file and if it is too large to fit into a pandas dataframe, Auto_TS will automatically detect and load it into a Dask dataframe. </p>
-<p>Also, new since version 0.0.25 is the syntax of Auto_TimeSerie: is is now more like scikit-learn (with fit and predict). You will have to initialize an object and then call fit with your data and then predict again with data. Hope this makes it easier to remember and use.</p>
+<p>Also, new since version 0.0.25 is the syntax of Auto_TimeSerie: It is now more like scikit-learn (with fit and predict). You will have to initialize an object and then call fit with your data and then predict again with data. Hope this makes it easier to remember and use.</p>
 <h2 id="introduction">Introduction</h2>
 <p>Auto_TimeSeries enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
 <p>Auto_TimeSeries is an Automated ML library for time series data. Auto_TimeSeries was initially conceived and developed by <a href="https://www.linkedin.com/in/ram-seshadri-nyc-nj/">Ram Seshadri</a> and was significantly expanded in functionality and scope and upgraded to its present status by <a href="https://github.com/ngupta23">Nikhil Gupta</a>.</p>
-<p>auto-ts.Auto_TimeSeries() is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or FB prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
+<p>auto-ts.Auto_TimeSeries is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or FB prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
 <h2 id="installation-instructions">INSTALLATION INSTRUCTIONS</h2>
 <ol>
 <li>Use “pip install auto-ts”</li>
@@ -26,7 +26,7 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 <li>pip install git+git://github.com/AutoViML/Auto_TS</li>
 </ol>
 <h4>Note for Windows Users</h4>
-<p>Windows users may experience difficulties with the fbprophet and pystan dependency installations.  Because of this, we recommend installing fbprophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> fbprophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via: 
+<p>Windows users may experience difficulties with the fbprophet and pystan dependency installations.  Because of this, we recommend installing fbprophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> fbprophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via:
 <ol>
 <li><p><code> conda install -c conda-forge fbprophet </code> </p></li>
 <li><p><code> pip install auto-ts </code> </p></li>
