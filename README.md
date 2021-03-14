@@ -25,6 +25,13 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 <li>Use “pip3 install auto-ts” if the above doesn’t work</li>
 <li>pip install git+git://github.com/AutoViML/Auto_TS</li>
 </ol>
+<h4>Note for Windows Users</h4>
+<p>Windows users may experience difficulties with the fbprophet and pystan dependency installations.  Because of this, we recommend installing fbprophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> fbprophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via: 
+<ol>
+<li><p><code> conda install -c conda-forge fbprophet </code> </p></li>
+<li><p><code> pip install auto-ts </code> </p></li>
+</ol>
+
 <h2 id="run">RUN</h2>
 <p> First you need to import auto_timeseries from auto_ts library:<br>
 <code>
