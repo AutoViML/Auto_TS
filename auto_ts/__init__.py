@@ -741,7 +741,7 @@ class auto_timeseries:
             if len(cv_scores) == 0:
                 mean_cv_score =  np.inf
             else:
-                mean_cv_score = self.__get_mean_cv_score(cv_scores)
+                mean_cv_score = get_mean_cv_score(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
 
         end = time()
@@ -897,8 +897,10 @@ class auto_timeseries:
                         elif isinstance(cv_scores, list):
                             if len(cv_scores) == 0:
                                 mean_cv_score =  np.inf
+                            else:
+                                mean_cv_score = get_mean_cv_score(cv_scores)
                         else:
-                            mean_cv_score = self.__get_mean_cv_score(cv_scores)
+                            mean_cv_score = get_mean_cv_score(cv_scores)
                         # if isinstance(cv_scores, float):
                         #     mean_cv_score = cv_scores
                         # else: # Assuming List
@@ -937,17 +939,6 @@ class auto_timeseries:
         cv_df = cv_df.astype({"CV Scores": float})
         return cv_df
 
-    def __get_mean_cv_score(self, cv_scores: Union[float, List]):
-        """
-        If gives a list fo cv scores, this will return the mean cv score
-        If cv_score is a float (single value), it simply returns that
-        """
-        if isinstance(cv_scores, float):
-            mean_cv_score = cv_scores
-        else: # Assuming List
-            mean_cv_score = sum(cv_scores)/len(cv_scores)
-        return mean_cv_score
-
     def __any_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
         """
         Returns True is any element in the 'in_list' is contained in the 'what_list'
@@ -967,9 +958,21 @@ class auto_timeseries:
             in_list = [elem.lower() for elem in in_list]
 
         return all([True if elem in in_list else False for elem in what_list])
+###############################################################################
+def get_mean_cv_score(cv_scores: Union[float, List]):
+    """
+    If gives a list of cv scores, this will return the mean cv score
+    If cv_score is a float (single value), it simply returns that
+    """
+    if isinstance(cv_scores, float):
+        mean_cv_score = cv_scores
+    else: # Assuming List
+        mean_cv_score = sum(cv_scores)/len(cv_scores)
+    return mean_cv_score
+
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.35'
+version_number = '0.0.36'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',

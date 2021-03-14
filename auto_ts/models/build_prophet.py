@@ -298,6 +298,7 @@ class BuildProphet(BuildBase):
 
         #### Now you need to fit Prophet on the whole train data set ##########
         dftx = dft.head(len(dft))
+        model = Prophet(growth="linear")
         self.model = model
         self.model.fit(dftx, **kwargs)
         print("  End of Prophet Fit")
