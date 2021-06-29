@@ -892,7 +892,7 @@ class auto_timeseries:
                     if model_dict_single_model is not None:
                         cv_scores = model_dict_single_model.get(self.score_type)
                         #### This is quite complicated since we have to make sure it doesn't blow up
-                        if cv_scores == np.inf:
+                        if np.any(cv_scores) == np.inf:
                             mean_cv_score =  np.inf
                         elif isinstance(cv_scores, list):
                             if len(cv_scores) == 0:
