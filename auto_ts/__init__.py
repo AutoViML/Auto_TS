@@ -67,7 +67,7 @@ class auto_timeseries:
         ####################################################################################
         ####                          Auto Time Series                                  ####
         ####         Developed by Ram Seshadri & Expanded by Nikhil Gupta               ####
-        ####                        Python 3: 2018-2020                                 ####
+        ####                        Python 3: copyright Ram Seshadri 2018-2021          ####
         ####################################################################################
         Initialize an auto_timeseries object
         :score_type: The metric used for scoring the models. Default = 'rmse'
@@ -220,7 +220,8 @@ class auto_timeseries:
         list_of_valid_time_ints = ['B','C','D','W','M','SM','BM','CBM',
                                         'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
                                         'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
-                                        'H','T,min','S','L,ms','U,us','N']
+                                        'H','T,min','S','L,ms','U,us','N',
+                                        'W-SUN','W-MON','W-TUE','W-WED','W-THU','W-FRI','W-SAT']
 
         start = time()
         print("Start of Fit.....")
@@ -392,6 +393,7 @@ class auto_timeseries:
                 print('    Correct Time interval given as a valid Pandas date-range frequency...')
             else:
                 print('    Error: You must give a valid time interval frequency from Pandas date-range frequency codes')
+                print('    from source: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases')
                 return None
 
         ################# This is where you test the data and find the time interval #######
@@ -427,23 +429,23 @@ class auto_timeseries:
 
         # Impute seasonal_period if not provided by the user
         if self.seasonal_period is None:
-            if self.time_interval == 'months':
+            if self.time_interval in ['M','MS','ME','BM','BMS']:
                 self.seasonal_period = 12
-            elif self.time_interval == 'days':
+            elif self.time_interval in ['D', 'C', 'B']:
                 self.seasonal_period = 30
-            elif self.time_interval in 'weeks':
+            elif self.time_interval in ['W','W-SUN','W-MON','W-TUE','W-WED','W-THU','W-FRI','W-SAT']:
                 self.seasonal_period = 52
-            elif self.time_interval in 'qtr':
+            elif self.time_interval in ['Q','QS','BQ','BQS']:
                 self.seasonal_period = 4
-            elif self.time_interval in 'semi':
-                self.seasonal_period = 2
-            elif self.time_interval in 'years':
-                self.seasonal_period = 1
-            elif self.time_interval in 'hours':
+            elif self.time_interval in ['SMS','SM']:
                 self.seasonal_period = 24
-            elif self.time_interval in 'minutes':
+            elif self.time_interval in ['A,Y','BA,BY','BAS,BYS','AS,YS']:
+                self.seasonal_period = 1
+            elif self.time_interval in ['BH','H']:
+                self.seasonal_period = 24
+            elif self.time_interval in ['T,min']:
                 self.seasonal_period = 60
-            elif self.time_interval in 'seconds':
+            elif self.time_interval in ['L,ms','U,us','S']:
                 self.seasonal_period = 60
             else:
                 self.seasonal_period = 12  # Default is Monthly
@@ -821,7 +823,7 @@ class auto_timeseries:
         """
         Predict the results
         """
-
+        
         if isinstance(model, str):
             if model == '':
                 bestmodel = self.get_best_model_build()
@@ -972,7 +974,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.36'
+version_number = '0.0.37'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',

@@ -400,7 +400,7 @@ class BuildProphet(BuildBase):
         ##    of future (total: 3270) rows of data.
         ### This is where we take the first steps to make a forecast using Prophet:
         ##   1. Create a dataframe with datetime index of past and future dates
-
+        
         # Next we ask Prophet to make predictions for those dates in the dataframe along with prediction intervals
         if self.time_interval in self.list_of_valid_time_ints:
             time_int = copy.deepcopy(self.time_interval)
@@ -416,6 +416,7 @@ class BuildProphet(BuildBase):
                     self.forecast_period = testdata.shape[0]
             else:
                 forecast_period = self.forecast_period
+            self.forecast_period = forecast_period
             future = self.model.make_future_dataframe(periods=self.forecast_period, freq=time_int)
         else:
             if isinstance(testdata, int) or testdata is None:
