@@ -10,6 +10,7 @@
 # Base libraries
 numpy
 pandas
+xlrd
 scipy
 prettytable
 xgboost

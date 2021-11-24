@@ -40,8 +40,6 @@ import time
 import dask
 import dask.dataframe as dd
 
-from hidateinfer import infer
-
 class BuildML(BuildBase):
     def __init__(self, scoring: str = '', forecast_period: int = 2, ts_column: str = '', 
                         time_interval: str = '', verbose: int = 0):
