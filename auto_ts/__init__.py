@@ -316,7 +316,7 @@ class auto_timeseries:
 
 
         preds = [x for x in list(ts_df) if x not in [self.ts_column, target]]
-
+        
         if self.verbose >= 1:
             time_series_plot(ts_df[target], lags=31, title='Original Time Series',
                     chart_type='line', chart_freq=self.time_interval)
@@ -422,7 +422,7 @@ class auto_timeseries:
                     self.time_interval = 'S'
                 else:
                     self.time_interval = 'M' # Default is Monthly
-                    print('Time Interval not provided. Setting default as Monthly')
+                    print('Time Interval not provided. Setting default as Monthly. Feel free to modify it...')
         else:
             print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
             return
@@ -690,6 +690,7 @@ class auto_timeseries:
                 scoring=self.score_type,
                 forecast_period = self.forecast_period,
                 ts_column = self.ts_column,
+                time_interval = self.time_interval,
                 verbose=self.verbose)
             try:
                 # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
@@ -740,10 +741,13 @@ class auto_timeseries:
         best_model_dict = self.ml_dict[best_model_name]
         if best_model_dict is not None:
             cv_scores = best_model_dict.get(self.score_type)
-            if len(cv_scores) == 0:
-                mean_cv_score =  np.inf
+            if isinstance(cv_scores, list):
+                if len(cv_scores) == 0:
+                    mean_cv_score =  np.inf
+                else:
+                    mean_cv_score = get_mean_cv_score(cv_scores)
             else:
-                mean_cv_score = get_mean_cv_score(cv_scores)
+                mean_cv_score =  np.mean(cv_scores)
         print("    Best Model (Mean CV) Score: %0.2f" % mean_cv_score) #self.ml_dict[best_model_name][self.score_type])
 
         end = time()
@@ -763,15 +767,17 @@ class auto_timeseries:
             cv_scores = self.ml_dict[key][self.score_type]
 
             # Standardize to a list
-            if isinstance(cv_scores, np.ndarray):
-                cv_scores = cv_scores.tolist()
-            if not isinstance(cv_scores, List):
-                cv_scores = [cv_scores]
-
-            if len(cv_scores) == 0:
-                    f1_stats[key] = np.inf
+            if len(self.ml_dict[key][self.score_type]) == 0:
+                f1_stats[key] = np.inf
             else:
-                f1_stats[key] = sum(cv_scores)/len(cv_scores)
+                if isinstance(cv_scores, np.ndarray):
+                    cv_scores = cv_scores.tolist()
+                if not isinstance(cv_scores, List):
+                    cv_scores = [cv_scores]
+                if len(cv_scores) == 0:
+                        f1_stats[key] = np.inf
+                else:
+                    f1_stats[key] = sum(cv_scores)/len(cv_scores)
 
         best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]
         return best_model_name
@@ -819,11 +825,28 @@ class auto_timeseries:
         testdata,
         model: str = '',
         simple: bool = False,
+        time_interval: str = '',
         ):
         """
         Predict the results
         """
-        
+
+        if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
+            # During training, we internally converted a column datetime index to the dataframe date time index
+            # We need to do the same while predicing for consistence
+            if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
+                print('Predicting using test dataframe as input for ML model')
+            else:
+                print('Predicting using test dataframe as input for %s model' %self.get_best_model_name())
+        elif isinstance(testdata, int):
+            #### if testdata is an Integer, then it appears to be a forecast period, then use it that way
+            ### only certain stats-based models can use forecast period
+            if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
+                print('Error in input: You must give a test dataframe for ML models')
+            else:
+                
+                print('Predicting using forecast period=%s as input for %s model' %(testdata, self.get_best_model_name()))
+
         if isinstance(model, str):
             if model == '':
                 bestmodel = self.get_best_model_build()
@@ -843,19 +866,11 @@ class auto_timeseries:
 
 
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
-
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
             if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
-                if self.ts_column in testdata.columns:
-                    testdata.set_index(self.ts_column, inplace=True)
-                elif self.ts_column in testdata.index.name:
-                    pass
-                else:
-                    print(f"(Error) Model to be used for prediction 'ML'. Hence, X_egogen' must have a column (or index) called '{self.ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
-                    return None
                 ### Now do the predictions using the final model asked to be predicted ###
-                predictions = bestmodel.predict(testdata,simple=simple)
+                predictions = bestmodel.predict(testdata,simple=simple, time_interval=time_interval)
             elif model.lower() == 'prophet' or self.get_best_model_name() == 'Prophet':
                 predictions = bestmodel.predict(testdata,simple=simple)
             elif self.get_best_model_name() == 'VAR':
@@ -974,7 +989,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.37'
+version_number = '0.0.40'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
                 time_interval='M',

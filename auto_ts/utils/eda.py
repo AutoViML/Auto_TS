@@ -25,6 +25,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     to be Pandas datetime. It assumes that you want to see default lags of 31.
     But you can modify it to suit.
     """
+    
     y = copy.deepcopy(y)
     if chart_freq in ['MS', 'M', 'SM', 'BM', 'CBM', 'SMS', 'BMS']:
         chart_time = 'months'
