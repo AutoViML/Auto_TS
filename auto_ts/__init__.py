@@ -60,6 +60,7 @@ class auto_timeseries:
         conf_int: float = 0.95,
         model_type: Union[str, List] = "stats",
         verbose: int = 0,
+        dask_xgboost_flag: int = 0,
         *args,
         **kwargs
     ):
@@ -142,11 +143,15 @@ class auto_timeseries:
         :param verbose Indicates the verbosity of printing (Default = 0)
         :type verbose int
 
+        :param dask_xgboost_flag: default is 0. But when you are fitting train data, you can
+            ask it to load it into a dask dataframe with value set to 1.
+        :type: dask_xgboost_flag Optional [int]
+
         ##################################################################################################
-        AUTO_TIMESERIES IS A COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES MANY
-        TASKS INVOLVED IN A COMPLEX ENDEAVOR, IT ASSUMES MANY INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
-        Auto_Timeseries will rapidly build predictive models based on Statsmodels, Seasonal ARIMA
-        and Scikit-Learn ML. It will automatically select the BEST model which gives best score specified.
+        AUTO_TIMESERIES IS A VERY COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES 
+        MANY TASKS INVOLVED AT A FAST PACE, IT ASSUMES INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
+        Auto_Timeseries will rapidly build predictive models based on Statsmodels, auto-ARIMA, Scikit-Learn
+        and now dask_xgboost. It will automatically select the BEST model which gives best score specified.
         #####################################################################################################
         """
         self.ml_dict: Dict = {}
@@ -164,6 +169,7 @@ class auto_timeseries:
         self.holidays = None
         self.growth = "linear"
         self.allowed_models = ['best', 'prophet', 'stats', 'ml', 'arima','ARIMA','Prophet','SARIMAX', 'VAR', 'ML']
+        self.dask_xgboost_flag = dask_xgboost_flag
 
         # new function.
         if args:
@@ -215,6 +221,7 @@ class auto_timeseries:
         :param sep: Note that optionally you can give a separator for the data in your file.
             Default is None which treats the sep as a comma (datafile as a 'csv').
         :type sep Optional[str]
+
         """
 
         list_of_valid_time_ints = ['B','C','D','W','M','SM','BM','CBM',
@@ -277,7 +284,7 @@ class auto_timeseries:
         if isinstance(traindata, str):
             if traindata != '':
                 try:
-                    ts_df = load_ts_data(traindata, self.ts_column, sep, target)
+                    ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
                     if isinstance(ts_df, str):
                         print("""Time Series column '%s' could not be converted to a Pandas date time column.
                             Please convert your ts_column into a pandas date-time and try again""" %self.ts_column)
@@ -292,9 +299,10 @@ class auto_timeseries:
                     print('File could not be loaded. Check the path or filename and try again')
                     return None
         elif isinstance(traindata, pd.DataFrame):
+            
             print('Input is data frame. Performing Time Series Analysis')
             print(f"ts_column: {self.ts_column} sep: {sep} target: {target}")
-            ts_df = load_ts_data(traindata, self.ts_column, sep, target)
+            ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
             if isinstance(ts_df, str):
                 print("""Time Series column '%s' could not be converted to a Pandas date time column.
                     Please convert your input into a date-time column  and try again""" %self.ts_column)
@@ -728,7 +736,7 @@ class auto_timeseries:
             self.ml_dict[name]['forecast'] = forecasts
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
-
+        
         if not self.__all_contained_in_list(what_list=self.model_type, in_list=self.allowed_models):
             print(f'The model_type should be any of the following: {self.allowed_models}. You entered {self.model_type}. Some models may not have been developed...')
             if len(list(self.ml_dict.keys())) == 0:
@@ -956,7 +964,7 @@ class auto_timeseries:
         cv_df = cv_df.astype({"CV Scores": float})
         return cv_df
 
-    def __any_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
+    def __any_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True):
         """
         Returns True is any element in the 'in_list' is contained in the 'what_list'
         """
@@ -966,7 +974,7 @@ class auto_timeseries:
 
         return any([True if elem in in_list else False for elem in what_list])
 
-    def __all_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True) -> bool:
+    def __all_contained_in_list(self, what_list: List[str], in_list: List[str], lower: bool = True):
         """
         Returns True is all elements in the 'in_list' are contained in the 'what_list'
         """
@@ -989,13 +997,11 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.42'
+version_number = '0.0.43'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
-                time_interval='M',
-                non_seasonal_pdq=None, seasonality=False, seasonal_period=12,
-                model_type=['best'],
-                verbose=2)
+        time_interval='M', non_seasonal_pdq=None, seasonality=False,
+        seasonal_period=12, model_type=['best'], verbose=2, dask_xgboost_flag=0)
 model.fit(traindata, ts_column,target)
 model.predict(testdata, model='best')
 """)

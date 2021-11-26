@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt # type: ignore
 from sklearn.metrics import mean_absolute_error, mean_squared_error # type: ignore
 
 
-def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, verbose: int=0) -> Tuple[float, float]:
+def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, verbose: int=0):
     """
     this calculates the ratio of the rmse error to the standard deviation of the actuals.
     This ratio should be below 1 for a model to be considered useful.
@@ -16,11 +16,11 @@ def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, 
     if verbose >= 1:
         print('    RMSE = %0.2f' %rmse)
         print('    Std Deviation of Actuals = %0.2f' %(std_dev))
-        print('    Normalized RMSE = %0.1f%%' %(rmse*100/std_dev))
+        print('    Normalized RMSE (as pct of std dev) = %0.1f%%' %(rmse*100/std_dev))
     return rmse, rmse/std_dev
 
 
-def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.array, toprint: bool = True) -> Tuple[float, float]:
+def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.array, toprint: bool = True):
     """
     This utility calculates rmse between actuals and predicted. However, it does one more.
     Since in dynamic forecast, we need the longer original, it calculates Normalized RMSE
@@ -30,13 +30,13 @@ def print_dynamic_rmse(actuals: np.array, predicted: np.array, original: np.arra
     rmse = np.sqrt(np.mean((actuals - predicted)**2))
     norm_rmse = rmse/original.std()
     if toprint:
-        print('    Root Mean Squared Error predictions vs actuals = {:,.2f}'.format(rmse))
+        print('    RMSE = {:,.2f}'.format(rmse))
         print('    Std Deviation of actuals = {:,.2f}'.format(actuals.std()))
-        print('    Normalized RMSE = %0.0f%%' %(100*norm_rmse))
+        print('    Normalized RMSE (as pct of std dev) = %0.0f%%' %(100*norm_rmse))
     return rmse, norm_rmse
 
 
-def print_normalized_rmse(actuals: np.array, predicted: np.array, start_from: int=0) -> Tuple[float, float]:
+def print_normalized_rmse(actuals: np.array, predicted: np.array, start_from: int=0):
     """
     This utility calculates rmse between actuals and predicted. However, it does one more.
     If the original is given, it calculates Normalized RMSE using the original array's std deviation.
@@ -68,8 +68,8 @@ def print_mape(y: np.array, y_hat: np.array) -> float:
         return np.mean(abs(perc_err))
     except:
         return np.nan
-
-def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model") -> Tuple[float, float, float]:
+import pdb
+def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model"):
     """
     This program prints and returns MAE, RMSE, MAPE.
     If you like the MAE and RMSE as a percentage of something, just give that number

@@ -6,36 +6,44 @@ import pdb
 from sklearn.model_selection import TimeSeriesSplit  # type: ignore
 import dask
 import dask.dataframe as dd
+from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 ##### This function loads a time series data and sets the index as a time series
-def load_ts_data(filename, ts_column, sep, target):
+def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
     """
     This function loads a given filename into a pandas dataframe and sets the
     ts_column as a Time Series index. Note that filename should contain the full
     path to the file.
     """
+    
     if isinstance(filename, str):
-        print('First loading %s and then setting %s as date time index...' % (filename, ts_column))
-        try:
-            dft = pd.read_csv(filename,index_col=ts_column, parse_dates=True)
-            print('    Loaded %s into pandas dataframe. Dask dataframe type not working for this file...' % filename)
-        except:
-            dft = dd.read_csv(filename, blocksize=100e6)
-            print('    Too big to fit into pandas. Hence loaded file %s into a Dask dataframe ...' % filename)
+        filename = pd.read_csv(filename, sep=sep, index_col=ts_column, parse_dates=True)
+    ### If filename is not a string, it must be a dataframe and can be loaded
+    if dask_xgboost_flag:
+        print('    Since dask_xgboost_flag is True, reducing memory size and loading into dask')
+        filename = reduce_mem_usage(filename)
+        dft =   dd.from_pandas(filename, npartitions=1)
+        print('    Converted pandas dataframe into a Dask dataframe ...' )
     else:
-        
-        ### If filename is not a string, it must be a dataframe and can be loaded
-        if filename.shape[0] < 100000:
-            dft = copy.deepcopy(filename)
-            print('    Loaded pandas dataframe...')
-        else:
-            dft =   dd.from_pandas(filename, npartitions=1)
-            print('    Converted pandas dataframe into a Dask dataframe ...' )
-        dft, _ = change_to_datetime_index(dft, ts_column)
-        preds = [x for x in list(dft) if x not in [target]]
-        dft = dft[[target]+preds]
+        dft = copy.deepcopy(filename)
+        print('    Using given input: pandas dataframe...')
+    ##################    L O A D    T E S T   D A T A      ######################
+    dft = remove_duplicate_cols_in_dataset(dft)
+    #######   Make sure you change it to a date-time index #####
+    dft, _ = change_to_datetime_index(dft, ts_column)
+    preds = [x for x in list(dft) if x not in [target]]
+    dft = dft[[target]+preds]
     return dft
 ####################################################################################################################
+def remove_duplicate_cols_in_dataset(df):
+    df = copy.deepcopy(df)
+    cols = df.columns.tolist()
+    number_duplicates = df.columns.duplicated().astype(int).sum()
+    if  number_duplicates > 0:
+        print('Detected %d duplicate columns in dataset. Removing duplicates...' %number_duplicates)
+        df = df.loc[:,~df.columns.duplicated()]
+    return df
+###########################################################################
 def change_to_datetime_index(dft, ts_column):
     dft = copy.deepcopy(dft)
     if isinstance(dft, pd.Series) or isinstance(dft, pd.DataFrame):
@@ -103,19 +111,21 @@ def change_to_datetime_index(dft, ts_column):
             print('    Trying to convert time series column %s into index erroring. Please check input and try again.' %ts_column)
             return 
     elif type(dft) == dask.dataframe.core.DataFrame:
-        print('    type of test data is Dask dataframe. Continuing...')
+        
+        str_format = ''
+        print('    type of data is Dask dataframe. Continuing...')
         if ts_column in dft.columns:
-            print('    train time series %s column exists on test data...' %ts_column)
+            print('    train time series %s column exists in data...' %ts_column)
             str_first_value = dft[ts_column].compute()[0]
             dft.index = dd.to_datetime(dft[ts_column].compute())
-            dft = dft.drop(ts_column, axis=1).compute()
+            dft = dft.drop(ts_column, axis=1)
         elif ts_column in dft.index.name:
-            print('    train time series %s column is index on test data. Continuing...' %ts_column)
+            print('    train time series %s column is an index. Continuing...' %ts_column)
         else:
             print(f"    (Error) Model to be used for prediction 'ML'. Hence, input df must have a column (or index) called '{ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
             return None
     else:
-        print('    Unable to detect type of dft. Please check your input and try again')                        
+        print('    Unable to detect type of data. Please check your input and try again')                        
         return
     return dft, str_format
 ############################################################################################################
@@ -396,3 +406,60 @@ def infer_date_time_format(list_dates):
         print('Error in inferring date time format. Returning...')
     return date_time_fmts
 #################################################################################################
+def reduce_mem_usage(df):
+    """
+    #####################################################################
+    Greatly indebted to :
+    https://www.kaggle.com/arjanso/reducing-dataframe-memory-size-by-65
+        for this function to reduce memory usage.
+    #####################################################################
+    It is a bit slow as it iterate through all the columns of a dataframe and modifies data types
+        to reduce memory usage. But it has been shown to reduce memory usage by 65% or so.       
+    """
+    start_mem = df.memory_usage().sum() / 1024**2
+    if type(df) == dask.dataframe.core.DataFrame:
+        start_mem = start_mem.compute()
+    print('    Caution: We will try to reduce the memory usage of dataframe from {:.2f} MB'.format(start_mem))
+    cols = df.columns
+    if type(df) == dask.dataframe.core.DataFrame:
+        cols = cols.tolist()
+    datevars = df.select_dtypes(include=[np.datetime64]).columns.tolist()
+    numvars = df.select_dtypes(include='number').columns.tolist()
+    for col in cols:
+        col_type = df[col].dtype
+        if col in datevars:
+            pass
+        elif col in numvars:
+            c_min = df[col].min()
+            c_max = df[col].max()
+            if type(df) == dask.dataframe.core.DataFrame:
+                c_min = c_min.compute()
+                c_max = c_max.compute()
+            if str(col_type)[:3] == 'int':
+                if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
+                    df[col] = df[col].astype(np.int8)
+                elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
+                    df[col] = df[col].astype(np.int16)
+                elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
+                    df[col] = df[col].astype(np.int32)
+                elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
+                    df[col] = df[col].astype(np.int64)  
+            else:
+                if c_min > np.finfo(np.float16).min and c_max < np.finfo(np.float16).max:
+                    df[col] = df[col].astype(np.float16)
+                elif c_min > np.finfo(np.float32).min and c_max < np.finfo(np.float32).max:
+                    df[col] = df[col].astype(np.float32)
+                else:
+                    df[col] = df[col].astype(np.float64)
+        else:
+            df[col] = df[col].astype('category')
+
+    #######  Results after memory usage function ###################
+    end_mem = df.memory_usage().sum() / 1024**2
+    if type(df) == dask.dataframe.core.DataFrame:
+        end_mem = end_mem.compute()
+    print('    Memory usage after optimization is: {:.2f} MB'.format(end_mem))
+    print('        decreased by {:.1f}%'.format(100 * (start_mem - end_mem) / start_mem))
+    
+    return df
+##################################################################################
