@@ -170,6 +170,7 @@ class auto_timeseries:
         self.growth = "linear"
         self.allowed_models = ['best', 'prophet', 'stats', 'ml', 'arima','ARIMA','Prophet','SARIMAX', 'VAR', 'ML']
         self.dask_xgboost_flag = dask_xgboost_flag
+        self.sep = ','
 
         # new function.
         if args:
@@ -223,7 +224,7 @@ class auto_timeseries:
         :type sep Optional[str]
 
         """
-
+        self.sep = sep
         list_of_valid_time_ints = ['B','C','D','W','M','SM','BM','CBM',
                                         'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
                                         'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
@@ -699,6 +700,8 @@ class auto_timeseries:
                 forecast_period = self.forecast_period,
                 ts_column = self.ts_column,
                 time_interval = self.time_interval,
+                sep = self.sep,
+                dask_xgboost_flag = self.dask_xgboost_flag,
                 verbose=self.verbose)
             try:
                 # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
@@ -834,11 +837,12 @@ class auto_timeseries:
         model: str = '',
         simple: bool = False,
         time_interval: str = '',
+        saved_model: str = '',
         ):
         """
         Predict the results
         """
-
+        
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
@@ -846,58 +850,85 @@ class auto_timeseries:
                 print('Predicting using test dataframe as input for ML model')
             else:
                 print('Predicting using test dataframe as input for %s model' %self.get_best_model_name())
+        elif type(testdata) == dask.dataframe.core.DataFrame:
+            # During training, we internally converted a column datetime index to the dataframe date time index
+            # We need to do the same while predicing for consistence
+            if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
+                ### Now do the predictions using the final model asked to be predicted ###
+                print('Predicting using test dask data frame as input for ML model')
+            else:
+                print('Cannot predicting using dask dataframe as input for %s model. Returning' %self.get_best_model_name())
+                return
         elif isinstance(testdata, int):
             #### if testdata is an Integer, then it appears to be a forecast period, then use it that way
             ### only certain stats-based models can use forecast period
             if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
                 print('Error in input: You must give a test dataframe for ML models')
-            else:
-                
+            else:                
                 print('Predicting using forecast period=%s as input for %s model' %(testdata, self.get_best_model_name()))
 
+        ##### This is where we load the model to predict ###########
         if isinstance(model, str):
             if model == '':
                 bestmodel = self.get_best_model_build()
             elif model.lower() == 'best':
                 bestmodel = self.get_best_model_build()
             else:
+                if saved_model:
+                    ### if a saved_model is specified, just use that model as given and use it ###
+                    print('Make sure the given saved_model has already been trained on this data. Otherwise, it will give errors.')
+                    self.ml_dict[model]['model'] = copy.deepcopy(saved_model)
+                bestmodel = self.get_model_build(model)
                 if self.get_model_build(model) is not None:
                     bestmodel = self.get_model_build(model)
                 else:
-                    print(f"(Error) Model of type '{model}' does not exist. No predictions will be made.")
+                    print(f"(Error) Model of type '{model}' does not exist. Check inputs and try again.")
                     return None
             self.model = bestmodel
         else:
             ### if no model is specified, just use the best model ###
             bestmodel = self.get_best_model_build()
             self.model = bestmodel
-
-
-        if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
-            # During training, we internally converted a column datetime index to the dataframe date time index
-            # We need to do the same while predicing for consistence
-            if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
-                ### Now do the predictions using the final model asked to be predicted ###
-                predictions = bestmodel.predict(testdata,simple=simple, time_interval=time_interval)
-            elif model.lower() == 'prophet' or self.get_best_model_name() == 'Prophet':
-                predictions = bestmodel.predict(testdata,simple=simple)
-            elif self.get_best_model_name() == 'VAR':
-                predictions = bestmodel.predict(testdata,simple=simple)
+        ##### Now make predictions using model given ######
+        try:
+            if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
+                # During training, we internally converted a column datetime index to the dataframe date time index
+                # We need to do the same while predicing for consistence
+                if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
+                    ### Now do the predictions using the final model asked to be predicted ###
+                    predictions = bestmodel.predict(testdata,simple=simple, time_interval=time_interval)
+                elif model.lower() == 'prophet' or self.get_best_model_name() == 'Prophet':
+                    predictions = bestmodel.predict(testdata,simple=simple)
+                elif self.get_best_model_name() == 'VAR':
+                    predictions = bestmodel.predict(testdata,simple=simple)
+                else:
+                    predictions = bestmodel.predict(testdata,simple=simple)
+            elif type(testdata) == dask.dataframe.core.DataFrame:
+                # During training, we internally converted a column datetime index to the dataframe date time index
+                # We need to do the same while predicing for consistence
+                if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
+                    ### Now do the predictions using the final model asked to be predicted ###
+                    predictions = bestmodel.predict(testdata,simple=simple, time_interval=time_interval)
+                else:
+                    print('Dask dataframes are not accepted as input for non-ML models. Please change your input and try again.')
+                    predictions = np.array()
+                    return predictions
+            elif isinstance(testdata, int):
+                #### if testdata is an Integer, then it appears to be a forecast period, then use it that way
+                ### only certain stats-based models can use forecast period
+                if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
+                    print(f'{model} is an ML-based model, hence it cannot be used with a forecast period')
+                    predictions = None
+                else:
+                    predictions = bestmodel.predict(testdata,simple=simple)
             else:
-                predictions = bestmodel.predict(testdata,simple=simple)
-        elif isinstance(testdata, int):
-            #### if testdata is an Integer, then it appears to be a forecast period, then use it that way
-            ### only certain stats-based models can use forecast period
-            if (model == 'ML') or (model == 'best' and self.get_best_model_name() == 'ML'):
-                print(f'{model} is an ML-based model, hence it cannot be used with a forecast period')
-                predictions = None
-            else:
-                predictions = bestmodel.predict(testdata,simple=simple)
-        else:
-            ### if there is no testdata, at least they must give forecast_period
-            if testdata is None:
-                print('If test_data is None, then forecast_period must be given')
-                return
+                ### if there is no testdata, at least they must give forecast_period
+                if testdata is None:
+                    print('If test_data is None, then forecast_period must be given')
+                    return
+        except:
+            print('Model is erroring during prediction. Check inputs and try again.')
+            return
         return predictions
 
     def get_leaderboard(self, ascending=True) -> Optional[pd.DataFrame]:
@@ -997,7 +1028,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.43'
+version_number = '0.0.44'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
         time_interval='M', non_seasonal_pdq=None, seasonality=False,

@@ -13,7 +13,7 @@ pandas
 xlrd
 scipy
 prettytable
-xgboost
+xgboost==0.90
 dask>=2.30.0
 
 # Viz libs

@@ -20,19 +20,48 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
         filename = pd.read_csv(filename, sep=sep, index_col=ts_column, parse_dates=True)
     ### If filename is not a string, it must be a dataframe and can be loaded
     if dask_xgboost_flag:
-        print('    Since dask_xgboost_flag is True, reducing memory size and loading into dask')
-        filename = reduce_mem_usage(filename)
-        dft =   dd.from_pandas(filename, npartitions=1)
-        print('    Converted pandas dataframe into a Dask dataframe ...' )
+        if type(filename) == dask.dataframe.core.DataFrame:
+            print('    Since dask_xgboost_flag is True, and input is dask, continuing...')
+        else:
+            filename = copy.deepcopy(filename)
+            print('    Since dask_xgboost_flag is True and input is pandas, reducing memory size of df and loading into dask')
+            filename = reduce_mem_usage(filename)
+            dft =   dd.from_pandas(filename, npartitions=1)
+            print('    Converted pandas dataframe into a Dask dataframe ...' )
     else:
         dft = copy.deepcopy(filename)
         print('    Using given input: pandas dataframe...')
     ##################    L O A D    T E S T   D A T A      ######################
     dft = remove_duplicate_cols_in_dataset(dft)
     #######   Make sure you change it to a date-time index #####
+    
     dft, _ = change_to_datetime_index(dft, ts_column)
     preds = [x for x in list(dft) if x not in [target]]
     dft = dft[[target]+preds]
+    return dft
+####################################################################################################################
+def load_test_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
+    """
+    This function loads a given filename into a pandas dataframe and sets the
+    ts_column as a Time Series index. Note that filename should contain the full
+    path to the file.
+    """
+    
+    if isinstance(filename, str):
+        filename = pd.read_csv(filename, sep=sep, index_col=ts_column, parse_dates=True)
+        ### If filename is not a string, it must be a dataframe and can be loaded
+    else:
+        if type(filename) == dask.dataframe.core.DataFrame:
+            print('    Since dask_xgboost_flag is True, and input is dask, continuing...')
+            ddf =   filename.compute()
+            print('    Converted dask dataframe into a pandas dataframe ...' )
+            print('    Reducing memory size of df and loading into dask')
+            dft = reduce_mem_usage(ddf)
+        else:
+            dft = copy.deepcopy(filename)
+            print('    Using given input: pandas dataframe...')
+    ##################    L O A D    T E S T   D A T A      ######################
+    dft = remove_duplicate_cols_in_dataset(dft)
     return dft
 ####################################################################################################################
 def remove_duplicate_cols_in_dataset(df):
@@ -111,7 +140,6 @@ def change_to_datetime_index(dft, ts_column):
             print('    Trying to convert time series column %s into index erroring. Please check input and try again.' %ts_column)
             return 
     elif type(dft) == dask.dataframe.core.DataFrame:
-        
         str_format = ''
         print('    type of data is Dask dataframe. Continuing...')
         if ts_column in dft.columns:
@@ -120,7 +148,7 @@ def change_to_datetime_index(dft, ts_column):
             dft.index = dd.to_datetime(dft[ts_column].compute())
             dft = dft.drop(ts_column, axis=1)
         elif ts_column in dft.index.name:
-            print('    train time series %s column is an index. Continuing...' %ts_column)
+            print('    train index %s is already a time series index. Continuing...' %ts_column)
         else:
             print(f"    (Error) Model to be used for prediction 'ML'. Hence, input df must have a column (or index) called '{ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
             return None
@@ -132,6 +160,8 @@ def change_to_datetime_index(dft, ts_column):
 def change_to_datetime_index_test(testdata, ts_column):
     testdata = copy.deepcopy(testdata)
     str_format = ''
+    ##### This is where we change the time index of test data #############
+    
     try:
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
             if ts_column in testdata.columns:
@@ -147,6 +177,13 @@ def change_to_datetime_index_test(testdata, ts_column):
                 else:
                     ### If ts_column is not a string column, then set its format to an empty string ##
                     str_format = ''
+                ###### If the str_format is detected, set the index as time series index ##
+                ts_index = testdata.pop(ts_column)
+                if str_format:
+                    ts_index = pd.to_datetime(ts_index, format=str_format)
+                else:
+                    ts_index = pd.to_datetime(ts_index)
+                testdata.index = ts_index
             elif ts_column in testdata.index.name:
                 ts_index = testdata.index
                 str_first_value = ts_index[0]
@@ -161,11 +198,17 @@ def change_to_datetime_index_test(testdata, ts_column):
                 else:
                     ### if index is in string format, you must infer its datetime string format and then set datetime index
                     str_format = ''
+                ### now set the index to datetime format
+                if str_format:
+                    ts_index = pd.to_datetime(ts_index, format=str_format)
+                else:
+                    ts_index = pd.to_datetime(ts_index)
+                dft.index = ts_index
         elif type(testdata) == dask.dataframe.core.DataFrame:
             #### the below tests work for a dask dataframe as well ##
             if ts_column in testdata.columns:
-                str_first_value = testdata[ts_column].compute()[0]
-                str_values = testdata[ts_column].compute()[:12]
+                str_first_value = testdata[ts_column].compute().values[0]
+                str_values = testdata[ts_column].compute().values[:12]
                 if type(str_first_value) == str:
                     ### if ts_column is an object column, save its string format in date-time format
                     str_format = infer_date_time_format(str_values)
@@ -176,20 +219,28 @@ def change_to_datetime_index_test(testdata, ts_column):
                 else:
                     ### If ts_column is not a string column, then set its format to an empty string ##
                     str_format = ''
+                ####### Now set the index to datetime index and drop the ts_colum #########
+                testdata.index = dd.to_datetime(testdata[ts_column].compute())
+                testdata = testdata.drop(ts_column, axis=1)
             elif ts_column in testdata.index.name:
                 #### the above test works for a dask dataframe as well ##
                 ts_index = testdata.index
-                str_first_value = ts_index[0]
-                str_values = ts_index[:12]
-                if type(str_first_value) == str:
-                    ### if index is in string format, you must infer its datetime string format and then set datetime index
-                    str_format = infer_date_time_format(str_values)
-                    if str_format:
-                        str_format = str_format[0]
-                    else:
-                        str_format = ''
+                if type(testdata.index.compute().values[0]) in [np.datetime64]:
+                    str_values = testdata.index.compute().values
+                    str_values_dt = pd.to_datetime(str_values)
+                    str_values = str_values_dt.astype(str)
+                    str_first_value = str_values[0]
+                    ## there is no need to change its index if the index is already datetime index ##
+                    str_format = infer_date_time_format(str_values[:12])
                 else:
+                    str_first_value = ts_index[0]
+                    str_values = ts_index.astype(str)
+                    testdata.index = pd.to_datetime(str_values, format=str_format)
                     ### if index is in string format, you must infer its datetime string format and then set datetime index
+                    str_format = infer_date_time_format(str_values[:12])
+                if str_format:
+                    str_format = str_format[0]
+                else:
                     str_format = ''
             else:
                 print("Error: Cannot detect %s either in columns or index. Please check input and try again." %ts_column)
@@ -232,7 +283,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
 
     rtype: pd.DataFrame, str, List[str]
     """
-
+    
     df = copy.deepcopy(df)
     int_vars  = df.select_dtypes(include='integer').columns.tolist()
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
@@ -277,6 +328,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
             pass
         df.drop(drops, axis=1, inplace=True)
     preds = [x for x in list(df) if x not in [target]]
+    
     return df, target, preds
 ##############################################################################################
 def find_max_min_value_in_a_dataframe(df, max_min='min'):

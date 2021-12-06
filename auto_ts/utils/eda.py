@@ -96,6 +96,7 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
         ts_ax.xaxis.set_minor_locator(minors)
         ts_ax.format_xdata = mdates.DateFormatter('%Y-%m-%d')
         ts_ax.grid(True)
+    #### Now draw the ACF and PACF charts
     ts_ax.set_title(title)
     y.diff(1).plot(ax=diff_ax, color=next(colors))
     diff_ax.set_title('After Differencing = 1')
@@ -107,6 +108,9 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     except:
         acf_ax.set_title('Data Error: Could not draw ACF for Original Series')
     try:
+        ### the number of lags cannot be greater than 50% of len of y. So limit it.
+        if lags  >= len(y)*0.5:
+            lags = int(len(y)*0.5 - 1)
         smt.graphics.plot_pacf(y, lags=lags, ax=pacf_ax)
         pacf_ax.set_title('PACF for Original Series')
     except:

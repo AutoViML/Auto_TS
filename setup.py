@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="auto_ts",
-    version="0.0.43",
+    version="0.0.44",
     author="Ram Seshadri",
     # author_email="author@example.com",
     description="Automatically Build Multiple Time Series models fast - now with Facebook Prophet!",
@@ -26,7 +26,7 @@ setuptools.setup(
         "scikit-learn>=0.24.0",
         "fbprophet",
         "statsmodels",
-        "xgboost",
+        "xgboost==0.90",
         "prettytable",
         "dask>=2.30.0",
     ],
