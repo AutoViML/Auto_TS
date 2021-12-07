@@ -14,6 +14,18 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
     This function loads a given filename into a pandas dataframe and sets the
     ts_column as a Time Series index. Note that filename should contain the full
     path to the file.
+    Inputs:
+        filename: name of file that contains data
+        ts_column: name of time series column in data
+        sep: separator used as a column separator in datafile
+        target: name of the target column to predict
+        dask_xgboost_flag: flag that will tell whether to load into dask or pandas dataframe.        
+        If dask_xgboost_flag is set to True it returns both a dask as well as pandas DataFrame.
+        If dask_xgboost_flag is set to False it returns both of them as pandas DataFrames.
+
+    Outputs:
+        dft: dask DataFrame
+        filename: pandas DataFrame
     """
     
     if isinstance(filename, str):
@@ -34,11 +46,14 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
     ##################    L O A D    T E S T   D A T A      ######################
     dft = remove_duplicate_cols_in_dataset(dft)
     #######   Make sure you change it to a date-time index #####
-    
-    dft, _ = change_to_datetime_index(dft, ts_column)
-    preds = [x for x in list(dft) if x not in [target]]
-    dft = dft[[target]+preds]
-    return dft
+    if dask_xgboost_flag:
+        ### if dask exists, you need to change its datetime index also ##
+        dft, _ = change_to_datetime_index(dft, ts_column)
+    ### you have to change the pandas df also to datetime index ###
+    filename, _ = change_to_datetime_index(filename, ts_column)    
+    #preds = [x for x in list(dft) if x not in [target]]
+    #dft = dft[[target]+preds]
+    return dft, filename
 ####################################################################################################################
 def load_test_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
     """
@@ -82,7 +97,7 @@ def change_to_datetime_index(dft, ts_column):
             ############### Check if it has an index or a column with the name of train time series column ####
             
             if ts_column in dft.columns:
-                print('    train time series %s column exists ...' %ts_column)
+                print('    %s column exists in given train data...' %ts_column)
                 str_first_value = dft[ts_column].values[0]
                 str_values = dft[ts_column].values[:12] ### we want to test a big sample of them 
                 if type(str_first_value) == str:
@@ -134,16 +149,15 @@ def change_to_datetime_index(dft, ts_column):
                     print('    Type of index is unknown or float. It must be datetime or string. Please check input and try again.')
                     return
             else:
-                print(f"    (Error) Model to be used for prediction 'ML'. Hence, input df must have a column (or index) called '{ts_column}' corresponding to the original ts_index column passed during training. No predictions will be made.")
+                print(f"    (Error) Cannot find '{ts_column}' (or index) in given data.")
                 return None
         except:
             print('    Trying to convert time series column %s into index erroring. Please check input and try again.' %ts_column)
             return 
     elif type(dft) == dask.dataframe.core.DataFrame:
         str_format = ''
-        print('    type of data is Dask dataframe. Continuing...')
         if ts_column in dft.columns:
-            print('    train time series %s column exists in data...' %ts_column)
+            print('    %s column exists in dask data frame...' %ts_column)
             str_first_value = dft[ts_column].compute()[0]
             dft.index = dd.to_datetime(dft[ts_column].compute())
             dft = dft.drop(ts_column, axis=1)

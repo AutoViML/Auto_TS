@@ -80,6 +80,7 @@ def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model"):
     plt.figure(figsize=(15,8))
     dfplot = pd.DataFrame([actuals,predicted]).T
     dfplot.columns = ['Actual','Forecast']
+    dfplot = dfplot.sort_index()
     plt.plot(dfplot)
     plt.legend(['actual','forecast'])
     plt.title('%s: Actual vs Forecast in expanding (training) Window Cross Validation' %title, fontsize=20)
@@ -87,9 +88,10 @@ def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model"):
     print('Model Cross Validation Results:')
     print('-------------------------------------------')
     mae = mean_absolute_error(actuals, predicted)
-    mae_asp = (mean_absolute_error(actuals, predicted)/number_as_percentage)*100
-    print('    MAE (as %% Std Dev of Actuals) = %0.2f%%' %mae_asp)
+    mse = mean_squared_error(actuals, predicted)
+    print('    MAE (Mean Absolute Error = %0.2f' %mae)
     rmse = print_rmse(actuals, predicted)
+    print('    MSE (Mean Squared Error = %0.2f' %mse)
     mape = print_mape(actuals, predicted)
     print("    MAPE (Mean Absolute Percent Error) = %0.0f%%" %(mape))
     print("    RMSE (Root Mean Squared Error) = %0.04f" %(rmse))

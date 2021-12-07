@@ -360,7 +360,7 @@ class BuildML(BuildBase):
                 if rows == 1:
                     ax = ax.reshape(-1,1).T
                 xgb.plot_importance(bst_models[0], height=0.8, max_num_features=10, ax=ax[0][0])
-                extra_concatenated.plot(ax=ax[0][1], title='Expanding time window predictions vs. actuals')
+                extra_concatenated.plot(ax=ax[0][1], title='ML expanding window preds vs. actuals')
                 print_dynamic_rmse(extra_concatenated['original'], extra_concatenated['predicted'], 
                                 extra_concatenated['original'], True)
             else:

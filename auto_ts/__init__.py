@@ -285,7 +285,10 @@ class auto_timeseries:
         if isinstance(traindata, str):
             if traindata != '':
                 try:
-                    ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                    if self.dask_xgboost_flag:
+                        dask_df, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                    else:
+                        _, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
                     if isinstance(ts_df, str):
                         print("""Time Series column '%s' could not be converted to a Pandas date time column.
                             Please convert your ts_column into a pandas date-time and try again""" %self.ts_column)
@@ -295,25 +298,21 @@ class auto_timeseries:
                             print('    Dask Dataframe loaded successfully. Shape of data set = (%s,%s)' %(
                                                 ts_df.shape[0].compute(),ts_df.shape[1]))
                         else:
-                            print('    File loaded successfully. Shape of data set = %s' %(ts_df.shape,))
+                            print('    File loaded into pandas dataframe successfully. Shape of data set = %s' %(ts_df.shape,))
                 except Exception:
                     print('File could not be loaded. Check the path or filename and try again')
                     return None
         elif isinstance(traindata, pd.DataFrame):
-            
             print('Input is data frame. Performing Time Series Analysis')
             print(f"ts_column: {self.ts_column} sep: {sep} target: {target}")
-            ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+            if self.dask_xgboost_flag:
+                dask_df, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+            else:
+                _, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
             if isinstance(ts_df, str):
                 print("""Time Series column '%s' could not be converted to a Pandas date time column.
                     Please convert your input into a date-time column  and try again""" %self.ts_column)
                 return None
-            else:
-                if type(ts_df) == dask.dataframe.core.DataFrame:
-                    print('    Dask Dataframe loaded successfully. Shape of data set = (%s,%s)' %(
-                                        ts_df.shape[0].compute(),ts_df.shape[1]))
-                else:
-                    print('    pandas Dataframe loaded successfully. Shape of data set = %s' %(ts_df.shape,))
         else:
             print('File name is an empty string. Please check your input and try again')
             return None
@@ -665,7 +664,8 @@ class auto_timeseries:
 
         if self.__any_contained_in_list(what_list=['ml', 'ML','best'], in_list=self.model_type):
             ########## Let's build a Machine Learning Model now with Time Series Data ################
-
+            ### Remember that if the dask_xgboost_flag is set to True, we will use Dask DF to build model
+            ###  Otherwise, if the dask_xgboost_flag is set to False, we will use pandas DF to build model
             print("\n")
             print("="*50)
             print("Building ML Model")
@@ -704,14 +704,24 @@ class auto_timeseries:
                 dask_xgboost_flag = self.dask_xgboost_flag,
                 verbose=self.verbose)
             try:
-                # best = model_build.fit(ts_df=ts_df, target_col=target, lags=lag)
-                model, forecasts, rmse, norm_rmse = model_build.fit(
-                    ts_df=ts_df,
-                    target_col=target,
-                    ts_column = self.ts_column,
-                    cv = cv,
-                    lags=lag
-                )
+                if self.dask_xgboost_flag:
+                    ### We must use dask_df to build a model #####
+                    model, forecasts, rmse, norm_rmse = model_build.fit(
+                        ts_df=dask_df,
+                        target_col=target,
+                        ts_column = self.ts_column,
+                        cv = cv,
+                        lags=lag
+                    )
+                else:
+                    ### We must use pandas ts_df to build a model #####
+                    model, forecasts, rmse, norm_rmse = model_build.fit(
+                        ts_df=ts_df,
+                        target_col=target,
+                        ts_column = self.ts_column,
+                        cv = cv,
+                        lags=lag
+                    )
 
                 if self.score_type == 'rmse':
                     score_val = rmse
@@ -776,19 +786,21 @@ class auto_timeseries:
         f1_stats = {}
         for key, _ in self.ml_dict.items():
             cv_scores = self.ml_dict[key][self.score_type]
-
             # Standardize to a list
-            if len(self.ml_dict[key][self.score_type]) == 0:
+            if self.ml_dict[key][self.score_type] == np.inf:
                 f1_stats[key] = np.inf
             else:
-                if isinstance(cv_scores, np.ndarray):
-                    cv_scores = cv_scores.tolist()
-                if not isinstance(cv_scores, List):
-                    cv_scores = [cv_scores]
-                if len(cv_scores) == 0:
-                        f1_stats[key] = np.inf
+                if len(self.ml_dict[key][self.score_type]) == 0:
+                    f1_stats[key] = np.inf
                 else:
-                    f1_stats[key] = sum(cv_scores)/len(cv_scores)
+                    if isinstance(cv_scores, np.ndarray):
+                        cv_scores = cv_scores.tolist()
+                    elif not isinstance(cv_scores, list):
+                        cv_scores = [cv_scores]
+                    if len(cv_scores) == 0:
+                            f1_stats[key] = np.inf
+                    else:
+                        f1_stats[key] = sum(cv_scores)/len(cv_scores)
 
         best_model_name = min(f1_stats.items(), key=operator.itemgetter(1))[0]
         return best_model_name
@@ -1028,7 +1040,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.44'
+version_number = '0.0.45'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
         time_interval='M', non_seasonal_pdq=None, seasonality=False,
