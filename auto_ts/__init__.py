@@ -476,6 +476,10 @@ class auto_timeseries:
         ### When the time interval given does not match the tested_time_interval, then use FB.
         #### Also when the number of rows in data set is very large, use FB Prophet, It is fast.
         #########                 FB Prophet              ###################################
+        if self.time_interval in ['T,min']:
+            ### Now you have to modify it to fit FB Prophet ####
+            ts_time_interval = self.time_interval
+            self.time_interval = str(ts_mins)+'min'
 
         if self.__any_contained_in_list(what_list=['prophet', 'Prophet', 'best'], in_list=self.model_type):
             print("\n")
@@ -493,11 +497,6 @@ class auto_timeseries:
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
-
-                if self.time_interval in ['T,min']:
-                    ### Now you have to modify it to fit FB Prophet ####
-                    ts_time_interval = self.time_interval
-                    self.time_interval = str(ts_mins)+'min'
 
                 model_build = BuildProphet(
                     self.forecast_period, self.time_interval, self.seasonal_period,
@@ -526,6 +525,7 @@ class auto_timeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
+        ### Once Prophet is finished, you can put the variable back #### 
         if self.time_interval in ['T,min']:
             ### put the time interval back in shape ###
             self.time_interval = ts_time_interval
@@ -1052,7 +1052,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.46'
+version_number = '0.0.47'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
         time_interval='M', non_seasonal_pdq=None, seasonality=False,
