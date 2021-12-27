@@ -75,6 +75,8 @@ class BuildProphet(BuildBase):
                                         'MS','SMS','BMS','CBMS','Q','BQ','QS','BQS',
                                         'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
                                         'H','T,min','S','L,ms','U,us','N']
+        self.list_of_valid_time_ints.append(time_interval)
+
         if kwargs:
             for key, value in zip(kwargs.keys(),kwargs.values()):
                 if key == 'seasonality_mode':
@@ -83,7 +85,7 @@ class BuildProphet(BuildBase):
                 else:
                     key = value
 
-    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str) -> object:
+    def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str):
         """
         Fits the model to the data
 
@@ -134,9 +136,9 @@ class BuildProphet(BuildBase):
         else:
             dft = data[[timecol, actual] + self.original_preds]
 
-        ##### For most Financial time series data, 80% conf interval is enough...
+        ##### For most Financial time series data, 80 percent conf interval is enough...
         if self.verbose >= 1:
-            print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' % (dft.shape, self.conf_int))
+            print('    Fit-Predict data (shape=%s) with Confidence Interval = %0.2f...' %(dft.shape, self.conf_int))
         ### Make Sure you lower your desired interval width from the normal 95% to a more realistic 80%
         start_time = time.time()
 
@@ -152,7 +154,7 @@ class BuildProphet(BuildBase):
             self.model.add_seasonality(name=prophet_seasonality,
                             period=prophet_period, fourier_order=fourier_order, prior_scale= prior_scale)
             print('       Adding %s seasonality to Prophet with period=%d, fourier_order=%d and prior_scale=%0.2f' %(
-                                        prophet_seasonality, prophet_period, fourier_order, prior_scale))
+                            prophet_seasonality, prophet_period, fourier_order, prior_scale))
         else:
             print('      No seasonality assumed since seasonality flag is set to False')
 
@@ -183,11 +185,12 @@ class BuildProphet(BuildBase):
         ### Prophet's Time Interval translates into frequency based on the following pandas date_range alias:
         #  Link: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
         ## This is done using the get_prophet_time_interval() function later.
+        
         if self.time_interval in self.list_of_valid_time_ints:
             time_int = copy.deepcopy(self.time_interval)
         else:
             time_int = self.get_prophet_time_interval(for_cv=False)
-
+        
         # First  Fold -->
         #   Train Set: 0:initial
         #   Test Set: initial:(initial+horizon)
@@ -254,7 +257,7 @@ class BuildProphet(BuildBase):
                 #################################################
                 #### Predict using model with test_fold data ####
                 #################################################
-
+                
                 future_period = model.make_future_dataframe(freq=time_int, periods=horizon)
                 forecast_df = model.predict(future_period)
                 ### Now compare the actuals with predictions ######

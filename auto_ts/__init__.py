@@ -407,7 +407,10 @@ class auto_timeseries:
         ################# This is where you test the data and find the time interval #######
         if self.time_interval is not None:
             if self.time_interval in list_of_valid_time_ints:
-                pass
+                if self.time_interval in ['T,min']:
+                    diff = (ts_index[1] - ts_index[0]).to_pytimedelta()
+                    ts_seconds = diff.seconds
+                    ts_mins = int(ts_seconds/60)
             else:
                 self.time_interval = self.time_interval.strip().lower()
                 if self.time_interval in ['months', 'month', 'm']:
@@ -425,7 +428,7 @@ class auto_timeseries:
                 elif self.time_interval in ['hours', 'hourly', 'h']:
                     self.time_interval = 'H'
                 elif self.time_interval in ['minutes', 'minute', 'min', 'n']:
-                    self.time_interval = 'M'
+                    self.time_interval = 'T,min'
                 elif self.time_interval in ['seconds', 'second', 'sec', 's']:
                     self.time_interval = 'S'
                 else:
@@ -434,7 +437,6 @@ class auto_timeseries:
         else:
             print("(Error: 'self.time_interval' is None. This condition should not have occurred.")
             return
-
         # Impute seasonal_period if not provided by the user
         if self.seasonal_period is None:
             if self.time_interval in ['M','MS','ME','BM','BMS']:
@@ -453,6 +455,7 @@ class auto_timeseries:
                 self.seasonal_period = 24
             elif self.time_interval in ['T,min']:
                 self.seasonal_period = 60
+                ts_index = ts_df.index
             elif self.time_interval in ['L,ms','U,us','S']:
                 self.seasonal_period = 60
             else:
@@ -490,6 +493,12 @@ class auto_timeseries:
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
+
+                if self.time_interval in ['T,min']:
+                    ### Now you have to modify it to fit FB Prophet ####
+                    ts_time_interval = self.time_interval
+                    self.time_interval = str(ts_mins)+'min'
+
                 model_build = BuildProphet(
                     self.forecast_period, self.time_interval, self.seasonal_period,
                     self.score_type, self.verbose, self.conf_int, self.holidays, self.growth,
@@ -517,6 +526,9 @@ class auto_timeseries:
             self.ml_dict[name][self.score_type] = score_val
             self.ml_dict[name]['model_build'] = model_build
 
+        if self.time_interval in ['T,min']:
+            ### put the time interval back in shape ###
+            self.time_interval = ts_time_interval
 
         # if self.__any_contained_in_list(what_list=['ARIMA', 'stats', 'best'], in_list=self.model_type):
         #     ################### Let's build an ARIMA Model and add results #################
@@ -1040,7 +1052,7 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.45'
+version_number = '0.0.46'
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
         time_interval='M', non_seasonal_pdq=None, seasonality=False,

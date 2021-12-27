@@ -109,7 +109,7 @@ def change_to_datetime_index(dft, ts_column):
                     else:
                         ts_index = pd.to_datetime(dft.pop(ts_column))
                     dft.index = ts_index
-                elif type(str_first_value) == pd.Timestamp:
+                elif type(str_first_value) == pd.Timestamp or type(str_first_value) == np.datetime64:
                     ### if it is a datetime column, then set it as index
                     ### if it a datetime index, then just set the index as is 
                     ts_index = dft.pop(ts_column)
