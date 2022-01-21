@@ -202,8 +202,8 @@ def pretty_print_table(dfo):
     print(pt)
 
 import copy
-def test_stationarity(timeseries, maxlag=31, regression='c', autolag='BIC',
-                      window=None, plot=False, verbose=False):
+def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
+                      window=None, plot=False, verbose=False, var_only=False):
     """
     Check unit root stationarity of a time series array or an entire dataframe.
     Note that you must send in a dataframe as df.values.ravel() - otherwise ERROR.
@@ -214,17 +214,17 @@ def test_stationarity(timeseries, maxlag=31, regression='c', autolag='BIC',
     Function: http://statsmodels.sourceforge.net/devel/generated/statsmodels.tsa.stattools.adfuller.html
     window argument is only required for plotting rolling functions. Default=4.
     """
-    timeseries = copy.deepcopy(timeseries)
-    if len(timeseries) <= int(1.5*maxlag):
+    time_df = copy.deepcopy(time_df)
+    if len(time_df) <= int(1.5*maxlag):
         maxlag = 5  ## set it to a low number
     # set defaults (from function page)
-    if type(timeseries) == pd.DataFrame:
-        print('modifying time series dataframe into an array to test')
-        timeseries = timeseries.values.ravel()
+    if type(time_df) == pd.DataFrame:
+        #print('modifying time series dataframe into an array to test')
+        timeseries = time_df.values.ravel()
     if regression is None:
         regression = 'c'
     if verbose:
-        print('Running Augmented Dickey-Fuller test with paramters:')
+        print('\nRunning Augmented Dickey-Fuller test with paramters:')
         print('    maxlag: {}'.format(maxlag),'regression: {}'.format(regression),'autolag: {}'.format(autolag))
     alpha = 0.05
     if plot:
@@ -245,8 +245,38 @@ def test_stationarity(timeseries, maxlag=31, regression='c', autolag='BIC',
             print('Data must have date-time as index to plot!')
             return
     # Perform Augmented Dickey-Fuller test:
-    try:
+    if var_only:
+        ### In VAR models, check all_vars for stationarity
+        ### if it is 1, then all vars are stationary. If not difference it once and try again!
         ### Use Statsmodels for tests ###########
+        diff_limit = 0
+        for i in range(3):
+            stationary_test = check_each_var_for_stationarity(time_df, autolag, verbose)
+            if stationary_test:
+                if i == 0:
+                    print('Data is already stationary')
+                    diff_limit = 0
+                    break
+                elif i == 1:
+                    print('Data is stationary after one differencing')
+                    diff_limit = 1
+                    break
+                elif i == 2:
+                    diff_limit = 2
+                    print('Data is stationary after two differencing')
+                    break
+            else:
+                if i == 2:
+                    print('Alert! Data is not stationary even after two differencing. Continuing...')
+                    diff_limit = 0
+                    break
+                else:
+                    time_df = time_df.diff(1).dropna()
+                    continue
+        return diff_limit
+    else:
+        ### In non-VAR models you need to test only the target variable for stationarity ##
+        timeseries = copy.deepcopy(time_df)
         dftest = smt.adfuller(timeseries, maxlag=maxlag, regression=regression, autolag=autolag)
         dfoutput = pd.Series(dftest[0:4], index=['Test Statistic',
                                                  'p-value',
@@ -281,7 +311,39 @@ def test_stationarity(timeseries, maxlag=31, regression='c', autolag='BIC',
         else:
             print(' this series is stationary')
             return True
-    except:
-        print('Error: Stationary test failed. Data must be np.array. Check your input and try stationary test again')
-        return
 ################################################################################
+def adjust(val, length= 6): 
+    return str(val).ljust(length)
+def check_each_var_for_stationarity(time_df, autolag, verbose=0):
+    alpha = 0.05
+    all_vars = 1
+    copy_cols = time_df.columns.tolist()
+    for each_var in copy_cols:
+        timeseries = time_df[each_var].values
+        dftest = smt.adfuller(timeseries, autolag=autolag)
+        if verbose >= 2:
+            ############################ Print Summary #####################
+            output = {'test_statistic':round(dftest[0], 4), 'pvalue':round(dftest[1], 4), 'n_lags':round(dftest[2], 4), 'n_obs':dftest[3]}
+            p_value = output['pvalue'] 
+            print(f'    Augmented Dickey-Fuller Test on "{each_var}"', "\n   ", '-'*47)
+            print(f' Null Hypothesis: Data has unit root. Non-Stationary.')
+            print(f' Significance Level    = {alpha}')
+            print(f' Test Statistic        = {output["test_statistic"]}')
+            print(f' No. Lags Chosen       = {output["n_lags"]}')
+
+            for key,val in dftest[4].items():
+                print(f' Critical value {adjust(key)} = {round(val, 3)}')
+
+            if p_value <= alpha:
+                print(f" => P-Value = {p_value}. Rejecting Null Hypothesis.")
+                print(f" => Series is Stationary.")
+            else:
+                print(f" => P-Value = {p_value}. Weak evidence to reject the Null Hypothesis.")
+                print(f" => Series is Non-Stationary.")
+            ####################################################################
+        if dftest[1] < alpha:
+            all_vars = 1*all_vars
+        else:
+            all_vars = 0*all_vars
+    return all_vars
+##################################################################################

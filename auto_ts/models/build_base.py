@@ -15,6 +15,7 @@ class BuildBase(ABC):
         self.model = None
         self.original_target_col: str = ""
         self.original_preds: List[str] = []
+        self.strf_time_format: str = ""
 
 
     @abstractmethod

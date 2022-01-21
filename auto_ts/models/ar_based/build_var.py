@@ -89,7 +89,7 @@ class BuildVAR(BuildBase):
         norm_rmse_folds2 = []
 
         ### Creating a new way to skip cross validation when trying to run auto-ts multiple times. ###
-        if cv == 0:
+        if not cv:
             cv_in = 0
         else:
             cv_in = copy.deepcopy(cv)
@@ -220,7 +220,7 @@ class BuildVAR(BuildBase):
         ### make sure that is the case before doing this program ####################
         i = 1
         results_dict = {}
-
+        
         for d_val in range(1, dmax):
             # Takes the target column and one other endogenous column at a time
             # and makes a prediction based on that. Then selects the best
@@ -265,6 +265,7 @@ class BuildVAR(BuildBase):
         self.best_p = int(best_pdq.split(' ')[0])
         self.best_d = int(best_pdq.split(' ')[1])
         self.best_q = int(best_pdq.split(' ')[2])
+        
         print('Best variable selected for VAR: %s' % data.columns.tolist()[self.best_d])
 
     def refit(self, ts_df: pd.DataFrame) -> object:

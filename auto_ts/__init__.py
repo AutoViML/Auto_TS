@@ -61,6 +61,7 @@ class auto_timeseries:
         model_type: Union[str, List] = "stats",
         verbose: int = 0,
         dask_xgboost_flag: int = 0,
+        lag: int = 3,
         *args,
         **kwargs
     ):
@@ -147,6 +148,10 @@ class auto_timeseries:
             ask it to load it into a dask dataframe with value set to 1.
         :type: dask_xgboost_flag Optional [int]
 
+        :param lag Indicates the number of lags to include in ML models (Default = 2)
+        :type verbose int
+
+
         ##################################################################################################
         AUTO_TIMESERIES IS A VERY COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES 
         MANY TASKS INVOLVED AT A FAST PACE, IT ASSUMES INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
@@ -171,6 +176,8 @@ class auto_timeseries:
         self.allowed_models = ['best', 'prophet', 'stats', 'ml', 'arima','ARIMA','Prophet','SARIMAX', 'VAR', 'ML']
         self.dask_xgboost_flag = dask_xgboost_flag
         self.sep = ','
+        self.strf_time_format = ''
+        self.lag = lag
 
         # new function.
         if args:
@@ -234,15 +241,11 @@ class auto_timeseries:
         start = time()
         print("Start of Fit.....")
 
-        ### first test the data for Stationary-ness #############
-        if self.verbose >= 1:
-            test_stationarity(traindata[target].values, plot=False, verbose=True)
-
         ##### Best hyper-parameters in statsmodels chosen using the best aic, bic or whatever. Select here.
         stats_scoring = 'aic'
 
         ### If run_prophet is set to True, then only 1 model will be run and that is FB Prophet ##
-        lag = copy.deepcopy(self.forecast_period)-1
+        lag = self.lag
 
         # if type(self.non_seasonal_pdq) == tuple:
         if isinstance(self.non_seasonal_pdq, tuple):
@@ -269,11 +272,18 @@ class auto_timeseries:
         ### Now you need to save the time series column
         self.ts_column = ts_column
 
-        # Check 'target' type
+        # Check 'target' type #### remember that ML can now handle multi-output targets!
         if isinstance(target, list):
+            targets = copy.deepcopy(target)
+            if len(target) == 1:
+                print('Single label model...Hence taking %s as target.' %target[0])
+            else:
+                print('    Auto_TS Machine Learning models can handle multi-label targets = %s' %targets)
+                print('        However, ARIMA, VAR and FB Prophet cannot handle Multi-Label. Hence taking first column = %s as target.' %target)
             target = target[0]
-            print('    Auto_TS cannot handle Multi-Label targets. Taking first column in target list as Target = %s' %target)
         else:
+            ### if it is a string, turn it into a list ###########
+            targets = [target]
             print('    Target variable given as = %s' %target)
 
         print("Start of loading of data.....")
@@ -286,12 +296,12 @@ class auto_timeseries:
             if traindata != '':
                 try:
                     if self.dask_xgboost_flag:
-                        dask_df, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                        dask_df, ts_df, str_format = load_ts_data(traindata, self.ts_column, sep, targets, self.dask_xgboost_flag)
                     else:
-                        _, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                        _, ts_df, str_format = load_ts_data(traindata, self.ts_column, sep, targets, self.dask_xgboost_flag)
                     if isinstance(ts_df, str):
-                        print("""Time Series column '%s' could not be converted to a Pandas date time column.
-                            Please convert your ts_column into a pandas date-time and try again""" %self.ts_column)
+                        print("""Error: Time Series column '%s' could not be converted to a Pandas date time column.
+                            Please convert your ts_column into a pandas date-time column and try again""" %self.ts_column)
                         return None
                     else:
                         if type(ts_df) == dask.dataframe.core.DataFrame:
@@ -303,12 +313,11 @@ class auto_timeseries:
                     print('File could not be loaded. Check the path or filename and try again')
                     return None
         elif isinstance(traindata, pd.DataFrame):
-            print('Input is data frame. Performing Time Series Analysis')
-            print(f"ts_column: {self.ts_column} sep: {sep} target: {target}")
+            print(f"    Inputs: ts_column = {self.ts_column}, sep = {sep}, target = {targets}")
             if self.dask_xgboost_flag:
-                dask_df, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                dask_df, ts_df, str_format = load_ts_data(traindata, self.ts_column, sep, targets, self.dask_xgboost_flag)
             else:
-                _, ts_df = load_ts_data(traindata, self.ts_column, sep, target, self.dask_xgboost_flag)
+                _, ts_df, str_format = load_ts_data(traindata, self.ts_column, sep, targets, self.dask_xgboost_flag)
             if isinstance(ts_df, str):
                 print("""Time Series column '%s' could not be converted to a Pandas date time column.
                     Please convert your input into a date-time column  and try again""" %self.ts_column)
@@ -316,7 +325,34 @@ class auto_timeseries:
         else:
             print('File name is an empty string. Please check your input and try again')
             return None
+        
+        print('    train data shape = %s' %(ts_df.shape,))
+        
+        ### save the str_format of date_time for testing later ########
+        self.strf_time_format = str_format
 
+        if str_format:
+            print('    detected strf_time_format as %s in train data. You can change it in setup if this is incorrect.' %str_format)
+        else:
+            print('Alert: Could not detect strf_time_format of %s. Provide strf_time format during "setup" for better results.' %self.ts_column)
+        
+        ### first test the data for Stationary-ness #############
+        if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
+            ### If it is VAR, you must test all vars equally for stationarity and convert to differencing
+            diff_limit = test_stationarity(ts_df, plot=False, verbose=True, var_only=True)
+            if diff_limit:
+                print('There is %s differencing needed in this datasets for VAR model' %diff_limit)
+                for i in range(1, diff_limit):
+                    ts_df = ts_df.diff().dropna()
+            else:
+                print('There is no differencing needed in this datasets for VAR model')
+        else:
+            ### If it is not VAR, you need to test only target var for stationarity!
+            diff_limit = test_stationarity(ts_df[[target]], plot=False, verbose=True, var_only=False)
+            if diff_limit:
+                print('There is some differencing needed in this datasets for stat models')
+            else:
+                print('There is no differencing needed in this datasets for stat models')
 
         if ts_df.shape[1] == 1:
             ### If there is only one column, you assume that to be the target column ####
@@ -326,8 +362,12 @@ class auto_timeseries:
         preds = [x for x in list(ts_df) if x not in [self.ts_column, target]]
         
         if self.verbose >= 1:
-            time_series_plot(ts_df[target], lags=31, title='Original Time Series',
+            if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
+                time_series_plot(ts_df[target], lags=31, title='Original Time Series after %s differencing' %diff_limit,
                     chart_type='line', chart_freq=self.time_interval)
+            else:
+                time_series_plot(ts_df[target], lags=31, title='Original Time Series',
+                        chart_type='line', chart_freq=self.time_interval)
         else:
             print('No time series plot since verbose = 0. Continuing')
         ##################################################################################################
@@ -692,20 +732,21 @@ class auto_timeseries:
             forecasts = None
 
             if len(preds) == 0:
-                print(colorful.BOLD + f'\nCreating lag={self.seasonal_period} variable using target for Machine Learning model...' + colorful.END)
                 ### Set the lag to be 1 since we don't need too many lagged variables for univariate case
-                self.lags = self.seasonal_period
-                lag = self.seasonal_period
+                self.lags = self.lag
+                lag = self.lag
             else:
                 print(colorful.BOLD + '\nRunning Machine Learning Models...' + colorful.END)
-                #### Do not create excess lagged variables for ML model ##########
-                if lag <= 4:
-                    lag = 4 ### set the minimum lags to be at least 4 for ML models
+                #### Do not create excessive lagged variables for ML models. They make it too slow ##########
+                if lag <= 2:
+                    lag = 2 ### set the minimum lags to be at least 2 for ML models
                 elif lag >= 10:
                     lag = 10 ### set the maximum lags to be not more than 10 for ML models
-                print('    Shifting %d predictors by lag=%d to align prior predictor with current target...'
-                            % (len(preds), lag))
+                self.lags = lag
             ####### Now make sure that there is only as few lags as needed ######
+            print(colorful.BOLD + f'\nCreating {self.lag-1} lagged variables for Machine Learning model...' + colorful.END)
+            print('    You have set lag = %d in auto_timeseries setup to feed prior targets. You cannot set lags > 10 ...'
+                            % (lag,))
 
             model_build = BuildML(
                 scoring=self.score_type,
@@ -720,7 +761,7 @@ class auto_timeseries:
                     ### We must use dask_df to build a model #####
                     model, forecasts, rmse, norm_rmse = model_build.fit(
                         ts_df=dask_df,
-                        target_col=target,
+                        target_col=targets,
                         ts_column = self.ts_column,
                         cv = cv,
                         lags=lag
@@ -729,7 +770,7 @@ class auto_timeseries:
                     ### We must use pandas ts_df to build a model #####
                     model, forecasts, rmse, norm_rmse = model_build.fit(
                         ts_df=ts_df,
-                        target_col=target,
+                        target_col=targets,
                         ts_column = self.ts_column,
                         cv = cv,
                         lags=lag
@@ -871,7 +912,7 @@ class auto_timeseries:
             # During training, we internally converted a column datetime index to the dataframe date time index
             # We need to do the same while predicing for consistence
             if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
-                print('Predicting using test dataframe as input for ML model')
+                print('Predicting using test dataframe shape = %s for ML model' %(testdata.shape,))
             else:
                 print('Predicting using test dataframe as input for %s model' %self.get_best_model_name())
         elif type(testdata) == dask.dataframe.core.DataFrame:

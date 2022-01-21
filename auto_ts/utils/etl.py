@@ -6,7 +6,6 @@ import pdb
 from sklearn.model_selection import TimeSeriesSplit  # type: ignore
 import dask
 import dask.dataframe as dd
-from pandas.api.types import is_datetime64_any_dtype as is_datetime
 
 ##### This function loads a time series data and sets the index as a time series
 def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
@@ -27,9 +26,8 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
         dft: dask DataFrame
         filename: pandas DataFrame
     """
-    
     if isinstance(filename, str):
-        filename = pd.read_csv(filename, sep=sep, index_col=ts_column, parse_dates=True)
+        filename = pd.read_csv(filename, sep=sep, parse_dates=[ts_column])
     ### If filename is not a string, it must be a dataframe and can be loaded
     if dask_xgboost_flag:
         if type(filename) == dask.dataframe.core.DataFrame:
@@ -50,10 +48,10 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
         ### if dask exists, you need to change its datetime index also ##
         dft, _ = change_to_datetime_index(dft, ts_column)
     ### you have to change the pandas df also to datetime index ###
-    filename, _ = change_to_datetime_index(filename, ts_column)    
+    filename, str_format = change_to_datetime_index(filename, ts_column)    
     #preds = [x for x in list(dft) if x not in [target]]
     #dft = dft[[target]+preds]
-    return dft, filename
+    return dft, filename, str_format
 ####################################################################################################################
 def load_test_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
     """
@@ -171,27 +169,17 @@ def change_to_datetime_index(dft, ts_column):
         return
     return dft, str_format
 ############################################################################################################
-def change_to_datetime_index_test(testdata, ts_column):
+def change_to_datetime_index_test(testdata, ts_column, str_format=''):
     testdata = copy.deepcopy(testdata)
-    str_format = ''
-    ##### This is where we change the time index of test data #############
-    
+    if str_format:
+        print('Date_time string format given as %s' %str_format)
+    else:
+        print('Alert: No strf_time_format given for %s. Provide strf_time format during "setup" for better results.' %ts_column)
+    ##### This is where we change the time index of test data #############    
     try:
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
             if ts_column in testdata.columns:
-                str_first_value = testdata[ts_column].values[0]
-                str_values = testdata[ts_column].values[:12]
-                if type(str_first_value) == str:
-                    ### if ts_column is an object column, save its string format in date-time format
-                    str_format = infer_date_time_format(str_values)
-                    if str_format:
-                        str_format = str_format[0]
-                    else:
-                        str_format = ''
-                else:
-                    ### If ts_column is not a string column, then set its format to an empty string ##
-                    str_format = ''
-                ###### If the str_format is detected, set the index as time series index ##
+                ###### If the str_format is there, set the column as time series index ##
                 ts_index = testdata.pop(ts_column)
                 if str_format:
                     ts_index = pd.to_datetime(ts_index, format=str_format)
@@ -200,18 +188,6 @@ def change_to_datetime_index_test(testdata, ts_column):
                 testdata.index = ts_index
             elif ts_column in testdata.index.name:
                 ts_index = testdata.index
-                str_first_value = ts_index[0]
-                str_values = ts_index[:12]
-                if type(str_first_value) == str:
-                    ### if index is in string format, you must infer its datetime string format and then set datetime index
-                    str_format = infer_date_time_format(str_values)
-                    if str_format:
-                        str_format = str_format[0]
-                    else:
-                        str_format = ''
-                else:
-                    ### if index is in string format, you must infer its datetime string format and then set datetime index
-                    str_format = ''
                 ### now set the index to datetime format
                 if str_format:
                     ts_index = pd.to_datetime(ts_index, format=str_format)
@@ -221,18 +197,6 @@ def change_to_datetime_index_test(testdata, ts_column):
         elif type(testdata) == dask.dataframe.core.DataFrame:
             #### the below tests work for a dask dataframe as well ##
             if ts_column in testdata.columns:
-                str_first_value = testdata[ts_column].compute().values[0]
-                str_values = testdata[ts_column].compute().values[:12]
-                if type(str_first_value) == str:
-                    ### if ts_column is an object column, save its string format in date-time format
-                    str_format = infer_date_time_format(str_values)
-                    if str_format:
-                        str_format = str_format[0]
-                    else:
-                        str_format = ''
-                else:
-                    ### If ts_column is not a string column, then set its format to an empty string ##
-                    str_format = ''
                 ####### Now set the index to datetime index and drop the ts_colum #########
                 testdata.index = dd.to_datetime(testdata[ts_column].compute())
                 testdata = testdata.drop(ts_column, axis=1)
@@ -240,22 +204,10 @@ def change_to_datetime_index_test(testdata, ts_column):
                 #### the above test works for a dask dataframe as well ##
                 ts_index = testdata.index
                 if type(testdata.index.compute().values[0]) in [np.datetime64]:
-                    str_values = testdata.index.compute().values
-                    str_values_dt = pd.to_datetime(str_values)
-                    str_values = str_values_dt.astype(str)
-                    str_first_value = str_values[0]
-                    ## there is no need to change its index if the index is already datetime index ##
-                    str_format = infer_date_time_format(str_values[:12])
+                    ## it is already in date-time index format - do nothing
+                    pass
                 else:
-                    str_first_value = ts_index[0]
-                    str_values = ts_index.astype(str)
                     testdata.index = pd.to_datetime(str_values, format=str_format)
-                    ### if index is in string format, you must infer its datetime string format and then set datetime index
-                    str_format = infer_date_time_format(str_values[:12])
-                if str_format:
-                    str_format = str_format[0]
-                else:
-                    str_format = ''
             else:
                 print("Error: Cannot detect %s either in columns or index. Please check input and try again." %ts_column)
         else:
@@ -297,7 +249,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
 
     rtype: pd.DataFrame, str, List[str]
     """
-    
+    target = copy.deepcopy(target)
     df = copy.deepcopy(df)
     int_vars  = df.select_dtypes(include='integer').columns.tolist()
     # Notice that we will create a sequence of columns from name vars with suffix (t-n,... t-1), etc.
@@ -328,10 +280,13 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
     df = df.dropna()
 
     ### Make sure that whatever vars came in as integers return back as integers!
-    df[int_changes] = df[int_changes].astype(np.int64)
-
+    if int_changes:
+        ### only do this if there are some changes to implement ###
+        df[int_changes] = df[int_changes].astype(np.int64)
+    
     #	put it all together
-    df = df.rename(columns={target+'(t)':target})
+    for each_target in target:
+        df = df.rename(columns={each_target+'(t)':each_target})
     if dropT:
         ### If dropT is true, all the "t" series of the target column (in case it is in the namevars)
         ### will be removed if you don't want the target to learn from its "t" values.
@@ -341,7 +296,7 @@ def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, targe
         except:
             pass
         df.drop(drops, axis=1, inplace=True)
-    preds = [x for x in list(df) if x not in [target]]
+    preds = [x for x in list(df) if x not in target]
     
     return df, target, preds
 ##############################################################################################
@@ -416,7 +371,8 @@ def is_date_and_time(txt):
  '%d/%b/%Y %T %z', '%a, %d/%b/%y %T %z', '%d-%b-%Y %T %z', '%d-%b-%y %T %z', '%m-%d-%Y %I:%M %p',
  '%m-%d-%y %I:%M %p', '%m-%d-%Y %I:%M:%S %p', '%d-%m-%Y %H:%M:%S %p', '%m-%d-%y %H:%M:%S %p',
  '%d-%b-%Y %H:%M:%S %p', '%d-%m-%y %H:%M:%S %p', '%d-%b-%y %I:%M:%S %p', '%d-%b-%y %I:%M %p',
- '%d-%b-%Y %I:%M %p', '%d-%m-%Y %H:%M %p', '%d-%m-%y %H:%M %p')
+ '%d-%b-%Y %I:%M %p', '%d-%m-%Y %H:%M %p', '%d-%m-%y %H:%M %p', '%d/%m/%Y %H:%M:%p', '%d/%m/%Y %H:%M:%S',
+ '%Y-%m-%d %H:%M:%S')
     parsed=None
     for fmt in fmts:
         try:
@@ -452,6 +408,7 @@ def infer_date_time_format(list_dates):
         # January1990 
         # YOU CAN ADD MORE FORMATS above IN THE "fmts" section.
     """
+    
     date_time_fmts = []
     try: 
         for each_datetime in list_dates:

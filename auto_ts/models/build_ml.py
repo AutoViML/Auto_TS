@@ -33,21 +33,25 @@ import dask_xgboost
 import xgboost as xgb
 from dask.distributed import Client, progress
 import psutil
-
+import json
 
 ################################################################################################
 from .build_base import BuildBase
+from .ml_models import complex_XGBoost_model, data_transform, analyze_problem_type
 
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised, print_ts_model_stats
 from ..utils.etl import change_to_datetime_index, change_to_datetime_index_test, reduce_mem_usage, load_test_data
+
 #################################################################################################
 import pdb
 import time
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 class BuildML(BuildBase):
     def __init__(self, scoring: str = '', forecast_period: int = 2, ts_column: str = '', 
-                        time_interval: str = '', sep: str = ',', dask_xgboost_flag: int = 0, verbose: int = 0):
+                        time_interval: str = '', sep: str = ',', dask_xgboost_flag: int = 0,
+                        strf_time_format: str = '', verbose: int = 0):
         """
         Automatically build a ML Model
         """
@@ -65,9 +69,11 @@ class BuildML(BuildBase):
         self.time_interval = time_interval
         self.sep = sep
         self.dask_xgboost_flag = dask_xgboost_flag    
-
+        self.problem_type: str = "Regression"
+        self.multilabel: bool = False
         self.transformed_target: str = ""
         self.transformed_preds: List[str] = []
+        self.scaler = StandardScaler()
 
         # This saves the last `self.lags` of the original train dataframe
         # This is needed during predictions to transform the X_test
@@ -81,25 +87,29 @@ class BuildML(BuildBase):
         Build a Time Series Model using Machine Learning models.
         Quickly builds and runs multiple models for a clean data set (only numerics).
         """
+        
         ts_df = copy.deepcopy(ts_df)
         self.original_target_col = target_col
         self.lags = lags
-        self.original_preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+        self.original_preds = [x for x in list(ts_df) if x not in self.original_target_col]
         self.ts_column = ts_column
         
         if len(self.original_preds) > 0:
+            #### If there are more variables other than target, then that makes it a multivariate problem ##########
             self.univariate = False
-            if type(ts_df) == dask.dataframe.core.DataFrame:
+            if type(ts_df) == dd.core.DataFrame or type(ts_df) == dd.core.Series:
+                #### This is for dask dataframes #############################
                 continuous_vars = ts_df.select_dtypes('number').columns.tolist()
-                numvars = [x for x in continuous_vars if x not in [target_col]]
-                preds = [x for x in list(ts_df) if x not in [self.original_target_col]]
+                numvars = [x for x in continuous_vars if x not in target_col]
+                preds = [x for x in list(ts_df) if x not in self.original_target_col]
                 catvars = ts_df.select_dtypes('object').columns.tolist() + ts_df.select_dtypes('category').columns.tolist()
                 if len(catvars) > 0:
                     print('    Warning: Dropping Categorical variables %s. You can Label Encode them and try ML modeling again...' %catvars)
             else:
+                ########  This is for pandas dataframes  ##########################################
                 features_dict = classify_features(ts_df, self.original_target_col)
                 cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
-                preds = [x for x in list(ts_df) if x not in [self.original_target_col]+cols_to_remove]
+                preds = [x for x in list(ts_df) if x not in self.original_target_col+cols_to_remove]
                 catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
                 numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
             if len(catvars) > 0:
@@ -109,25 +119,27 @@ class BuildML(BuildBase):
             if len(numvars) > 30:
                 print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
         else:
+            #### if there is only one variable and that is the target then it is a univariate problem ##########
             self.univariate = True
             preds = self.original_preds[:]
 
-        ts_df = ts_df[preds+[self.original_target_col]]
+        ts_df = ts_df[preds+self.original_target_col]
+        self.problem_type, self.multilabel = analyze_problem_type(ts_df, self.original_target_col, verbose=1)
 
         # Order data
         ts_df = self.order_df(ts_df)
-
-        if type(ts_df) == dask.dataframe.core.DataFrame:
+        
+        if type(ts_df) == dd.core.DataFrame or type(ts_df) == dd.core.Series:
             num_obs = ts_df.shape[0].compute()
         else:
             num_obs = ts_df.shape[0]
-
+        
         #self.train_df = ts_df  # you don't want to store the entire train_df in model
         # Convert to supervised learning problem
         dfxs, self.transformed_target, self.transformed_preds = self.df_to_supervised(
                 ts_df=ts_df, drop_zero_var = True)
 
-
+        
         print("\nFitting ML model")
         print('    %d variables used in training ML model = %s' %(
                                 len(self.transformed_preds),self.transformed_preds))
@@ -169,7 +181,7 @@ class BuildML(BuildBase):
 
         X_train = dfxs[self.transformed_preds]
         y_train = dfxs[self.transformed_target]
-        dft = dfxs[self.transformed_preds+[self.transformed_target]]
+        dft = dfxs[self.transformed_preds+self.transformed_target]
 
         # Decide NUM_ESTIMATORS for trees
         if len(X_train) <= 100000 or dft.shape[1] < 50:
@@ -186,8 +198,9 @@ class BuildML(BuildBase):
         ###########################################################################################
         #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
         max_trainsize = len(dft) - self.forecast_period
+        test_size = max(self.forecast_period, int(0.1*dft.shape[0]))
         try:
-            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=self.forecast_period) ### this works only sklearn v 0.0.24]
+            cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=test_size) ### this works only sklearn v 0.0.24]
         except:
             cv = TimeSeriesSplit(n_splits=NFOLDS, max_train_size = max_trainsize)
 
@@ -197,7 +210,7 @@ class BuildML(BuildBase):
         norm_rmse_folds = []
         y_trues = copy.deepcopy(y_train)
         concatenated = pd.DataFrame()
-        extra_concatenated = pd.DataFrame()
+        extra_concatenated = []
         bst_models = []
         important_features = []
         if len(y_trues) <= 1000:
@@ -211,8 +224,8 @@ class BuildML(BuildBase):
         #########################################################################################################
         ################    M  O  D  E  L    H Y P E R   P A R A M    T U N I N G    T A K E S   P L A C E   ####
         ######################################################################################################### 
-        if type(dft) == dask.dataframe.core.DataFrame:
-            #### We use the gridsearchCV from dask_ml here  ###
+        if type(dft) == dd.core.DataFrame or type(dft) == dd.core.Series:
+            #################  This is for DASK DATAFRAMES.  We use DASK_XGBOOST here  ###
             from dask_ml.model_selection import GridSearchCV
             if  cv_in == 0:
                 print('Skipping cross validation steps since cross_validation = %s' %cv_in)
@@ -238,7 +251,6 @@ class BuildML(BuildBase):
                     print('    test_size = %s' %test_size)
                     X_train_fold, X_test_fold, y_train_fold, y_test_fold = train_test_split(X_train, y_train,
                                                  test_size=test_size, random_state=99)
-
                     ##########   Training XGBoost model using dask_xgboost #########################
                     ### the dtrain syntax can only be used xgboost 1.50 or greater. Dont use it until then.
                     #dtrain = xgb.dask.DaskDMatrix(client, X_train, y_train, enable_categorical=True)
@@ -266,88 +278,53 @@ class BuildML(BuildBase):
                     rmse_folds.append(rmse_fold)
                     norm_rmse_folds.append(rmse_norm)
         else:
-            #### If cross validation is zero, then it means cross validation needs to be skipped
-            if  cv_in == 0:
-                print('Skipping cross validation steps since cross_validation = %s' %cv_in)
-                try:
-                    model_name = 'XGBoost'
-                    model = XGBRegressor(n_estimators=400, verbosity=0, random_state=0)
-                except:
-                    model_name = 'Random Forest'
-                    model = RandomForestRegressor(n_estimators=200, random_state=99)
-            else:
-                for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-                    dftx = dft.head(len(train_index)+len(test_index))
-                    train_fold = dftx.head(len(train_index)) ## now train will be the first segment of dftx
-                    test_fold = dftx.tail(len(test_index)) ### now test will be right after train in dftx
+            ####################### This is for Pandas Dataframes only ##########
+            X_train, y_train = dft[self.transformed_preds], dft[self.transformed_target]
+            ######  This is for regular pandas dataframes only  ##############
+            nums = int(0.9*dft.shape[0])
+            if nums <= 1:
+                nums = 2
+            ############################################
+            #### Fit the model with train_fold data ####
+            ############################################
 
-                    horizon = len(test_fold)
+            X_train_fold, y_train_fold = X_train[:nums], y_train[:nums]
+            X_test_fold, y_test_fold = X_train[nums:], y_train[nums:]
+            print('train shape %s, test shape = %s' %(X_train_fold.shape, X_test_fold.shape))
+            
+            model_name = 'XGBoost'
 
-                    print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
+            outputs = complex_XGBoost_model(x_train=X_train_fold, y_train=y_train_fold,
+                        x_test=X_test_fold, log_y=False, GPU_flag=False,
+                        scaler='', enc_method='', n_splits=cv_in, verbose=0)
+            print('XGBoost model tuning completed')
 
-                    #########################################
-                    #### Define the model with fold data ####
-                    #########################################
-                    ## If XGBoost is present in machine, use it. Otherwise use RandomForestRegressor
-                    try:
-                        model_name = 'XGBoost'
-                        model = XGBRegressor(n_estimators=400, verbosity=0, random_state=0)
-                    except:
-                        model_name = 'Random Forest'
-                        model = RandomForestRegressor(n_estimators=200, random_state=99)
+            ###### always the last output is model  and the first output is predictions ######
+            model = outputs[-1]
+            y_pred = outputs[0]
+            self.scaler = outputs[1]
+            ############## Print results for each target one by one ################
+            for each_i, each_target in enumerate(self.original_target_col):
+                print('Target = %s...CV results:' %each_target)
+                concatenated = pd.DataFrame(np.c_[y_test_fold.iloc[:,each_i], y_pred[:,each_i]], columns=['actual', 'predicted'],index=y_test_fold.index)
+                rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['actual'].values, concatenated['predicted'].values,
+                                            concatenated['actual'].values)
+                rmse_folds.append(rmse_fold)
+                norm_rmse_folds.append(rmse_norm)
+                forecast_df_folds.append(y_pred)
+                extra_concatenated.append(concatenated)
 
-                    if type(dft) == dask.dataframe.core.DataFrame:
-                        nums = int(0.9*len(train_index))
-                    else:
-                        nums = int(0.9*train_fold.shape[0])
+            #for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
+                #### This is where you insert the old code if the new code doesn't work #######
+                #print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
+                #print('Cross Validation window: %d completed' %(fold_number+1,))
 
-                    if nums <= 1:
-                        nums = 2
-                    ############################################
-                    #### Fit the model with train_fold data ####
-                    ############################################
-
-                    X_train_fold, y_train_fold = train_fold[:nums][self.transformed_preds], train_fold[:nums][self.transformed_target]
-                    X_test_fold, y_test_fold = train_fold[nums:][self.transformed_preds], train_fold[nums:][self.transformed_target]
-                    if model_name == 'XGBoost':
-                        model.fit(X_train_fold, y_train_fold,
-                            eval_set=[(X_train_fold, y_train_fold), (X_test_fold, y_test_fold)],
-                            early_stopping_rounds=50,verbose=False,
-                            )
-                    else:
-                        ## This is for Random Forest regression
-                        model.fit(X_train_fold, y_train_fold)
-                    #################################################
-                    #### Predict using model with test_fold data ####
-                    #################################################
-
-                    forecast_df = model.predict(test_fold[self.transformed_preds])
-                    forecast_df_folds.append(forecast_df)
-
-                    ### Now compare the actuals with predictions ######
-                    y_pred = forecast_df[-horizon:]
-                    ### y_pred is already an array - so keep that in mind!
-
-                    concatenated = pd.DataFrame(np.c_[test_fold[self.transformed_target].values,
-                                y_pred], columns=['original', 'predicted'],index=test_fold.index)
-
-                    if fold_number == 0:
-                        extra_concatenated = copy.deepcopy(concatenated)
-                    else:
-                        extra_concatenated = extra_concatenated.append(concatenated)
-
-                    rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
-                                                concatenated['original'].values)
-
-                    print('Cross Validation window: %d completed' %(fold_number+1,))
-                    rmse_folds.append(rmse_fold)
-                    norm_rmse_folds.append(rmse_norm)
-                ######################################################
-                ### This is where you consolidate the CV results #####
-                ######################################################
+            ######################################################
+            ### This is where you consolidate the CV results #####
+            ######################################################
         #######  Now plot feature importances ##################################
         try:
-            if type(y_trues) == dask.dataframe.core.DataFrame or type(y_trues) == dask.dataframe.core.Series:
+            if type(y_trues) == dd.core.DataFrame or type(y_trues) == dd.core.Series:
                 model_name = 'dask_xgboost'
                 print('\n%s-fold final RMSE (expanding Window Cross Validation):' %cv_in)
                 rows = 1
@@ -360,15 +337,35 @@ class BuildML(BuildBase):
                 if rows == 1:
                     ax = ax.reshape(-1,1).T
                 xgb.plot_importance(bst_models[0], height=0.8, max_num_features=10, ax=ax[0][0])
-                extra_concatenated.plot(ax=ax[0][1], title='ML expanding window preds vs. actuals')
+                extra_concatenated.plot(ax=ax[0][1], title='%s expanding window preds vs. actuals' %model_name)
                 print_dynamic_rmse(extra_concatenated['original'], extra_concatenated['predicted'], 
                                 extra_concatenated['original'], True)
             else:
-                _ = plot_importance(model, height=0.9,importance_type='gain', title='%s Feature Importance by Gain' %model_name)
-                
-                cv_micro, cv_micro_pct = print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], model_name)
-
-                print('Average CV RMSE of all predictions (micro) = %0.5f' %cv_micro)
+                #####  This is for plotting pandas dataframes only ################
+                rows = len(self.original_target_col)
+                colus = 2
+                fig, ax = plt.subplots(rows, colus)
+                fig.set_size_inches(min(colus*8,20),rows*6)
+                fig.subplots_adjust(hspace=0.3) ### This controls the space betwen rows
+                fig.subplots_adjust(wspace=0.3) ### This controls the space between columns
+                counter = 0
+                if rows == 1:
+                    ax = ax.reshape(-1,1).T
+                ###### Now multi_labels have different kind of models from single labels  ################
+                if self.multilabel:
+                    ##### This is for multi_label models ###########
+                    for each_i in range(len(self.original_target_col)):
+                        _ = plot_importance(model.estimators_[each_i], height=0.9,importance_type='gain', 
+                                    title='%s Feature Importance by Gain' %self.original_target_col[each_i],
+                                    max_num_features=10, ax=ax[each_i][0])
+                        extra_concatenated[each_i].plot(ax=ax[each_i][1], title='%s expanding window preds vs. actuals' %self.original_target_col[each_i])
+                else:
+                    ##### This is for single_label models ###########
+                    for each_i in range(len(self.original_target_col)):
+                        _ = plot_importance(model, height=0.9,importance_type='gain', 
+                                    title='%s Feature Importance by Gain' %self.original_target_col[0],
+                                    max_num_features=10, ax=ax[each_i][0])
+                        extra_concatenated[each_i].plot(ax=ax[each_i][1], title='%s expanding window preds vs. actuals' %self.original_target_col[each_i])
             #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
         except:
             print('Could not plot ML results due to error. Continuing...')
@@ -380,8 +377,8 @@ class BuildML(BuildBase):
         start_time = time.time()
         # Refit Model on entire train dataset (earlier, we only trained the model on the individual splits)
         # Convert to supervised learning problem
-
-        if type(X_train) == dask.dataframe.core.DataFrame or type(X_train) == dask.dataframe.core.Series:
+        
+        if type(X_train) == dd.core.DataFrame or type(X_train) == dd.core.Series:
             ### check available memory and allocate at least 1GB of it in the Client in DASK #############################
             memory_free = str(max(1, int(psutil.virtual_memory()[0]/1e9)))+'GB'
             print('    Using Dask XGBoost algorithm with %s virtual CPUs and %s memory limit...' %(get_cpu_worker_count(), memory_free))
@@ -394,11 +391,21 @@ class BuildML(BuildBase):
             #X_train = X_train.head(len(X_train)) ## this converts it to a pandas dataframe
             self.df_train_prepend = ts_df.compute()[-self.lags:]
         else:
-            self.model = model
-            self.model.fit(X_train, y_train)
-            # Save last `self.lags` which will be used for predictions later
-            self.df_train_prepend = ts_df[-self.lags:]
-
+            if str(model).split(".")[0] == '<xgboost':
+                ### if this is a booster-type model, then you have to do this ###
+                ##### Once you get the model back since it was trained on a scaled dataset, you have to scale it again ###
+                X_train = pd.DataFrame(self.scaler.transform(X_train), columns = X_train.columns)
+                dtrain = xgb.DMatrix(X_train, label=y_train)
+                params = json.loads(model.save_config())
+                trained = xgb.train(params, dtrain, xgb_model=model)
+                self.model = trained
+            else:
+                ### if this is a regular sklearn type syntax model, then use this syntax ##
+                self.model = model
+                self.model.fit(X_train, y_train)
+                # Save last `self.lags` which will be used for predictions later
+            self.df_train_prepend = ts_df[-self.lags:]        
+        #print('After training completed. Full forecast on train again:\n%s' %self.model.predict(dtrain))
         print('    Time taken to train model (in seconds) = %0.0f' %(time.time()-start_time))
         # # This is the new method without the leakage
         # # Drop the y value
@@ -428,7 +435,7 @@ class BuildML(BuildBase):
         before transforming the original time series dataframe into a supervised
         learning problem.)
         """
-        return ts_df[[self.original_target_col] + self.original_preds]
+        return ts_df[self.original_target_col + self.original_preds]
 
 
     def df_to_supervised(
@@ -445,28 +452,29 @@ class BuildML(BuildBase):
         """
         if self.lags <= 1:
             n_in = 1
-        elif self.lags >= 4:
-            n_in = 4
+        elif self.lags >= 10:
+            n_in = 10
         else:
             n_in = 1
 
         self.lags = copy.deepcopy(n_in)
         
         dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
-            ts_df[self.original_preds+[self.original_target_col]],
-            self.original_preds+[self.original_target_col],
+            ts_df[self.original_preds+self.original_target_col],
+            self.original_preds+self.original_target_col,
             self.original_target_col,
             n_in=n_in, n_out=0, dropT=False
                             )
         
         # Append the time series features (derived from the time series index)
+
         dfxs = create_ts_features_dask(df=dfxs, tscol=self.ts_column, drop_zero_var=False, return_original=True)
         self.transformed_target = transformed_target_name
 
         # Overwrite with new ones
 
         # transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
-        transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
+        transformed_pred_names = [x for x in list(dfxs) if x not in self.transformed_target]
 
         return dfxs, transformed_target_name, transformed_pred_names
 
@@ -482,18 +490,11 @@ class BuildML(BuildBase):
         Return:
         -> Tuple[pd.DataFrame, str, List[str]]
         """
-        if self.lags <= 1:
-            n_in = 1
-        elif self.lags >= 4:
-            n_in = 4
-        else:
-            n_in = 1
-
-        self.lags = copy.deepcopy(n_in)
+        n_in = self.lags
         
         dfxs, transformed_target_name, _ = convert_timeseries_dataframe_to_supervised(
-            ts_df[self.original_preds+[self.original_target_col]],
-            self.original_preds+[self.original_target_col],
+            ts_df[self.original_preds+self.original_target_col],
+            self.original_preds+self.original_target_col,
             self.original_target_col,
             n_in=n_in, n_out=0, dropT=False
                             )
@@ -559,7 +560,7 @@ class BuildML(BuildBase):
         testdata = copy.deepcopy(testdata)
         testdata_orig = copy.deepcopy(testdata)
         self.check_model_built()
-
+        
         if testdata is None:
             print(
                 "You have not provided the exogenous variable in order to make the prediction. " +
@@ -572,15 +573,16 @@ class BuildML(BuildBase):
         else:
             testdata = load_test_data(testdata, ts_column=self.ts_column, sep=self.sep, 
                             target=self.transformed_target, dask_xgboost_flag=self.dask_xgboost_flag)
-
+        
         #######   Make sure you SAVE the original dataset's index #####
         ts_index_orig = testdata.index
         
         ##### This is where we change the ts_column into a date-time index ####
-        testdata, str_format = change_to_datetime_index_test(testdata, self.ts_column)
+        str_format = self.strf_time_format
+        testdata, str_format = change_to_datetime_index_test(testdata, self.ts_column, str_format)
 
-        # Placebholder for forecasted results
-        y_forecasted: List[float] = []
+        # Placeholder for forecasted results
+        y_forecasted = np.array([])
 
         # print (f"Columns before adding dummy: {testdata.columns}")
         
@@ -596,147 +598,57 @@ class BuildML(BuildBase):
             ts_index_shifted = ts_index_shifted.strftime(str_format)
             lags_index = lags_index.strftime(str_format)
 
-        #### lags_prepend contains the lagged dataframe (with 4 lags) ####
-        #### testdata_with_dummy contains the lagged + the test data frame ###
-        if self.univariate:
-            #### if it is univariate, you just need to combine the two empty dataframes for test
-            lags_prepend = pd.DataFrame(np.zeros(len(lags_index )), index=lags_index)
-            testdata_with_dummy = pd.DataFrame(np.zeros(len(ts_index_shifted )),index=ts_index_shifted)
-            # Adding dummy value for target.
-            testdata_with_dummy[self.original_target_col] = np.zeros((testdata_with_dummy.shape[0],1))
-            testdata_with_dummy.drop(0,axis=1,inplace=True)
-
-            # Make sure column order is correct when adding the dummy column
-            testdata_with_dummy = self.order_df(testdata_with_dummy)
-            # print (f"Columns after reordering: {testdata_with_dummy.columns}")
-
-            # Just a check to make sure user is not passing the target column to predict function.
-            if self.original_target_col in testdata_with_dummy.columns:
-                print("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
-                testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
-
-            df_prepend = self.df_train_prepend.copy(deep=True)
-            #### even the df_prepend has to be made the same index format so that it can be joined with testdata_with_dummy
-            if str_format and not type(testdata) == dd.core.DataFrame:
-                df_prepend.index = df_prepend.index.strftime(str_format)
-            df_prepend = self.order_df(df_prepend)
-
-            df_train_prepend = testdata_with_dummy.join(df_prepend,how='left', lsuffix='test').fillna(0)
-
-        else:
-            #### if it is multivariate, you need to add empty vars for lags_prepend before joining
-            testdata_with_dummy = pd.DataFrame(np.zeros(len(ts_index_shifted )),index=ts_index_shifted)
-            testdata_with_dummy[self.original_preds] = 0
-            # Just a check to make sure user is not passing the target column to predict function.
-            if self.original_target_col in testdata_with_dummy.columns:
-                print("Your testdata dataframe contains the target column as well. This will be deleted for the predictions.")
-                testdata_with_dummy.drop(self.original_target_col, axis=1, inplace=True)
-
-            if 0 in testdata_with_dummy.columns:
-                testdata_with_dummy.drop(0,axis=1, inplace=True)
-
-            time_freq = self.time_interval
-            testdata_with_dummy.index = pd.to_datetime(testdata_with_dummy.index, format=str_format)
-            testdata_with_dummy = testdata_with_dummy.resample(time_freq).sum()
-            self.df_train_prepend = self.df_train_prepend.resample(time_freq).sum()
-            testdata = testdata.resample(time_freq).sum()
-            
-            ###########  You have to do this for each predictor in dataframe - could take a lot of time ###
-            ###   Also this will work only for float and integer variables. Won't work for categorical or object cols
-            
-            copy_cols1 = self.df_train_prepend.columns.tolist()
-            df_pindex = self.df_train_prepend.index
-            copy_cols2 = testdata.columns.tolist()
-            df_tindex = testdata.index
-            ####  We need to copy all the values from testdata to dummy dataframe which has zeros currently
-            for each_col in copy_cols1:
-                ####  We need to copy all the values from self.df_train_prepend to dummy dataframe which has zeros
-                testdata_with_dummy.loc[df_pindex, each_col] = self.df_train_prepend.loc[df_pindex, each_col]
-            for each_col in copy_cols2:
-                testdata_with_dummy.loc[df_tindex, each_col] = testdata.loc[df_tindex, each_col]
-            
-            ####  We need to fill the dummy dataframe with target values from self.df_train_prepend
-            self.df_train_prepend = testdata_with_dummy.fillna(0)
+      
+        ################## This applies to both Univariate and Multivariate problems   ###############
+        ####  ##########       You need to do this one step at a time.  ##############################
+        ####  you need to iterate on the entire testdata one row at a time to make predictions     ###
+        ####  First start by adding one row from testdata to df_train_prepend to create df_pre_test ##
+        ####  Then transform df_pre_test into a supervised ML dataset, to become df_post_test      ###
+        ####  Then use xgb model to predict last row of this df_post_test. You will get one value. ###
+        ####  Add this forecast to df_pre_test in its last row's target. df_pre_test is now ready. ###
+        ####  Now begin at the top of cycle again by adding one row to df_pre_test and continue... ###  
+        ###########  Beginning of the cycle of forecasts for test data ###############################
         
-        # STEP 1:
-        # self.df_prepend has the y column as well, but testdata does not.
-        # Need to add a dummy column to testdata before appending the 2 dataframes
-        # However, Since we are going to depend on previous values of y column to make
-        # future predictions, we can not just use all zeros for the y values
-        # (especially for forrecasts beyond the 1st prediction). So we will
-        # make one prediction at a time and then use that prediction to make the next prediction.
-        # That way, we get the most accurate prediction without leakage of informaton.
+        index_name = self.df_train_prepend.index.name
+        df_pre_test = copy.deepcopy(self.df_train_prepend)
+        iter_limit = testdata.shape[0]
+        for i in range(iter_limit):
+            one_row_from_test = testdata.iloc[i,:]
+            one_row_from_test = pd.DataFrame(one_row_from_test).T
+            one_row_from_test = one_row_from_test.infer_objects()
+            df_pre_test = pd.concat([df_pre_test, one_row_from_test], axis=0)
+            df_pre_test.index.name = index_name
+            df_post_test, _, _  = self.df_to_supervised_test(ts_df=df_pre_test, drop_zero_var=False)
+            df_post_test = df_post_test.infer_objects()
 
-
-
-        # STEP 2:
-        # Make prediction for each row. Then use the prediction for the next row.
-
-        # TODO: Currently Frequency is missing in the data index (= None), so we can not shift the index
-        ## When this is fixed in the AutoML module, we can shift and get the future index
-        ## to be in a proper time series format.
-        #print("Train Prepend")
-        #print(self.df_train_prepend)
-        #index = self.df_train_prepend.index
-        #print("Index Before")
-        #print(index)
-        
-        #index = index.shift(testdata_with_dummy.shape[0])
-        #print("Index After")
-        #print(index)
-        
-        
-        #### Leave this out since we don't want to store the entire train_df in the model
-        #if type(self.train_df) == dask.dataframe.core.DataFrame:
-        #    traindf = self.train_df.head(self.forecast_period) ## convert from DASK to pandas
-        #    df_prepend = traindf[common_cols]
-        #else:
-
-        ### Make sure that the column orders are the same ####
-        #dfxs, _, _  = self.df_to_supervised(ts_df=df_prepend, drop_zero_var=False)
-        #dfxs = dfxs.tail(len(testdata_with_dummy))
-        #X_test = dfxs[self.transformed_preds]
-
-        if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
-            if self.dask_xgboost_flag:
-                memory_free = str(max(1, int(psutil.virtual_memory()[0]/1e9)))+'GB'
-                print('    Using Dask XGBoost algorithm with %s virtual CPUs and %s memory limit...' %(get_cpu_worker_count(), memory_free))
-                client = Client(n_workers=get_cpu_worker_count(), threads_per_worker=1, processes=True, silence_logs=50,
-                                memory_limit=memory_free)
-                bst = self.model
-
-
-        for i in np.arange(self.lags, self.df_train_prepend.shape[0]):
-
-            # Append the last n_lags of the data to the row of the X_exogen that is being preducted
-            # Note that some of this will come from the last few observations of the training data
-            # and the rest will come from the last few observations of the X_exogen data.
-            # print(f"Prepend shape before adding test: {df_prepend.shape}")
-            
-            df_prepend = self.df_train_prepend.iloc[:i+1,:]
-
-            # print(f"Prepend shape after adding test: {df_prepend.shape}")
-            # print("Prepend Dataframe")
-            # print(df_prepend)
-
-            # Convert the appended dataframe to supervised learning problem
-            
-            dfxs, _, _  = self.df_to_supervised_test(ts_df=df_prepend, drop_zero_var=False)
-
-            # Select only the predictors (transformed) from here
-            X_test = dfxs[self.transformed_preds]
-            #print("X_test")
-            #print(X_test)
-            
-            # Forecast
+            if len(left_subtract(df_post_test.columns.tolist(),self.original_target_col) ) != len(df_post_test.columns.tolist()):
+                one_row_to_predict = df_post_test.drop(self.original_target_col, axis=1)
+                if one_row_to_predict.shape[0] > 1:
+                    ### If you have only one row, there is no need to select the last row ##
+                    one_row_to_predict = one_row_to_predict.iloc[-1,:]
+            else:
+                one_row_to_predict = df_post_test.iloc[-1,:][self.transformed_preds]
+           
+            if one_row_to_predict.shape[0] > 1 :
+                X_test = pd.DataFrame(one_row_to_predict).T
+            else:
+                 #### If there is only one row to predict => just leave it as it is ######
+                X_test = copy.deepcopy(one_row_to_predict)
+            X_test = X_test.infer_objects()
             
             if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
                 if self.dask_xgboost_flag:
                     Xtest = dd.from_pandas(X_test, npartitions=1)
                     y_forecasted_temp = dask_xgboost.predict(client, bst, Xtest).compute()
                 else:
+                    if str(self.model).split(".")[0] == '<xgboost':
+                        X_test = pd.DataFrame(self.scaler.transform(X_test), columns = X_test.columns)
+                        X_test = xgb.DMatrix(X_test)
                     y_forecasted_temp = self.model.predict(X_test)  # Numpy array
-            elif type(testdata) == dd.core.DataFrame: 
+                if len(self.original_target_col) == 1:
+                    ### you need to reshape it so that later functions can work #####
+                    y_forecasted_temp = y_forecasted_temp.reshape(-1,1)
+            elif type(testdata) == dd.core.DataFrame or type(testdata) == dd.core.Series: 
                 if not self.dask_xgboost_flag:
                     print('    Error: You cannot make predictions on test data which is a dask df if the model was trained on a pandas df. Change test to pandas.')
                     return
@@ -746,36 +658,41 @@ class BuildML(BuildBase):
                 client = Client(n_workers=get_cpu_worker_count(), threads_per_worker=1, processes=True, silence_logs=50,
                                 memory_limit=memory_free)
                 y_forecasted_temp = dask_xgboost.predict(client, bst, X_test).compute()
-            #print(y_forecasted_temp)
-            y_forecasted.append(y_forecasted_temp[-1])
+                if len(self.original_target_col) == 1:
+                    ### you need to reshape it so that later functions can work #####
+                    y_forecasted_temp = y_forecasted_temp.reshape(-1,1)
 
-            # Append the predicted value for use in next prediction
-            df_prepend.iloc[-1][self.original_target_col] = y_forecasted_temp[-1]
+            #### add this forecasted value to df_pre_test #################
+            for each_i, each_target in enumerate(self.transformed_target):
+                df_pre_test.iloc[-1,:][each_target] = y_forecasted_temp[:,each_i]
 
-            # Remove 1st entry as it is not needed for next round
-            df_prepend = df_prepend[1:]
-            
-            # print("df_prepend end of loop")
-            # print(df_prepend)
+            ### This will work for both single-label and multi-label problems. I have tested it works. ###
+            if i == 0:
+                y_forecasted = copy.deepcopy(y_forecasted_temp)
+            else:
+                y_forecasted = np.r_[y_forecasted, y_forecasted_temp]
+            #####    End of this cycle of forecasts for testdata #######################
+           
+               
         ##### Here is where you collect the forecasts #####
         # y_forecasted = np.array(y_forecasted)
-        
-        res_frame = pd.DataFrame({'yhat': y_forecasted})
-        res_frame.index = ts_index
+        try:
+            res_frame = pd.DataFrame(y_forecasted, columns=self.transformed_target, index=ts_index)
+        except:
+            ### Sometimes the index doesn't match, so better to leave out index in that case ###
+            res_frame = pd.DataFrame(y_forecasted, columns=self.transformed_target)
         res_frame['mean_se'] = np.nan
         res_frame['mean_ci_lower'] = np.nan
         res_frame['mean_ci_upper'] = np.nan
         print('ML predictions completed')
         ### returns a dataframe - so make sure you capture it that way ###
-        if simple:
-            return res_frame[['yhat']]
-        else:
-            return res_frame
+        return res_frame
 
 ###############################################################################################
 import dask
 import dask.dataframe as dd
-def create_time_series_features(dft, targets, ts_column: Optional[str]=None, drop_zero_var: bool = False):
+def create_time_series_features(dft, targets, ts_column: Optional[str]=None, 
+                drop_zero_var: bool = False):
     """
     This creates between 8 and 10 date time features for each date variable.
     The number of features depends on whether it is just a year variable
@@ -788,15 +705,16 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
     time_preds = [x for x in list(dft) if x != targets]
     dtf = copy.deepcopy(dft)
     ##### This is where we convert ts_column into datetime column and create_ts_features ###
+    
     if not ts_column in time_preds or ts_column is None:
         ###  This means there is no time series column in dataset ##
         ### this means that ts_column is already an index ####
         tscol = dft.index.name
         dtf = create_ts_features_dask(df=dft, tscol=tscol, drop_zero_var=drop_zero_var, return_original=True)
     else:
-        ####  In this case, ts_column has not been converted to an index yet###
+        print('Alert: %s has not been converted to an index yet!' %ts_column)
         ### In some extreme cases, date time vars are not processed yet and hence we must fill missing values here!
-        if type(dft) == dask.dataframe.core.DataFrame:
+        if type(dft) == dd.core.DataFrame or type(dft) == dd.core.Series:
             null_nums = dtf[ts_column].isnull().sum().compute()
         else:
             null_nums = dtf[ts_column].isnull().sum()
@@ -811,8 +729,8 @@ def create_time_series_features(dft, targets, ts_column: Optional[str]=None, dro
 
         ### Then continue the processing with ts_column ####
         #### This is where we find the string format of datatime variable ###
-        dtf, str_format = change_to_datetime_index_test(dtf, ts_column)
-        dtf[ts_column] = pd.to_datetime(dtf[ts_column],format=str_format)            
+        #dtf, str_format = change_to_datetime_index_test(dtf, ts_column)
+        #dtf[ts_column] = pd.to_datetime(dtf[ts_column],format=str_format)            
         dtf = create_ts_features(df=dtf, tscol=ts_column, drop_zero_var=drop_zero_var, return_original=True)
     
     return dtf
