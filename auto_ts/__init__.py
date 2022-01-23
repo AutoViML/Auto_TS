@@ -1093,7 +1093,8 @@ def get_mean_cv_score(cv_scores: Union[float, List]):
 
 #################################################################################
 module_type = 'Running' if  __name__ == "__main__" else 'Imported'
-version_number = '0.0.47'
+from .__version__ import __version__
+version_number = __version__
 print(f"""{module_type} auto_timeseries version:{version_number}. Call by using:
 model = auto_timeseries(score_type='rmse',
         time_interval='M', non_seasonal_pdq=None, seasonality=False,

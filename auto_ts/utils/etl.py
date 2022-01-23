@@ -174,7 +174,7 @@ def change_to_datetime_index_test(testdata, ts_column, str_format=''):
     if str_format:
         print('Date_time string format given as %s' %str_format)
     else:
-        print('Alert: No strf_time_format given for %s. Provide strf_time format during "setup" for better results.' %ts_column)
+        print('    Alert: No strf_time_format given for %s. Provide strf_time format during "setup" for better results.' %ts_column)
     ##### This is where we change the time index of test data #############    
     try:
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
@@ -217,6 +217,7 @@ def change_to_datetime_index_test(testdata, ts_column, str_format=''):
     #### this is where we return the testdata and format 
     return testdata, str_format
 
+#################################################################################
 def time_series_split(ts_df):
     """
     This utility splits any dataframe sent as a time series split using the sklearn function.
@@ -228,7 +229,14 @@ def time_series_split(ts_df):
     print(ts_train.shape, ts_test.shape)
     return ts_train, ts_test
 
-
+#################################################################################
+def left_subtract(l1,l2):
+    lst = []
+    for i in l1:
+        if i not in l2:
+            lst.append(i)
+    return lst
+#################################################################################
 def convert_timeseries_dataframe_to_supervised(df: pd.DataFrame, namevars, target, n_in=1, n_out=0, dropT=True):
     """
     Transform a time series in dataframe format into a supervised learning dataset while

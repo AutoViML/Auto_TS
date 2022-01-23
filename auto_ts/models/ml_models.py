@@ -28,6 +28,27 @@ import copy
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from collections import Counter, defaultdict
 import pdb
+#################  All these imports are needed for the pipeline #######
+import time
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.compose import make_column_transformer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import LabelEncoder, LabelBinarizer
+from sklearn.base import BaseEstimator, TransformerMixin #gives fit_transform method for free
+import pdb
+from sklearn.base import TransformerMixin
+from collections import defaultdict
+from sklearn.preprocessing import MaxAbsScaler
+from sklearn.preprocessing import FunctionTransformer
+###################################################################################################
+#############   This is where you import from other Auto_TS modules ############
+from ..utils import My_LabelEncoder, My_LabelEncoder_Pipe
+from ..utils import left_subtract
+#################################################################################
 def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
                                 scaler = '', enc_method='label', n_splits=5, verbose=0):
     """
@@ -74,16 +95,21 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
         multi_label = True
     modeltype, _ = analyze_problem_type(Y_XGB, targets)
     columns =  X_XGB.columns
+    
     ##### Now continue with scaler pre-processing ###########
     if isinstance(scaler, str):
         if not scaler == '':
             scaler = scaler.lower()
-    if scaler == 'standard':
-        scaler = StandardScaler()
-    elif scaler == 'minmax':
-        scaler = MinMaxScaler()
+        ### once you make them all lower case, then test them ###
+        if scaler == 'standard':
+            scaler = StandardScaler()
+        elif scaler == 'minmax':
+            scaler = MinMaxScaler()
+        else:
+            scaler = StandardScaler()
     else:
-        scaler = StandardScaler()
+        ### Just use the same scaler sent inside this module ##
+        pass
     #########     G P U     P R O C E S S I N G      B E G I N S    ############
     ###### This is where we set the CPU and GPU parameters for XGBoost
     if GPU_flag:
@@ -367,8 +393,34 @@ from collections import OrderedDict
 from sklearn.impute import SimpleImputer
 def data_transform(X_train, Y_train, X_test="", Y_test="", modeltype='Classification',
             multi_label=False, enc_method='label', scaler=""):
-    if isinstance(scaler, str):
-        scaler = StandardScaler()
+    
+    #### All these are needed for transforming cat variables and building a pipeline ###
+    imp_constant = SimpleImputer(strategy='constant', fill_value='missing')
+    ohe = OneHotEncoder()
+    imp_ohe = make_pipeline(imp_constant, ohe)
+    vect = CountVectorizer()
+    imp = SimpleImputer()
+    le = My_LabelEncoder()
+
+    def drop_second_col(Xt):
+        ### This deletes the 2nd column. Hence col number=1 and axis=1 ###
+        return np.delete(Xt, 1, 1)
+
+    ####  This is where we define the Pipeline for cat encoders and Label Encoder ############
+    lep = My_LabelEncoder_Pipe()
+    drop_second_col_func = FunctionTransformer(drop_second_col)
+    ### lep_one uses My_LabelEncoder to first label encode and then drop the second unused column ##
+    lep_one = make_pipeline(lep, drop_second_col_func)
+
+    ### if you drop remainder variables, then leftovervars is not needed.
+    ### If you passthrough remainder variables, then leftovers must be included 
+    remainder = 'drop'
+
+    ### If you choose MaxAbsScaler, then NaNs which were Label Encoded as -1 are preserved as - (negatives). This is fantastic.
+    ### If you choose StandardScaler or MinMaxScaler, the integer values become stretched as if they are far 
+    ###    apart when in reality they are close. So avoid it for now.
+    scaler = MaxAbsScaler()
+    #scaler = StandardScaler()
     ##### First make sure that the originals are not modified ##########
     X_train_encoded = copy.deepcopy(X_train)
     X_test_encoded = copy.deepcopy(X_test)
@@ -405,46 +457,46 @@ def data_transform(X_train, Y_train, X_test="", Y_test="", modeltype='Classifica
             Y_train_encoded = copy.deepcopy(Y_train)
             Y_test_encoded = copy.deepcopy(Y_test)
     
-    #### This is where we find out if test data is given ####
-    ####### Set up feature to encode  ####################
-    feature_to_encode = X_train.columns[X_train.dtypes == 'O'].tolist()
-    #print('features to label encode: %s' %feature_to_encode)
-    #### Do label encoding now #################
-    if enc_method == 'label':
-        for feat in feature_to_encode:
-            # Initia the encoder model
-            lbEncoder = My_LabelEncoder()
-            # fit the train data
-            lbEncoder.fit(X_train[feat])
-            # transform training set
-            X_train_encoded[feat] = lbEncoder.transform(X_train[feat])
-            # transform test set
-            if not isinstance(X_test_encoded, str):
-                X_test_encoded[feat] = lbEncoder.transform(X_test[feat])
+    #### This is where we find out how to transform X_train and X_test  ####
+    catvars = X_train.select_dtypes('object').columns.tolist() + X_train.select_dtypes('category').columns.tolist()
+    numvars = X_train.select_dtypes('number').columns.tolist()
+    ########    This is where we define the pipeline for cat variables ###########
+    ### How do we make sure that we create one new LE_Pipe for each catvar? This is one way.
+    init_str = 'make_column_transformer('
+    middle_str = "".join(['(lep_one, catvars['+str(i)+']),' for i in range(len(catvars))])
+    end_str = '(imp, numvars),    remainder=remainder)'
+    full_str = init_str+middle_str+end_str
+    ct = eval(full_str)
+    pipe = make_pipeline(ct, scaler )
+    ###  You will get a multidimensional numpy array ############
+    dfo = pipe.fit_transform(X_train)
+    if not isinstance(X_test, str):
+        dfn = pipe.fit_transform(X_test)
+    
+    ### The first columns should be whatever is in the Transformer_Pipeline list of columns
+    ### Hence they will be catvars. The second list will be numvars. Then only other columns that are passed through.
+    ### So after the above 2 lists, you will get remainder cols unchanged: we call them leftovers.
+    leftovervars = left_subtract(X_train.columns.tolist(), catvars+numvars)
+
+    ## So if you do it correctly, you will get the list of names in proper order this way:
+    ## first is catvars, then numvars and then leftovervars
+    if remainder == 'drop':
+        cols_names = catvars+numvars                    
     else:
-        print('No encoding transform performed')
+        cols_names = catvars+numvars+leftovervars
 
-    ### make sure there are no missing values ###
-    try:
-        imputer = SimpleImputer(strategy='constant', fill_value=0, verbose=0, add_indicator=True)
-        imputer.fit_transform(X_train_encoded)
-        if not isinstance(X_test_encoded, str):
-            imputer.transform(X_test_encoded)
-    except:
-        X_train_encoded = X_train_encoded.fillna(0)
-        if not isinstance(X_test_encoded, str):
-            X_test_encoded = X_test_encoded.fillna(0)
+    dfo = pd.DataFrame(dfo, columns = cols_names)
+    if not isinstance(X_test, str):
+        dfn = pd.DataFrame(dfn, columns = cols_names)
+    
+    copy_names = copy.deepcopy(cols_names)
 
-    # fit the scaler to the entire train and transform the test set
-    scaler.fit(X_train_encoded)
-    # transform training set
-    X_train_scaled = pd.DataFrame(scaler.transform(X_train_encoded), 
-        columns=X_train_encoded.columns, index=X_train_encoded.index)
-    # transform test set
-    if not isinstance(X_test_encoded, str):
-        X_test_scaled = pd.DataFrame(scaler.transform(X_test_encoded), 
-            columns=X_test_encoded.columns, index=X_test_encoded.index)
-    return X_train_scaled, Y_train_encoded, X_test_scaled, Y_test_encoded, scaler
+    for each_col in copy_names:
+        X_train_encoded[each_col] = dfo[each_col].values
+        if not isinstance(X_test, str):
+            X_test_encoded[each_col] = dfn[each_col].values
+
+    return X_train_encoded, Y_train_encoded, X_test_encoded, Y_test_encoded, pipe
 ##################################################################################
 def analyze_problem_type(train, target, verbose=0) :
     """
@@ -494,79 +546,3 @@ def analyze_problem_type(train, target, verbose=0) :
             print('''\n###########      Single-Label %s Model Tuning and Training Started        ####''' %(model_class))
     return model_class, multilabel
 #############################################################################
-from sklearn.base import TransformerMixin
-from collections import defaultdict
-class My_LabelEncoder(TransformerMixin):
-    """
-    ################################################################################################
-    ######  This Label Encoder class works just like sklearn's Label Encoder!  #####################
-    #####  You can label encode any column in a data frame using this new class. But unlike sklearn,
-    the beauty of this function is that it can take care of NaN's and unknown (future) values.
-    It uses the same fit() and fit_transform() methods of sklearn's LabelEncoder class.
-    ################################################################################################
-    ##################### This is the best working version - don't mess with it! ###################
-    Usage:
-          MLB = My_LabelEncoder()
-          train[column] = MLB.fit_transform(train[column])
-          test[column] = MLB.transform(test[column])
-    """
-    def __init__(self):
-        self.transformer = defaultdict(str)
-        self.inverse_transformer = defaultdict(str)
-
-    def fit(self,testx):
-        if isinstance(testx, pd.Series):
-            pass
-        elif isinstance(testx, np.ndarray):
-            testx = pd.Series(testx)
-        else:
-            return testx
-        outs = np.unique(testx.factorize()[0])
-        ins = testx.value_counts(dropna=False).index
-        #if -1 in outs:
-        #   it already has nan if -1 is in outs. No need to add it.
-        #    ins.insert(0,np.nan)
-        self.transformer = dict(zip(ins,outs.tolist()))
-        self.inverse_transformer = dict(zip(outs.tolist(),ins))
-        return self
-
-    def transform(self, testx):
-        if isinstance(testx, pd.Series):
-            pass
-        elif isinstance(testx, np.ndarray):
-            testx = pd.Series(testx)
-        else:
-            return testx
-        ### now convert the input to transformer dictionary values
-        ins = np.unique(testx.factorize()[1]).tolist()
-        missing = [x for x in ins if x not in self.transformer.keys()]
-        if len(missing) > 0:
-            for each_missing in missing:
-                max_val = np.max(list(self.transformer.values())) + 1
-                self.transformer[each_missing] = max_val
-                self.inverse_transformer[max_val] = each_missing
-        outs = testx.map(self.transformer).values
-        testk = testx.map(self.transformer)
-        if testx.dtype not in [np.int16, np.int32, np.int64, float, bool, object]:
-            if testx.isnull().sum().sum() > 0:
-                fillval = self.transformer[np.nan]
-                testk = testk.cat.add_categories([fillval])
-                testk = testk.fillna(fillval)
-                testk = testk.astype(int)
-                return testk
-            else:
-                testk = testk.astype(int)
-                return testk
-        else:
-            return outs
-
-    def inverse_transform(self, testx):
-        ### now convert the input to transformer dictionary values
-        if isinstance(testx, pd.Series):
-            outs = testx.map(self.inverse_transformer).values
-        elif isinstance(testx, np.ndarray):
-            outs = pd.Series(testx).map(self.inverse_transformer).values
-        else:
-            outs = testx[:]
-        return outs
-#################################################################################

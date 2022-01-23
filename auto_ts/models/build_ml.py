@@ -41,13 +41,27 @@ from .ml_models import complex_XGBoost_model, data_transform, analyze_problem_ty
 
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse, convert_timeseries_dataframe_to_supervised, print_ts_model_stats
-from ..utils.etl import change_to_datetime_index, change_to_datetime_index_test, reduce_mem_usage, load_test_data
-
+from ..utils import change_to_datetime_index, change_to_datetime_index_test, reduce_mem_usage, load_test_data
+from ..utils import My_LabelEncoder, My_LabelEncoder_Pipe
+from ..utils import left_subtract
 #################################################################################################
 import pdb
 import time
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.compose import make_column_transformer
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import LabelEncoder, LabelBinarizer
+from sklearn.base import BaseEstimator, TransformerMixin #gives fit_transform method for free
+import pdb
+from sklearn.base import TransformerMixin
+from collections import defaultdict
+from sklearn.preprocessing import MaxAbsScaler
+from sklearn.preprocessing import FunctionTransformer
+###################################################################################################
 class BuildML(BuildBase):
     def __init__(self, scoring: str = '', forecast_period: int = 2, ts_column: str = '', 
                         time_interval: str = '', sep: str = ',', dask_xgboost_flag: int = 0,
@@ -93,31 +107,43 @@ class BuildML(BuildBase):
         self.lags = lags
         self.original_preds = [x for x in list(ts_df) if x not in self.original_target_col]
         self.ts_column = ts_column
-        
+        ts_index = ts_df.index 
+
+        ############     This is where we check if this is a univariate or multivariate problem ########
         if len(self.original_preds) > 0:
-            #### If there are more variables other than target, then that makes it a multivariate problem ##########
+            ####################     This is for multivariate problems only  ##########################
             self.univariate = False
             if type(ts_df) == dd.core.DataFrame or type(ts_df) == dd.core.Series:
-                #### This is for dask dataframes #############################
+                #### This is for dask dataframes for multivariate problems #############################
                 continuous_vars = ts_df.select_dtypes('number').columns.tolist()
-                numvars = [x for x in continuous_vars if x not in target_col]
-                preds = [x for x in list(ts_df) if x not in self.original_target_col]
+                numvars = [x for x in continuous_vars if x not in self.original_target_col]
                 catvars = ts_df.select_dtypes('object').columns.tolist() + ts_df.select_dtypes('category').columns.tolist()
+                preds = [x for x in list(ts_df) if x not in self.original_target_col+catvars]
                 if len(catvars) > 0:
                     print('    Warning: Dropping Categorical variables %s. You can Label Encode them and try ML modeling again...' %catvars)
             else:
-                ########  This is for pandas dataframes  ##########################################
+                ########      This is for pandas dataframes  only     ##########################################
                 features_dict = classify_features(ts_df, self.original_target_col)
+                idcols = features_dict['IDcols']
+                datevars = features_dict['date_vars']
                 cols_to_remove = features_dict['cols_delete'] + features_dict['IDcols'] + features_dict['discrete_string_vars']
                 preds = [x for x in list(ts_df) if x not in self.original_target_col+cols_to_remove]
-                catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
-                numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
+                #catvars = ts_df[preds].select_dtypes(include = 'object').columns.tolist() + ts_df[preds].select_dtypes(include = 'category').columns.tolist()
+                #numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
+                numvars = features_dict['continuous_vars']
+                catvars = features_dict['categorical_vars']
+            ########  This is for for both univariate and multivariate dataframes  ##########################################
             if len(catvars) > 0:
-                print('    Warning: Dropping Categorical variables %s. You can Label Encode them and try ML modeling again...' %catvars)
-            self.original_preds = numvars
-            preds = copy.deepcopy(numvars)
+                print('    We will convert %s Categorical variables to numeric using a Transformer pipeline...' %len(catvars))
+            self.original_preds = numvars + catvars
+            preds = numvars+catvars
             if len(numvars) > 30:
-                print('    Warning: Too many continuous variables. Hence numerous lag features will be generated. ML modeling may take time...')
+                print('    Warning: %s numeric variables. Hence too many lag features will be generated. Set lag to 3 or less...' %len(numvars))
+
+            #######    This is where we set up the predictors to use for multivariate forecasting   #####################
+            self.original_preds = preds
+            if len(preds) > 30:
+                print('    Warning: too many continuous variables = %s . Hence set lag=2 in "setup" to avoid excessive feature generation...' %len(numvars))
         else:
             #### if there is only one variable and that is the target then it is a univariate problem ##########
             self.univariate = True
@@ -143,16 +169,6 @@ class BuildML(BuildBase):
         print("\nFitting ML model")
         print('    %d variables used in training ML model = %s' %(
                                 len(self.transformed_preds),self.transformed_preds))
-
-        #if len(self.transformed_preds) > 1:
-        #    self.univariate = False
-        #else:
-        #    self.univariate = True
-        # print(f"Transformed DataFrame:")
-        # print(dfxs.info())
-        # print(f"Transformed Target: {self.transformed_target}")
-        # print(f"Transformed Predictors: {self.transformed_preds}")
-
 
         #######################################
         #### Cross Validation across Folds ####
@@ -314,14 +330,14 @@ class BuildML(BuildBase):
                 forecast_df_folds.append(y_pred)
                 extra_concatenated.append(concatenated)
 
+            ######################################################
+            ##### This is how you used the old model code    #####
+            ######################################################
             #for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
                 #### This is where you insert the old code if the new code doesn't work #######
                 #print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
                 #print('Cross Validation window: %d completed' %(fold_number+1,))
 
-            ######################################################
-            ### This is where you consolidate the CV results #####
-            ######################################################
         #######  Now plot feature importances ##################################
         try:
             if type(y_trues) == dd.core.DataFrame or type(y_trues) == dd.core.Series:
@@ -407,21 +423,6 @@ class BuildML(BuildBase):
             self.df_train_prepend = ts_df[-self.lags:]        
         #print('After training completed. Full forecast on train again:\n%s' %self.model.predict(dtrain))
         print('    Time taken to train model (in seconds) = %0.0f' %(time.time()-start_time))
-        # # This is the new method without the leakage
-        # # Drop the y value
-        # test_orig_df_pred_only = test_orig_df.drop(self.original_target_col, axis=1, inplace=False)
-        # forecast = self.predict(testdata=test_orig_df_pred_only, simple=False)
-
-        # rmse, norm_rmse = print_dynamic_rmse(
-        #     y_test.values,
-        #     forecast['mean'],
-        #     y_train.values
-        # )
-
-        # print(f"RMSE Folds: {rmse_folds}")
-        # print(f"Norm RMSE Folds: {norm_rmse_folds}")
-
-        # return self.model, forecast['mean'], rmse, norm_rmse
         return self.model, forecast_df_folds, rmse_folds, norm_rmse_folds
 
     def order_df(self, ts_df: pd.DataFrame) :
@@ -598,7 +599,6 @@ class BuildML(BuildBase):
             ts_index_shifted = ts_index_shifted.strftime(str_format)
             lags_index = lags_index.strftime(str_format)
 
-      
         ################## This applies to both Univariate and Multivariate problems   ###############
         ####  ##########       You need to do this one step at a time.  ##############################
         ####  you need to iterate on the entire testdata one row at a time to make predictions     ###
@@ -618,7 +618,7 @@ class BuildML(BuildBase):
             one_row_from_test = one_row_from_test.infer_objects()
             df_pre_test = pd.concat([df_pre_test, one_row_from_test], axis=0)
             df_pre_test.index.name = index_name
-            df_post_test, _, _  = self.df_to_supervised_test(ts_df=df_pre_test, drop_zero_var=False)
+            df_post_test, _, _  = self.df_to_supervised_test(ts_df=df_pre_test.fillna(0), drop_zero_var=False)
             df_post_test = df_post_test.infer_objects()
 
             if len(left_subtract(df_post_test.columns.tolist(),self.original_target_col) ) != len(df_post_test.columns.tolist()):
@@ -672,8 +672,7 @@ class BuildML(BuildBase):
             else:
                 y_forecasted = np.r_[y_forecasted, y_forecasted_temp]
             #####    End of this cycle of forecasts for testdata #######################
-           
-               
+        #####   End of all predictions ################           
         ##### Here is where you collect the forecasts #####
         # y_forecasted = np.array(y_forecasted)
         try:
@@ -1136,13 +1135,6 @@ def classify_columns(df_preds, verbose=0):
             print(' Missing columns = %s' %left_subtract(list(train),flat_list))
     return sum_all_cols
 ###############################################################################################
-def left_subtract(l1,l2):
-    lst = []
-    for i in l1:
-        if i not in l2:
-            lst.append(i)
-    return lst
-#################################################################################
 import copy
 def create_univariate_lags_for_train(df, vals, each_lag):
     df = copy.deepcopy(df)
