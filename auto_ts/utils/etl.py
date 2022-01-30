@@ -176,6 +176,7 @@ def change_to_datetime_index_test(testdata, ts_column, str_format=''):
     else:
         print('    Alert: No strf_time_format given for %s. Provide strf_time format during "setup" for better results.' %ts_column)
     ##### This is where we change the time index of test data #############    
+    
     try:
         if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
             if ts_column in testdata.columns:
@@ -193,7 +194,7 @@ def change_to_datetime_index_test(testdata, ts_column, str_format=''):
                     ts_index = pd.to_datetime(ts_index, format=str_format)
                 else:
                     ts_index = pd.to_datetime(ts_index)
-                dft.index = ts_index
+                testdata.index = ts_index
         elif type(testdata) == dask.dataframe.core.DataFrame:
             #### the below tests work for a dask dataframe as well ##
             if ts_column in testdata.columns:

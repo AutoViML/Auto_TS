@@ -16,6 +16,7 @@ class BuildBase(ABC):
         self.original_target_col: str = ""
         self.original_preds: List[str] = []
         self.strf_time_format: str = ""
+        self.num_boost_rounds: int = 250
 
 
     @abstractmethod

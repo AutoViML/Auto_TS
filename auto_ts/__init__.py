@@ -62,6 +62,8 @@ class auto_timeseries:
         verbose: int = 0,
         dask_xgboost_flag: int = 0,
         lag: int = 3,
+        strf_time_format = '',
+        num_boost_rounds = 250,
         *args,
         **kwargs
     ):
@@ -176,7 +178,8 @@ class auto_timeseries:
         self.allowed_models = ['best', 'prophet', 'stats', 'ml', 'arima','ARIMA','Prophet','SARIMAX', 'VAR', 'ML']
         self.dask_xgboost_flag = dask_xgboost_flag
         self.sep = ','
-        self.strf_time_format = ''
+        self.strf_time_format = strf_time_format
+        self.num_boost_rounds = num_boost_rounds
         self.lag = lag
 
         # new function.
@@ -755,6 +758,8 @@ class auto_timeseries:
                 time_interval = self.time_interval,
                 sep = self.sep,
                 dask_xgboost_flag = self.dask_xgboost_flag,
+                strf_time_format = self.strf_time_format,
+                num_boost_rounds = self.num_boost_rounds,
                 verbose=self.verbose)
             try:
                 if self.dask_xgboost_flag:

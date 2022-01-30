@@ -64,7 +64,7 @@ from sklearn.preprocessing import FunctionTransformer
 class BuildML(BuildBase):
     def __init__(self, scoring: str = '', forecast_period: int = 2, ts_column: str = '', 
                         time_interval: str = '', sep: str = ',', dask_xgboost_flag: int = 0,
-                        strf_time_format: str = '', verbose: int = 0):
+                        strf_time_format: str = '', num_boost_rounds = 250, verbose: int = 0):
         """
         Automatically build a ML Model
         """
@@ -81,13 +81,14 @@ class BuildML(BuildBase):
         self.ts_column = ts_column
         self.time_interval = time_interval
         self.sep = sep
+        print("### Be careful setting dask_xgboost_flag to True since dask is unstable and doesn't work sometime's ###")
         self.dask_xgboost_flag = dask_xgboost_flag    
         self.problem_type: str = "Regression"
         self.multilabel: bool = False
         self.transformed_target: str = ""
         self.transformed_preds: List[str] = []
         self.scaler = StandardScaler()
-
+        self.num_boost_rounds = num_boost_rounds
         # This saves the last `self.lags` of the original train dataframe
         # This is needed during predictions to transform the X_test
         # to a supervised learning problem.
@@ -100,7 +101,6 @@ class BuildML(BuildBase):
         Build a Time Series Model using Machine Learning models.
         Quickly builds and runs multiple models for a clean data set (only numerics).
         """
-        
         ts_df = copy.deepcopy(ts_df)
         self.original_target_col = target_col
         self.lags = lags
@@ -181,7 +181,8 @@ class BuildML(BuildBase):
             cv_in = 0
         else:
             cv_in = copy.deepcopy(cv)
-        NFOLDS = self.get_num_folds_from_cv(cv)
+            cv_in = 2
+        NFOLDS = self.get_num_folds_from_cv(cv_in)
         ###########################################################################
         if self.forecast_period <= 5:
             #### Set a minimum of 5 for the number of rows in test!
@@ -251,15 +252,15 @@ class BuildML(BuildBase):
                 X_train_fold, X_test_fold, y_train_fold, y_test_fold = train_test_split(X_train, y_train,
                                              test_size=test_size, random_state=99)
                 print('train fold shape %s, test fold shape = %s' %(X_train_fold.shape, X_test_fold.shape))
-                pdb.set_trace()
+                
                 ########################################################################################
                 ##########   Training XGBoost model using xgboost version 1.5.1 or greater #############
                 ### the dtrain syntax can only be used xgboost 1.50 or greater. Dont use it until then.
                 ########################################################################################
                 dtrain = xgb.dask.DaskDMatrix(client, X_train_fold, y_train_fold, enable_categorical=False, feature_names=self.transformed_preds)
                 #### SYNTAX BELOW WORKS WELL. BUT YOU CANNOT DO CV or EVALS WITH DASK XGBOOST AS OF NOW ####
-                num_rounds = 10
-                bst = xgb.dask.train(client, params, dtrain, num_boost_round=num_rounds)
+                print("### number of booster rounds = %s which can be set during setup ###" %self.num_boost_rounds)
+                bst = xgb.dask.train(client, params, dtrain, num_boost_round=self.num_boost_rounds)
                 bst_models.append(bst['booster'])
                 dtest = xgb.dask.DaskDMatrix(client, X_test_fold, enable_categorical=False, feature_names=self.transformed_preds)
                 forecast_df = xgb.dask.predict(client, bst['booster'], dtest)
@@ -315,10 +316,11 @@ class BuildML(BuildBase):
             print('train fold shape %s, test fold shape = %s' %(X_train_fold.shape, X_test_fold.shape))
             
             model_name = 'XGBoost'
-
-            outputs = complex_XGBoost_model(x_train=X_train_fold, y_train=y_train_fold,
-                        x_test=X_test_fold, log_y=False, GPU_flag=False,
-                        scaler='', enc_method='', n_splits=cv_in, verbose=0)
+            print('### Number of booster rounds = %s for XGBoost which can be set during setup ####' %self.num_boost_rounds)
+            outputs = complex_XGBoost_model(X_train_fold,y_train_fold,
+                        X_test_fold, log_y=False, GPU_flag=False,
+                        scaler='', enc_method='', n_splits=cv_in, 
+                        num_boost_round=self.num_boost_rounds, verbose=0)
             print('XGBoost model tuning completed')
 
             ###### always the last output is model  and the first output is predictions ######
@@ -326,6 +328,9 @@ class BuildML(BuildBase):
             y_pred = outputs[0]
             self.scaler = outputs[1]
             ############## Print results for each target one by one ################
+            if len(self.original_target_col): 
+                ### just make sure that there is at least one column in predictions ####
+                y_pred = y_pred.reshape(-1,1)
             for each_i, each_target in enumerate(self.original_target_col):
                 print('Target = %s...CV results:' %each_target)
                 concatenated = pd.DataFrame(np.c_[y_test_fold.iloc[:,each_i], y_pred[:,each_i]], columns=['actual', 'predicted'],index=y_test_fold.index)
@@ -382,8 +387,14 @@ class BuildML(BuildBase):
                             memory_limit=memory_free)
             print('    Dask client configuration: %s' %client)
             print('    XGBoost version: %s' %xgb.__version__)
-            bst = dask_xgboost.train(client, params, X_train, y_train, num_boost_round=num_boost_round) 
-            self.model = bst 
+            model = bst['booster']
+            dtrain = xgb.dask.DaskDMatrix(client, X_train, y_train, enable_categorical=False, feature_names=self.transformed_preds)
+            #### SYNTAX BELOW WORKS WELL. BUT YOU CANNOT DO CV or EVALS WITH DASK XGBOOST AS OF NOW ####
+            params = json.loads(model.save_config())
+            extra = {'num_class': 1}                 
+            params.update(extra)                 
+            trained = xgb.dask.train(client, params, dtrain, num_boost_round=self.num_boost_rounds, xgb_model=model)
+            self.model = trained['booster']
             #X_train = X_train.head(len(X_train)) ## this converts it to a pandas dataframe
             self.df_train_prepend = ts_df.compute()[-self.lags:]
         else:
@@ -393,6 +404,8 @@ class BuildML(BuildBase):
                 X_train = pd.DataFrame(self.scaler.transform(X_train), columns = X_train.columns)
                 dtrain = xgb.DMatrix(X_train, label=y_train)
                 params = json.loads(model.save_config())
+                extra = {'num_class': 1}
+                params.update(extra)
                 trained = xgb.train(params, dtrain, xgb_model=model)
                 self.model = trained
             else:
@@ -537,7 +550,6 @@ class BuildML(BuildBase):
         Return:
         -> pandas Dataframe
         """
-        
         print('For large datasets: ML predictions will take time since it has to predict each row and use that for future predictions...')
         testdata = copy.deepcopy(testdata)
         testdata_orig = copy.deepcopy(testdata)
@@ -553,7 +565,12 @@ class BuildML(BuildBase):
             print('(Error) Testdata must be pandas dataframe for ML model. No predictions will be made.')
             return None
         else:
-            testdata = load_test_data(testdata, ts_column=self.ts_column, sep=self.sep, 
+            if (self.dask_xgboost_flag and isinstance(testdata, pd.DataFrame)) or self.dask_xgboost_flag and isinstance(testdata, pd.Series):
+                print('FYI: You trained the model on dask dataframes and testing it on pandas dataframes. Continuing...')
+                testdata = load_test_data(testdata, ts_column=self.ts_column, sep=self.sep, 
+                            target=self.transformed_target, dask_xgboost_flag=self.dask_xgboost_flag)
+            else:
+                testdata = load_test_data(testdata, ts_column=self.ts_column, sep=self.sep, 
                             target=self.transformed_target, dask_xgboost_flag=self.dask_xgboost_flag)
         
         #######   Make sure you SAVE the original dataset's index #####
@@ -599,7 +616,7 @@ class BuildML(BuildBase):
             one_row_from_test = one_row_from_test.infer_objects()
             df_pre_test = pd.concat([df_pre_test, one_row_from_test], axis=0)
             df_pre_test.index.name = index_name
-            df_post_test, _, _  = self.df_to_supervised_test(ts_df=df_pre_test.fillna(0), drop_zero_var=False)
+            df_post_test, _, _  = self.df_to_supervised(ts_df=df_pre_test.fillna(0), drop_zero_var=False)
             df_post_test = df_post_test.infer_objects()
 
             if len(left_subtract(df_post_test.columns.tolist(),self.original_target_col) ) != len(df_post_test.columns.tolist()):
@@ -619,8 +636,8 @@ class BuildML(BuildBase):
             
             if isinstance(testdata, pd.DataFrame) or isinstance(testdata, pd.Series):
                 if self.dask_xgboost_flag:
-                    Xtest = dd.from_pandas(X_test, npartitions=1)
-                    y_forecasted_temp = dask_xgboost.predict(client, bst, Xtest).compute()
+                    dtest = xgb.DMatrix(X_test)
+                    y_forecasted_temp = self.model.predict(dtest)
                 else:
                     if str(self.model).split(".")[0] == '<xgboost':
                         X_test = pd.DataFrame(self.scaler.transform(X_test), columns = X_test.columns)
@@ -631,14 +648,16 @@ class BuildML(BuildBase):
                     y_forecasted_temp = y_forecasted_temp.reshape(-1,1)
             elif type(testdata) == dd.core.DataFrame or type(testdata) == dd.core.Series: 
                 if not self.dask_xgboost_flag:
-                    print('    Error: You cannot make predictions on test data which is a dask df if the model was trained on a pandas df. Change test to pandas.')
-                    return
+                    print('    Error: You cannot make predictions on a dask_dataframe for test data if the model was not trained on dask_dataframe.')
+                    return testdata
                 bst = self.model
                 memory_free = str(max(1, int(psutil.virtual_memory()[0]/1e9)))+'GB'
                 print('    Using Dask XGBoost algorithm with %s virtual CPUs and %s memory limit...' %(get_cpu_worker_count(), memory_free))
                 client = Client(n_workers=get_cpu_worker_count(), threads_per_worker=1, processes=True, silence_logs=50,
                                 memory_limit=memory_free)
-                y_forecasted_temp = dask_xgboost.predict(client, bst, X_test).compute()
+                Xtest = dd.from_pandas(X_test, npartitions=1)
+                dtest = xgb.dask.DaskDMatrix(client, Xtest)
+                y_forecasted_temp = xgb.dask.predict(client, self.model, dtest).compute()
                 if len(self.original_target_col) == 1:
                     ### you need to reshape it so that later functions can work #####
                     y_forecasted_temp = y_forecasted_temp.reshape(-1,1)

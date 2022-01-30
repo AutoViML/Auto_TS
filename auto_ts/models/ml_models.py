@@ -49,8 +49,9 @@ from sklearn.preprocessing import FunctionTransformer
 from ..utils import My_LabelEncoder, My_LabelEncoder_Pipe
 from ..utils import left_subtract
 #################################################################################
-def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
-                                scaler = '', enc_method='label', n_splits=5, verbose=0):
+def complex_XGBoost_model(X_train, y_train, X_test, log_y=False, GPU_flag=False,
+                                scaler = '', enc_method='label', n_splits=5, 
+                                num_boost_round=1000, verbose=-1):
     """
     This model is called complex because it handle multi-label, mulit-class datasets which XGBoost ordinarily cant.
     Just send in X_train, y_train and what you want to predict, X_test
@@ -62,9 +63,9 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
 
     Inputs:
     ------------
-    X_XGB: pandas dataframe only: do not send in numpy arrays. This is the X_train of your dataset.
-    Y_XGB: pandas Series or DataFrame only: do not send in numpy arrays. This is the y_train of your dataset.
-    X_XGB_test: pandas dataframe only: do not send in numpy arrays. This is the X_test of your dataset.
+    X_train: pandas dataframe only: do not send in numpy arrays. This is the X_train of your dataset.
+    y_train: pandas Series or DataFrame only: do not send in numpy arrays. This is the y_train of your dataset.
+    X_test: pandas dataframe only: do not send in numpy arrays. This is the X_test of your dataset.
     log_y: default = False: If True, it means use the log of the target variable "y" to train and test.
     GPU_flag: if your machine has a GPU set this flag and it will use XGBoost GPU to speed up processing.
     scaler : default is StandardScaler(). But you can send in MinMaxScaler() as input to change it or any other scaler.
@@ -76,11 +77,10 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
     y_preds: Predicted values for your X_XGB_test dataframe.
         It has been averaged after repeatedly predicting on X_XGB_test. So likely to be better than one model.
     """
-    X_XGB = copy.deepcopy(x_train)
+    X_XGB = copy.deepcopy(X_train)
     Y_XGB = copy.deepcopy(y_train)
-    X_XGB_test = copy.deepcopy(x_test)
+    X_XGB_test = copy.deepcopy(X_test)
     ####################################
-    num_boost_round = 1000
     start_time = time.time()
     top_num = 10
     if isinstance(Y_XGB, pd.Series):
@@ -95,21 +95,16 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
         multi_label = True
     modeltype, _ = analyze_problem_type(Y_XGB, targets)
     columns =  X_XGB.columns
-    
     ##### Now continue with scaler pre-processing ###########
     if isinstance(scaler, str):
         if not scaler == '':
             scaler = scaler.lower()
-        ### once you make them all lower case, then test them ###
-        if scaler == 'standard':
-            scaler = StandardScaler()
-        elif scaler == 'minmax':
-            scaler = MinMaxScaler()
-        else:
-            scaler = StandardScaler()
+    if scaler == 'standard':
+        scaler = StandardScaler()
+    elif scaler == 'minmax':
+        scaler = MinMaxScaler()
     else:
-        ### Just use the same scaler sent inside this module ##
-        pass
+        scaler = StandardScaler()
     #########     G P U     P R O C E S S I N G      B E G I N S    ############
     ###### This is where we set the CPU and GPU parameters for XGBoost
     if GPU_flag:
@@ -141,30 +136,30 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
     scoreFunction = { "precision": "precision_weighted","recall": "recall_weighted"}
     random_search_flag =  True
 
-    ######   T H I S    I S   F O R    M U L T I    L A B E L    P R O B L E M S ###########
-    #### We need a small validation data set for hyper-param tuning #########################
+      #### We need a small validation data set for hyper-param tuning #########################
     hyper_frac = 0.2
     #### now select a random sample from X_XGB ##
+    
     if modeltype == 'Regression':
         X_train, X_valid, Y_train, Y_valid = train_test_split(X_XGB, Y_XGB, test_size=hyper_frac, 
                             random_state=999)
     else:
         X_train, X_valid, Y_train, Y_valid = train_test_split(X_XGB, Y_XGB, test_size=hyper_frac, 
                             random_state=999, stratify = Y_XGB)
-    
+        
+    ######  This step is needed for making sure y is transformed to log_y ####################
+    if modeltype == 'Regression' and log_y:
+            Y_train = np.log(Y_train)
+            Y_valid = np.log(Y_valid)
+
     #### First convert test data into numeric using train data ###
     X_train, Y_train, X_valid, Y_valid, scaler = data_transform(X_train, Y_train, X_valid, Y_valid,
                                 modeltype, multi_label, scaler=scaler, enc_method=enc_method)
 
-    ######  This step is needed for making sure y is transformed to log_y ####################
-    if modeltype == 'Regression' and log_y:
-            Y_train = np.log(Y_train)
-
+    
     ######  Time to hyper-param tune model using randomizedsearchcv and partial train data #########
     num_boost_round = xgbm_model_fit(random_search_flag, X_train, Y_train, X_valid, Y_valid, modeltype,
-                         multi_label, log_y, num_boost_round=num_boost_round, n_splits=n_splits)
-
-    ### this is where you insert the cut code ###
+                         multi_label, log_y, num_boost_round=num_boost_round)
 
     #### First convert test data into numeric using train data ###############################
     if not isinstance(X_XGB_test, str):
@@ -174,9 +169,10 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
     ######  Time to train the hyper-tuned model on full train data ##########################
     random_search_flag = False
     model = xgbm_model_fit(random_search_flag, x_train, y_train, x_test, "", modeltype,
-                                multi_label, log_y, num_boost_round=num_boost_round, n_splits=n_splits)
+                                multi_label, log_y, num_boost_round=num_boost_round)
     
     #############  Time to get feature importances based on full train data   ################
+    
     if multi_label:
         for i,target_name in enumerate(targets):
             each_model = model.estimators_[i]
@@ -207,38 +203,30 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
             else:
                 pred_xgbs = model.predict(x_test)
             #### if there is no test data just return empty strings ###
-            if not multi_label:
-                ### turn it into a 1-d array otherwise it will error later ##
-                pred_xgbs = pred_xgbs.reshape(-1,1)
         else:
             pred_xgbs = []
     else:
-        #### This is for Classification problems ##########
         if multi_label:
             pred_xgbs = model.predict(x_test)
             pred_probas = model.predict_proba(x_test)
         else:
             pred_probas = model.predict(x_test)
-            if modeltype == 'Binary_Classification':
-                pred_xgbs = (pred_probas>0.5).astype(int)
-            else:
+            if modeltype =='Multi_Classification':
                 pred_xgbs = pred_probas.argmax(axis=1)
-            if not multi_label:
-                ### turn it into a 1-d array otherwise it will error later ##
-                pred_xgbs = pred_xgbs.reshape(-1,1)
+            else:
+                pred_xgbs = (pred_probas>0.5).astype(int)
     ##### once the entire model is trained on full train data ##################
     print('    Time taken for training XGBoost on entire train data (in minutes) = %0.1f' %(
              (time.time()-start_time)/60))
-    if verbose >= 2:
-        if multi_label:
-            for i,target_name in enumerate(targets):
-                each_model = model.estimators_[i]
-                xgb.plot_importance(each_model, title='XGBoost model feature importances for %s' %target_name)
-        else:
-            xgb.plot_importance(model, title='XGBoost final model feature importances')
-    print('\nModel tuning and training complete. Returning the following:')
+    if multi_label:
+        for i,target_name in enumerate(targets):
+            each_model = model.estimators_[i]
+            xgb.plot_importance(each_model, importance_type='gain', title='XGBoost model feature importances for %s' %target_name)
+    else:
+        xgb.plot_importance(model, importance_type='gain', title='XGBoost final model feature importances')
+    print('Returning the following:')
     print('    Model = %s' %model)
-    
+    print('    Scaler = %s' %scaler)    
     if modeltype == 'Regression':
         if not isinstance(X_XGB_test, str):
             print('    (3) sample predictions:%s' %pred_xgbs[:3])
@@ -251,13 +239,10 @@ def complex_XGBoost_model(x_train, y_train, x_test, log_y=False, GPU_flag=False,
 ##############################################################################################
 import xgboost as xgb
 def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modeltype,
-                         multi_label, log_y, num_boost_round=100, n_splits=5):
+                         multi_label, log_y, num_boost_round=100):
     start_time = time.time()
-    if multi_label:
-        rand_params = {
-            'estimator__learning_rate':[0.01,0.5,0.1,0.3,0.5],
-            'estimator__n_estimators':[50, 100, 150, 200, 250, 300, 350]
-                }
+    if multi_label and not random_search_flag:
+        model = num_boost_round
     else:
         rand_params = {
             'learning_rate': sp.stats.uniform(scale=1),
@@ -272,8 +257,8 @@ def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modelty
         shuffle = False
         stratified = False
         num_class = 0
-        scoring = 'neg_mean_squared_error'
-        score_name = 'MSE'
+        score_name = 'Score'
+        scale_pos_weight = 1
     else:
         if modeltype =='Binary_Classification':
             objective='binary:logistic'
@@ -281,8 +266,8 @@ def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modelty
             shuffle = True
             stratified = True
             num_class = 1
-            scoring='precision'
             score_name = 'Error Rate'
+            scale_pos_weight = get_scale_pos_weight(y_train)
         else:
             objective = 'multi:softprob'
             eval_metric = 'merror'  ## dont foolishly change to auc or aucpr since it doesnt work in finding feature imps later
@@ -297,9 +282,9 @@ def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modelty
                     num_class = y_train.nunique()
                 else:
                     num_class = y_train.nunique().max() 
-            scoring='precision'
-            score_name = 'Multi Class error rate'
-    
+            score_name = 'Multiclass Error Rate'
+            scale_pos_weight = 1  ### use sample_weights in multi-class settings ##
+    ######################################################
     final_params = {
           'booster' :'gbtree',
           'colsample_bytree': 0.5,
@@ -315,57 +300,64 @@ def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modelty
           'eval_metric': eval_metric,
           'verbosity': 0,
           'n_jobs': -1,
-          #grow_policy='lossguide',
+          'scale_pos_weight':scale_pos_weight,
           'num_class': num_class,
           'silent': True
             }
     #######  This is where we split into single and multi label ############
     if multi_label:
         ######   This is for Multi_Label problems ############
-        if modeltype == 'Regression':
-            clf = XGBRegressor(n_jobs=-1, random_state=999, max_depth=6)
-            clf.set_params(**final_params)
-            model = MultiOutputRegressor(clf)
-        else:
-            clf = XGBClassifier(n_jobs=-1, random_state=999, max_depth=6)
-            clf.set_params(**final_params)
-            model = MultiOutputClassifier(clf)
+        rand_params = {'estimator__learning_rate':[0.1, 0.5, 0.01, 0.05],
+          'estimator__n_estimators':[50, 100, 150, 200, 250],
+          'estimator__gamma':[2, 4, 8, 16, 32],
+          'estimator__max_depth':[3, 5, 8, 12],
+          }
         if random_search_flag:
-            rsv = RandomizedSearchCV(model,
+            if modeltype == 'Regression':
+                clf = XGBRegressor(n_jobs=-1, random_state=999, max_depth=6)
+                clf.set_params(**final_params)
+                model = MultiOutputRegressor(clf, n_jobs=-1)
+            else:
+                clf = XGBClassifier(n_jobs=-1, random_state=999, max_depth=6)
+                clf.set_params(**final_params)
+                model = MultiOutputClassifier(clf, n_jobs=-1)
+            if modeltype == 'Regression':
+                scoring = 'neg_mean_squared_error'
+            else:
+                scoring = 'precision'
+            model = RandomizedSearchCV(model,
                        param_distributions = rand_params,
-                       n_iter = 5,
+                       n_iter = 15,
                        return_train_score = True,
                        random_state = 99,
                        n_jobs=-1,
-                       scoring=scoring,
-                       cv = n_splits,
+                       cv = 3,
+                       refit=True,
+                       scoring = scoring,
                        verbose = False)        
-            rsv.fit(x_train, y_train)
+            model.fit(x_train, y_train)
             print('Time taken for Hyper Param tuning of multi_label XGBoost (in minutes) = %0.1f' %(
                                             (time.time()-start_time)/60))
-            cv_results = pd.DataFrame(rsv.cv_results_)
-            cv_mean = cv_results['mean_test_score'].mean()
-            if cv_mean < 0:
-                print('Mean cross-validated test %s = %0.04f' %(score_name, -1*cv_mean))
-            else:
-                print('Mean cross-validated test %s = %0.04f' %(score_name, cv_mean))
-            ### In this case, there is no boost rounds so just return the best estimator
-            return rsv.best_estimator_
+            cv_results = pd.DataFrame(model.cv_results_)
+            print('Mean cross-validated test %s = %0.04f' %(score_name, cv_results['mean_test_score'].mean()))
+            ### In this case, there is no boost rounds so just return the default num_boost_round
+            return model.best_estimator_
         else:
-            ### if it is multi_label, you get the best estimator in num_boost_round
-            model = num_boost_round
             try:
                 model.fit(x_train, y_train)
             except:
                 print('Multi_label XGBoost model is crashing during training. Please check your inputs and try again...')
             return model
     else:
-        
         #### This is for Single Label Problems #############
-        dtrain = xgb.DMatrix(x_train, label=y_train)
+        if modeltype == 'Multi_Classification':
+            wt_array = get_sample_weight_array(y_train)
+            dtrain = xgb.DMatrix(x_train, label=y_train, weight=wt_array)
+        else:
+            dtrain = xgb.DMatrix(x_train, label=y_train)
         ########   Now let's perform randomized search to find best hyper parameters ######
         if random_search_flag:
-            cv_results = xgb.cv(final_params, dtrain, num_boost_round=num_boost_round, nfold=n_splits, 
+            cv_results = xgb.cv(final_params, dtrain, num_boost_round=num_boost_round, nfold=5, 
                 stratified=stratified, metrics=eval_metric, early_stopping_rounds=10, seed=999, shuffle=shuffle)
             # Update best eval_metric
             best_eval = 'test-'+eval_metric+'-mean'
@@ -386,6 +378,99 @@ def xgbm_model_fit(random_search_flag, x_train, y_train, x_test, y_test, modelty
             except:
                 print('XGBoost model is crashing. Please check your inputs and try again...')
             return model
+####################################################################################
+# Calculate class weight
+from sklearn.utils.class_weight import compute_class_weight
+import copy
+from collections import Counter
+def find_rare_class(classes, verbose=0):
+    ######### Print the % count of each class in a Target variable  #####
+    """
+    Works on Multi Class too. Prints class percentages count of target variable.
+    It returns the name of the Rare class (the one with the minimum class member count).
+    This can also be helpful in using it as pos_label in Binary and Multi Class problems.
+    """
+    counts = OrderedDict(Counter(classes))
+    total = sum(counts.values())
+    if verbose >= 1:
+        print('       Class  -> Counts -> Percent')
+        sorted_keys = sorted(counts.keys())
+        for cls in sorted_keys:
+            print("%12s: % 7d  ->  % 5.1f%%" % (cls, counts[cls], counts[cls]/total*100))
+    if type(pd.Series(counts).idxmin())==str:
+        return pd.Series(counts).idxmin()
+    else:
+        return int(pd.Series(counts).idxmin())
+###################################################################################
+def get_sample_weight_array(y_train):
+    y_train = copy.deepcopy(y_train)    
+    if isinstance(y_train, np.ndarray):
+        y_train = pd.Series(y_train)
+    elif isinstance(y_train, pd.Series):
+        pass
+    elif isinstance(y_train, pd.DataFrame):
+        ### if it is a dataframe, return only if it s one column dataframe ##
+        y_train = y_train.iloc[:,0]
+    else:
+        ### if you cannot detect the type or if it is a multi-column dataframe, ignore it
+        return None
+    classes = np.unique(y_train)
+    class_weights = compute_class_weight('balanced', classes=classes, y=y_train)
+    if len(class_weights[(class_weights < 1)]) > 0:
+        ### if the weights are less than 1, then divide them until the lowest weight is 1.
+        class_weights = class_weights/min(class_weights)
+    else:
+        class_weights = (class_weights)
+    ### even after you change weights if they are all below 1.5 do this ##
+    #if (class_weights<=1.5).all():
+    #    class_weights = np.around(class_weights+0.49)
+    class_weights = class_weights.astype(int)    
+    wt = dict(zip(classes, class_weights))
+
+    ### Map class weights to corresponding target class values
+    ### You have to make sure class labels have range (0, n_classes-1)
+    wt_array = y_train.map(wt)
+    #set(zip(y_train, wt_array))
+
+    # Convert wt series to wt array
+    wt_array = wt_array.values
+    return wt_array
+###############################################################################
+from collections import OrderedDict
+def get_scale_pos_weight(y_input):    
+    y_input = copy.deepcopy(y_input)
+    if isinstance(y_input, np.ndarray):
+        y_input = pd.Series(y_input)
+    elif isinstance(y_input, pd.Series):
+        pass
+    elif isinstance(y_input, pd.DataFrame):
+        ### if it is a dataframe, return only if it s one column dataframe ##
+        y_input = y_input.iloc[:,0]
+    else:
+        ### if you cannot detect the type or if it is a multi-column dataframe, ignore it
+        return None
+    classes = np.unique(y_input)
+    rare_class = find_rare_class(y_input)
+    xp = Counter(y_input)
+    class_weights = compute_class_weight('balanced', classes=classes, y=y_input)
+    
+    if len(class_weights[(class_weights < 1)]) > 0:
+        ### if the weights are less than 1, then divide them until the lowest weight is 1.
+        class_weights = class_weights/min(class_weights)
+    else:
+        class_weights = (class_weights)
+    ### even after you change weights if they are all below 1.5 do this ##
+    #if (class_weights<=1.5).all():
+    #    class_weights = np.around(class_weights+0.49)
+
+    class_weights = class_weights.astype(int)
+    class_weights[(class_weights<1)]=1
+    class_rows = class_weights*[xp[x] for x in classes]
+    class_rows = class_rows.astype(int)
+    class_weighted_rows = dict(zip(classes,class_weights))
+    rare_class_weight = class_weighted_rows[rare_class]
+    print('    For class %s, weight = %s' %(rare_class, rare_class_weight))
+    return rare_class_weight
 #########################################################################################################
 ###########################################################################################
 from collections import defaultdict
