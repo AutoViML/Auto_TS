@@ -541,8 +541,8 @@ def analyze_problem_type(train, target, verbose=0) :
     ########### print this for the start of next step ###########
     if verbose >= 1:
         if multilabel:
-            print('''\n###########      Multi-Label %s Model Tuning and Training Started         ####''' %(model_class))
+            print('''\n########### Multi-Label %s Model Tuning and Training Started  ####''' %(model_class))
         else:
-            print('''\n###########      Single-Label %s Model Tuning and Training Started        ####''' %(model_class))
+            print('''\n########### Single-Label %s Model Tuning and Training Started ####''' %(model_class))
     return model_class, multilabel
 #############################################################################

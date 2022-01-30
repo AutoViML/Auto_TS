@@ -29,12 +29,11 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier  # type: 
 
 import dask
 import dask.dataframe as dd
-import dask_xgboost
 import xgboost as xgb
 from dask.distributed import Client, progress
 import psutil
 import json
-
+import dask_ml
 ################################################################################################
 from .build_base import BuildBase
 from .ml_models import complex_XGBoost_model, data_transform, analyze_problem_type
@@ -108,7 +107,7 @@ class BuildML(BuildBase):
         self.original_preds = [x for x in list(ts_df) if x not in self.original_target_col]
         self.ts_column = ts_column
         ts_index = ts_df.index 
-
+        
         ############     This is where we check if this is a univariate or multivariate problem ########
         if len(self.original_preds) > 0:
             ####################     This is for multivariate problems only  ##########################
@@ -132,13 +131,13 @@ class BuildML(BuildBase):
                 #numvars = ts_df[preds].select_dtypes(include = 'number').columns.tolist()
                 numvars = features_dict['continuous_vars']
                 catvars = features_dict['categorical_vars']
-            ########  This is for for both univariate and multivariate dataframes  ##########################################
-            if len(catvars) > 0:
-                print('    We will convert %s Categorical variables to numeric using a Transformer pipeline...' %len(catvars))
-            self.original_preds = numvars + catvars
-            preds = numvars+catvars
-            if len(numvars) > 30:
-                print('    Warning: %s numeric variables. Hence too many lag features will be generated. Set lag to 3 or less...' %len(numvars))
+                ########  This is only for pandas dataframes  ##########################################
+                if len(catvars) > 0:
+                    print('    We will convert %s Categorical variables to numeric using a Transformer pipeline...' %len(catvars))
+                self.original_preds = numvars + catvars
+                preds = numvars+catvars
+                if len(numvars) > 30:
+                    print('    Warning: %s numeric variables. Hence too many lag features will be generated. Set lag to 3 or less...' %len(numvars))
 
             #######    This is where we set up the predictors to use for multivariate forecasting   #####################
             self.original_preds = preds
@@ -199,12 +198,6 @@ class BuildML(BuildBase):
         y_train = dfxs[self.transformed_target]
         dft = dfxs[self.transformed_preds+self.transformed_target]
 
-        # Decide NUM_ESTIMATORS for trees
-        if len(X_train) <= 100000 or dft.shape[1] < 50:
-            NUMS = 200
-        else:
-            NUMS = 100
-
         if self.scoring == '':
             self.scoring = 'neg_root_mean_squared_error'
         elif self.scoring == 'rmse':
@@ -212,9 +205,12 @@ class BuildML(BuildBase):
 
         print('\nRunning Cross Validation using XGBoost model..')
         ###########################################################################################
-        #cv = GapWalkForward(n_splits=NFOLDS, gap_size=0, test_size=self.forecast_period)
-        max_trainsize = len(dft) - self.forecast_period
-        test_size = max(self.forecast_period, int(0.1*dft.shape[0]))
+        if type(dft) == dd.core.DataFrame or type(dft) == dd.core.Series:
+            test_size = 0.1
+            max_trainsize = 0.9
+        else:
+            max_trainsize = len(dft) - self.forecast_period
+            test_size = max(self.forecast_period, int(0.1*dft.shape[0]))
         try:
             cv = TimeSeriesSplit(n_splits=NFOLDS, test_size=test_size) ### this works only sklearn v 0.0.24]
         except:
@@ -224,75 +220,85 @@ class BuildML(BuildBase):
         start_time = time.time()
         rmse_folds = []
         norm_rmse_folds = []
-        y_trues = copy.deepcopy(y_train)
         concatenated = pd.DataFrame()
         extra_concatenated = []
         bst_models = []
         important_features = []
-        if len(y_trues) <= 1000:
-            num_boost_round =300
-        elif len(y_trues) > 1000 and len(y_trues) <= 10000:
-            num_boost_round = 400
-        elif len(y_trues) > 10000 and len(y_trues) <= 100000:
-            num_boost_round = 500
-        else:
-            num_boost_round = 700
         #########################################################################################################
         ################    M  O  D  E  L    H Y P E R   P A R A M    T U N I N G    T A K E S   P L A C E   ####
         ######################################################################################################### 
         if type(dft) == dd.core.DataFrame or type(dft) == dd.core.Series:
             #################  This is for DASK DATAFRAMES.  We use DASK_XGBOOST here  ###
-            from dask_ml.model_selection import GridSearchCV
             if  cv_in == 0:
-                print('Skipping cross validation steps since cross_validation = %s' %cv_in)
-            else:
-                #dft = dft.head(len(dft)) ### this converts dask into a pandas dataframe
-                ### check available memory and allocate at least 1GB of it in the Client in DASK #############################
-                memory_free = str(max(1, int(psutil.virtual_memory()[0]/1e9)))+'GB'
-                print('    Using Dask XGBoost algorithm with %s virtual CPUs and %s memory limit...' %(get_cpu_worker_count(), memory_free))
-                client = Client(n_workers=get_cpu_worker_count(), threads_per_worker=1, processes=True, silence_logs=50,
-                                memory_limit=memory_free)
-                print('    Dask client configuration: %s' %client)
-                print('    XGBoost version: %s' %xgb.__version__)
-                print('    XGBoost num boost rounds = %s' %num_boost_round)
-                from dask_ml.model_selection import train_test_split
-                import gc
-                for fold_number in range(cv_in):
-                    client.run(gc.collect) 
-                    objective = 'reg:squarederror'
-                    params = {'objective': objective, 'max_depth': 4, 'eta': 0.01, 'subsample': 0.5, 
-                                        'min_child_weight': 0.5, 'random_state':0}
-                    test_size = 0.30 - (fold_number*0.05)
-                    print('TS Cross Validation: %d completed' %(fold_number+1,))
-                    print('    test_size = %s' %test_size)
-                    X_train_fold, X_test_fold, y_train_fold, y_test_fold = train_test_split(X_train, y_train,
-                                                 test_size=test_size, random_state=99)
-                    ##########   Training XGBoost model using dask_xgboost #########################
-                    ### the dtrain syntax can only be used xgboost 1.50 or greater. Dont use it until then.
-                    #dtrain = xgb.dask.DaskDMatrix(client, X_train, y_train, enable_categorical=True)
-                    
-                    bst = dask_xgboost.train(client, params, X_train_fold, y_train_fold, num_boost_round=num_boost_round)                    
-                    
-                    bst_models.append(bst)
-                    forecast_df = dask_xgboost.predict(client, bst, X_test_fold).compute()
-                    forecast_df_folds.append(forecast_df)
+                print('Model training performed only once since cross_validation = %s' %cv_in)
+                cv_in = 1
+            ### In case there is no cross validation, just run it once #################################
+            ### check available memory and allocate at least 1GB of it in the Client in DASK #############################
+            memory_free = str(max(1, int(psutil.virtual_memory()[0]/1e9)))+'GB'
+            print('    Using Dask XGBoost algorithm with %s virtual CPUs and %s memory limit...' %(get_cpu_worker_count(), memory_free))
+            client = Client(n_workers=get_cpu_worker_count(), threads_per_worker=1, processes=True, silence_logs=50,
+                            memory_limit=memory_free)
+            print('    Dask client configuration: %s' %client)
+            print('    XGBoost version: %s' %xgb.__version__)
+            from dask_ml.model_selection import train_test_split
+            import gc
+            for fold_number in range(cv_in):
+                client.run(gc.collect) 
+                objective = 'reg:squarederror'
+                params = {'objective': objective, 'max_depth': 4, 'eta': 0.01, 'subsample': 0.5, 
+                                    'min_child_weight': 0.5, 'random_state':0}
+                test_size = 0.30 - (fold_number*0.05)
+                X_train_fold, X_test_fold, y_train_fold, y_test_fold = train_test_split(X_train, y_train,
+                                             test_size=test_size, random_state=99)
+                print('train fold shape %s, test fold shape = %s' %(X_train_fold.shape, X_test_fold.shape))
+                pdb.set_trace()
+                ########################################################################################
+                ##########   Training XGBoost model using xgboost version 1.5.1 or greater #############
+                ### the dtrain syntax can only be used xgboost 1.50 or greater. Dont use it until then.
+                ########################################################################################
+                dtrain = xgb.dask.DaskDMatrix(client, X_train_fold, y_train_fold, enable_categorical=False, feature_names=self.transformed_preds)
+                #### SYNTAX BELOW WORKS WELL. BUT YOU CANNOT DO CV or EVALS WITH DASK XGBOOST AS OF NOW ####
+                num_rounds = 10
+                bst = xgb.dask.train(client, params, dtrain, num_boost_round=num_rounds)
+                bst_models.append(bst['booster'])
+                dtest = xgb.dask.DaskDMatrix(client, X_test_fold, enable_categorical=False, feature_names=self.transformed_preds)
+                forecast_df = xgb.dask.predict(client, bst['booster'], dtest)
+                forecast_df_folds.append(forecast_df)
 
-                    ### Now compare the actuals with predictions ######
-                    y_pred = forecast_df[:]
-                    ### y_pred is already an array - so keep that in mind!
-                    
-                    concatenated = pd.DataFrame(np.c_[y_test_fold, y_pred], columns=['original', 'predicted'],index=y_test_fold.index)
+                ### Now compare the actuals with predictions ######
+                y_pred = forecast_df[:]
+                ### y_pred is already an array - so keep that in mind!
+                
+                concatenated = pd.DataFrame(np.c_[y_test_fold, y_pred], columns=['original', 'predicted'],index=y_test_fold.index)
 
-                    if fold_number == 0:
-                        extra_concatenated = copy.deepcopy(concatenated)
-                    else:
-                        extra_concatenated = extra_concatenated.append(concatenated)
+                if fold_number == 0:
+                    extra_concatenated = copy.deepcopy(concatenated)
+                else:
+                    extra_concatenated = extra_concatenated.append(concatenated)
 
-                    rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
-                                                concatenated['original'].values)
+                rmse_fold, rmse_norm = print_dynamic_rmse(concatenated['original'].values, concatenated['predicted'].values,
+                                            concatenated['original'].values)
+                print('TS Cross Validation: %d completed' %(fold_number+1,))
 
-                    rmse_folds.append(rmse_fold)
-                    norm_rmse_folds.append(rmse_norm)
+                rmse_folds.append(rmse_fold)
+                norm_rmse_folds.append(rmse_norm)
+
+            #######     This is for DASK Dataframes only     ######################
+            model_name = 'dask_xgboost'
+            print('\n%s-fold final RMSE (expanding Window Cross Validation):' %cv_in)
+            rows = 1
+            colus = 2
+            fig, ax = plt.subplots(rows, colus)
+            fig.set_size_inches(min(colus*8,20),rows*6)
+            fig.subplots_adjust(hspace=0.3) ### This controls the space betwen rows
+            fig.subplots_adjust(wspace=0.3) ### This controls the space between columns
+            counter = 0
+            if rows == 1:
+                ax = ax.reshape(-1,1).T
+            xgb.plot_importance(bst_models[0], height=0.8, max_num_features=10, ax=ax[0][0])
+            extra_concatenated.plot(ax=ax[0][1], title='%s expanding window preds vs. actuals' %model_name)
+            print_dynamic_rmse(extra_concatenated['original'], extra_concatenated['predicted'], 
+                            extra_concatenated['original'], True)
         else:
             ####################### This is for Pandas Dataframes only ##########
             X_train, y_train = dft[self.transformed_preds], dft[self.transformed_target]
@@ -306,7 +312,7 @@ class BuildML(BuildBase):
 
             X_train_fold, y_train_fold = X_train[:nums], y_train[:nums]
             X_test_fold, y_test_fold = X_train[nums:], y_train[nums:]
-            print('train shape %s, test shape = %s' %(X_train_fold.shape, X_test_fold.shape))
+            print('train fold shape %s, test fold shape = %s' %(X_train_fold.shape, X_test_fold.shape))
             
             model_name = 'XGBoost'
 
@@ -329,34 +335,8 @@ class BuildML(BuildBase):
                 norm_rmse_folds.append(rmse_norm)
                 forecast_df_folds.append(y_pred)
                 extra_concatenated.append(concatenated)
-
-            ######################################################
-            ##### This is how you used the old model code    #####
-            ######################################################
-            #for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
-                #### This is where you insert the old code if the new code doesn't work #######
-                #print(f"\nFold Number: {fold_number+1} --> Train Shape: {train_fold.shape[0]} Test Shape: {test_fold.shape[0]}")
-                #print('Cross Validation window: %d completed' %(fold_number+1,))
-
-        #######  Now plot feature importances ##################################
-        try:
-            if type(y_trues) == dd.core.DataFrame or type(y_trues) == dd.core.Series:
-                model_name = 'dask_xgboost'
-                print('\n%s-fold final RMSE (expanding Window Cross Validation):' %cv_in)
-                rows = 1
-                colus = 2
-                fig, ax = plt.subplots(rows, colus)
-                fig.set_size_inches(min(colus*8,20),rows*6)
-                fig.subplots_adjust(hspace=0.3) ### This controls the space betwen rows
-                fig.subplots_adjust(wspace=0.3) ### This controls the space between columns
-                counter = 0
-                if rows == 1:
-                    ax = ax.reshape(-1,1).T
-                xgb.plot_importance(bst_models[0], height=0.8, max_num_features=10, ax=ax[0][0])
-                extra_concatenated.plot(ax=ax[0][1], title='%s expanding window preds vs. actuals' %model_name)
-                print_dynamic_rmse(extra_concatenated['original'], extra_concatenated['predicted'], 
-                                extra_concatenated['original'], True)
-            else:
+            #######  Now plot feature importances for pandas dataframes ###########
+            try:
                 #####  This is for plotting pandas dataframes only ################
                 rows = len(self.original_target_col)
                 colus = 2
@@ -382,9 +362,9 @@ class BuildML(BuildBase):
                                     title='%s Feature Importance by Gain' %self.original_target_col[0],
                                     max_num_features=10, ax=ax[each_i][0])
                         extra_concatenated[each_i].plot(ax=ax[each_i][1], title='%s expanding window preds vs. actuals' %self.original_target_col[each_i])
-            #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
-        except:
-            print('Could not plot ML results due to error. Continuing...')
+                #print('Normalized RMSE (as Std Dev of Actuals - micro) = %0.0f%%' %cv_micro_pct)
+            except:
+                print('Could not plot ML results due to error. Continuing...')
         ###############################################
         #### Refit the model on the entire dataset ####
         ###############################################
@@ -473,10 +453,11 @@ class BuildML(BuildBase):
         self.transformed_target = transformed_target_name
 
         # Overwrite with new ones
-
-        # transformed_pred_names = [x for x in list(dfxs) if x not in [self.transformed_target]]
-        transformed_pred_names = [x for x in list(dfxs) if x not in self.transformed_target]
-
+        if type(dfxs) == dd.core.DataFrame or type(dfxs) == dd.core.Series:
+            transformed_pred_names = [x for x in dfxs.columns if x not in self.transformed_target]
+        else:
+            transformed_pred_names = [x for x in list(dfxs) if x not in self.transformed_target]
+        
         return dfxs, transformed_target_name, transformed_pred_names
 
     def df_to_supervised_test(
