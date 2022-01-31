@@ -33,7 +33,6 @@ import xgboost as xgb
 from dask.distributed import Client, progress
 import psutil
 import json
-import dask_ml
 ################################################################################################
 from .build_base import BuildBase
 from .ml_models import complex_XGBoost_model, data_transform, analyze_problem_type
@@ -241,7 +240,6 @@ class BuildML(BuildBase):
                             memory_limit=memory_free)
             print('    Dask client configuration: %s' %client)
             print('    XGBoost version: %s' %xgb.__version__)
-            from dask_ml.model_selection import train_test_split
             import gc
             for fold_number in range(cv_in):
                 client.run(gc.collect) 
@@ -249,8 +247,9 @@ class BuildML(BuildBase):
                 params = {'objective': objective, 'max_depth': 4, 'eta': 0.01, 'subsample': 0.5, 
                                     'min_child_weight': 0.5, 'random_state':0}
                 test_size = 0.30 - (fold_number*0.05)
-                X_train_fold, X_test_fold, y_train_fold, y_test_fold = train_test_split(X_train, y_train,
-                                             test_size=test_size, random_state=99)
+                train_fold, test_fold = dft.random_split([1-test_size, test_size], random_state=9999, shuffle=False)
+                X_train_fold, y_train_fold = train_fold[self.transformed_preds], train_fold[self.transformed_target]
+                X_test_fold, y_test_fold = test_fold[self.transformed_preds], test_fold[self.transformed_target]
                 print('train fold shape %s, test fold shape = %s' %(X_train_fold.shape, X_test_fold.shape))
                 
                 ########################################################################################

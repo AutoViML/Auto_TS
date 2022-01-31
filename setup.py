@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="auto_ts",
-    version="0.0.63",
+    version="0.0.64",
     author="Ram Seshadri",
     # author_email="author@example.com",
     description="Automatically Build Multiple Time Series models fast - now with Facebook Prophet!",
@@ -29,8 +29,6 @@ setuptools.setup(
         "xgboost>=1.5.1",
         "prettytable",
         "dask>=2022.1.0",
-        "dask-ml>=2021.11.30",
-        "distributed==2022.1.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

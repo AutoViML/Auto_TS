@@ -15,8 +15,6 @@ scipy
 prettytable
 xgboost>=1.5.1
 dask>=2022.1.0
-dask-ml>=2021.11.30
-distributed==2022.1.0
 
 # Viz libs
 matplotlib
