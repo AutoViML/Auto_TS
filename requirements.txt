@@ -14,7 +14,9 @@ xlrd
 scipy
 prettytable
 xgboost>=1.5.1
-dask>=2022.1.0
+dask>=2022.2.0
+distributed>=2022.2.0
+pyyaml==5.4.1
 
 # Viz libs
 matplotlib
@@ -28,4 +30,3 @@ statsmodels
 pmdarima
 
 # Facebook Prophet
-fbprophet
