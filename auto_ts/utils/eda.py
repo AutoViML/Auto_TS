@@ -215,8 +215,9 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
     window argument is only required for plotting rolling functions. Default=4.
     """
     time_df = copy.deepcopy(time_df)
-    if len(time_df) <= int(1.5*maxlag):
-        maxlag = 5  ## set it to a low number
+    if len(time_df) <= int(2.5*maxlag):
+        maxlag = 5 
+        print('setting maxlag to a low number = %s' %maxlag) 
     # set defaults (from function page)
     if type(time_df) == pd.DataFrame:
         #print('modifying time series dataframe into an array to test')
@@ -303,13 +304,13 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
                 print('After differencing=1, results of Augmented Dickey-Fuller Test:')
                 pretty_print_table(dfoutput)
             if dftest[1] >= alpha:
-                print(' this series is not stationary')
+                print(colorful.BOLD +'this series is NOT stationary' + colorful.END)
                 return False
             else:
-                print(' this series is stationary')
+                print(colorful.BOLD +'this series is stationary' + colorful.END)
                 return True
         else:
-            print(' this series is stationary')
+            print(colorful.BOLD +'this series is stationary' + colorful.END)
             return True
 ################################################################################
 def adjust(val, length= 6): 
