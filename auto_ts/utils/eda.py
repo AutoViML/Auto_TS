@@ -15,7 +15,7 @@ import pdb
 import copy
 import dask
 import dask.dataframe as dd
-
+from .colors import colorful
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
                      chart_freq='years'):
     """
@@ -222,7 +222,7 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
     if type(time_df) == pd.DataFrame:
         #print('modifying time series dataframe into an array to test')
         time_df = time_df.values.ravel()
-        timeseries = copy.deepcopy(time_df)
+    timeseries = copy.deepcopy(time_df)
     if regression is None:
         regression = 'c'
     if verbose:

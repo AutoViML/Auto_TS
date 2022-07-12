@@ -152,8 +152,6 @@ class auto_timeseries:
 
         :param lag Indicates the number of lags to include in ML models (Default = 2)
         :type verbose int
-
-
         ##################################################################################################
         AUTO_TIMESERIES IS A VERY COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES 
         MANY TASKS INVOLVED AT A FAST PACE, IT ASSUMES INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
@@ -663,9 +661,9 @@ class auto_timeseries:
         if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
-            if ts_df.shape[0] > 1000 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
+            if ts_df.shape[0] > 100 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
                 print(colorful.BOLD + '\n===============================================' + colorful.END)
-                print("Skipping VAR Model since dataset is > 1000 rows and it will take too long")
+                print("Skipping VAR Model since dataset is > 100 rows and it will take too long")
                 print(colorful.BOLD + '===============================================' + colorful.END)
             else:
                 print("\n")
