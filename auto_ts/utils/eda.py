@@ -221,7 +221,8 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
     # set defaults (from function page)
     if type(time_df) == pd.DataFrame:
         #print('modifying time series dataframe into an array to test')
-        timeseries = time_df.values.ravel()
+        time_df = time_df.values.ravel()
+        timeseries = copy.deepcopy(time_df)
     if regression is None:
         regression = 'c'
     if verbose:
@@ -277,7 +278,6 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
         return diff_limit
     else:
         ### In non-VAR models you need to test only the target variable for stationarity ##
-        timeseries = copy.deepcopy(time_df)
         dftest = smt.adfuller(timeseries, maxlag=maxlag, regression=regression, autolag=autolag)
         dfoutput = pd.Series(dftest[0:4], index=['Test Statistic',
                                                  'p-value',
