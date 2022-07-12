@@ -221,8 +221,9 @@ def test_stationarity(time_df, maxlag=31, regression='c', autolag='BIC',
     # set defaults (from function page)
     if type(time_df) == pd.DataFrame:
         #print('modifying time series dataframe into an array to test')
-        time_df = time_df.values.ravel()
-    timeseries = copy.deepcopy(time_df)
+        timeseries = time_df.values.ravel()
+    else:
+        timeseries = copy.deepcopy(time_df)
     if regression is None:
         regression = 'c'
     if verbose:
