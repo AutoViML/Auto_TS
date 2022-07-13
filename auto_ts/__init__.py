@@ -152,12 +152,13 @@ class auto_timeseries:
 
         :param lag Indicates the number of lags to include in ML models (Default = 2)
         :type verbose int
-        ##################################################################################################
-        AUTO_TIMESERIES IS A VERY COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES 
-        MANY TASKS INVOLVED AT A FAST PACE, IT ASSUMES INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
-        Auto_Timeseries will rapidly build predictive models based on Statsmodels, auto-ARIMA, Scikit-Learn
-        and now dask_xgboost. It will automatically select the BEST model which gives best score specified.
-        #####################################################################################################
+
+        #   ##################################################################################################
+        #    AUTO_TIMESERIES IS A VERY COMPLEX MODEL BUILDING UTILITY FOR TIME SERIES DATA. SINCE IT AUTOMATES 
+        #    MANY TASKS INVOLVED AT A FAST PACE, IT ASSUMES INTELLIGENT DEFAULTS. BUT YOU CAN CHANGE THEM.
+        #    Auto_Timeseries will rapidly build predictive models based on Statsmodels, auto-ARIMA, Scikit-Learn
+        #    and now dask_xgboost. It will automatically select the BEST model which gives best score specified.
+        #    #####################################################################################################            
         """
         self.ml_dict: Dict = {}
         self.score_type: str = score_type
@@ -179,6 +180,8 @@ class auto_timeseries:
         self.strf_time_format = strf_time_format
         self.num_boost_rounds = num_boost_rounds
         self.lag = lag
+        if self.dask_xgboost_flag:
+            print("### Be careful setting 'dask_xgboost_flag' to True since dask is unstable and doesn't work well ###")
 
         # new function.
         if args:
@@ -367,10 +370,13 @@ class auto_timeseries:
                 time_series_plot(ts_df[target], lags=31, title='Original Time Series after %s differencing' %diff_limit,
                     chart_type='line', chart_freq=self.time_interval)
             else:
-                time_series_plot(ts_df[target], lags=31, title='Original Time Series',
+                if ts_df.shape[0] <= 100000:
+                    time_series_plot(ts_df[target], lags=31, title='Original Time Series',
                         chart_type='line', chart_freq=self.time_interval)
+                else:
+                    print('    No time series plot since number of rows > 100K. Continuing...')
         else:
-            print('No time series plot since verbose = 0. Continuing')
+            print('    No time series plot since verbose = 0. Continuing')
         ##################################################################################################
         ### Turn the time series index into a variable and calculate the difference.
         ### If the difference is not in days, then it is a hourly or minute based time series
@@ -661,9 +667,9 @@ class auto_timeseries:
         if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
-            if ts_df.shape[0] > 100 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
+            if ts_df.shape[0] > 1000 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
                 print(colorful.BOLD + '\n===============================================' + colorful.END)
-                print("Skipping VAR Model since dataset is > 100 rows and it will take too long")
+                print("Skipping VAR Model since dataset is > 1000 rows and it will take too long")
                 print(colorful.BOLD + '===============================================' + colorful.END)
             else:
                 print("\n")
