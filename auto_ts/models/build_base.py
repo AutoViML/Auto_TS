@@ -8,10 +8,13 @@ class BuildBase(ABC):
     Base Class for Building a model
     """
 
-    def __init__(self, scoring: str, forecast_period: int, verbose: int):
+    def __init__(self, scoring: str, forecast_period: int, verbose: int,
+                **kwargs
+                ):
         self.scoring = scoring
         self.forecast_period = forecast_period
         self.verbose = verbose
+        self.kwargs = kwargs
         self.model = None
         self.original_target_col: str = ""
         self.original_preds: List[str] = []

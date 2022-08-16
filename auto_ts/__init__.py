@@ -187,7 +187,9 @@ class auto_timeseries:
         if args:
             for each_arg in args:
                 print(each_arg)
+
         if kwargs:
+            self.kwargs = kwargs
             for key, value in zip(kwargs.keys(), kwargs.values()):
                 if key == 'seasonal_PDQ':
                     print('seasonal_PDQ argument is deprecated. Please remove the argument in future.')
@@ -197,6 +199,8 @@ class auto_timeseries:
                 if key == 'growth':
                     print('growth argument of FB Prophet given. It must be "linear" or "logistic"')
                     self.growth = value
+        else:
+            self.kwargs = {}
 
     def fit(
         self,
@@ -548,7 +552,7 @@ class auto_timeseries:
                 model_build = BuildProphet(
                     self.forecast_period, self.time_interval, self.seasonal_period,
                     self.score_type, self.verbose, self.conf_int, self.holidays, self.growth,
-                    self.seasonality)
+                    self.seasonality, **self.kwargs)
                 model, forecast_df_folds, rmse_folds, norm_rmse_folds = model_build.fit(
                     ts_df=ts_df[[target]+preds],
                     target_col=target,

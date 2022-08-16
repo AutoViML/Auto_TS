@@ -45,7 +45,8 @@ class BuildProphet(BuildBase):
         super().__init__(
             scoring=scoring,
             forecast_period=forecast_period,
-            verbose=verbose
+            verbose=verbose,
+            kwargs = kwargs
         )
         self.time_interval = time_interval
         self.seasonal_period = seasonal_period
@@ -76,15 +77,19 @@ class BuildProphet(BuildBase):
                                         'A,Y','BA,BY','AS,YS','BAS,BYS','BH',
                                         'H','T,min','S','L,ms','U,us','N']
         self.list_of_valid_time_ints.append(time_interval)
-
+        
         if kwargs:
+            self.kwargs = kwargs
             for key, value in zip(kwargs.keys(),kwargs.values()):
                 if key == 'seasonality_mode':
                     self.seasonality = True
                     key = value
                 else:
                     key = value
-
+        else:
+            self.kwargs = {'iter':1e2}
+        print('kwargs for Prophet model: %s' %self.kwargs)
+        
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str):
         """
         Fits the model to the data
@@ -231,7 +236,8 @@ class BuildProphet(BuildBase):
         if  cv_in == 0:
             print('Skipping cross validation steps since cross_validation = %s' %cv_in)
             model = Prophet(growth="linear")
-            kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+
+            kwargs = self.kwargs ## this limits iterations and hence speeds up prophet
         else:
             for fold_number, (train_index, test_index) in enumerate(cv.split(dft)):
                 dftx = dft.head(len(train_index)+len(test_index))

@@ -6,6 +6,11 @@
 
 ![auto-ts](logo.png)
 
+<h1 id="aug-update">Aug 2022 Update:</h1>
+<p style="font-family:verdana">You can now add FB Prophet arguments directly into Auto_TimeSeries using the kwargs argument. See example below:
+
+![fb-prophet](add_fb_prophet.png)
+
 <h1 id="auto-ts">Auto_TS: Auto_TimeSeries</h1>
 <p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code. Now updated with Dask.</p>
 <p>Auto_timeseries is a complex model building utility for time series data. Since it automates many
