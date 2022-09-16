@@ -16,10 +16,10 @@ import dask.dataframe as dd
 
 import matplotlib.pyplot as plt # type: ignore
 
-from fbprophet import Prophet # type: ignore
-from fbprophet.diagnostics import cross_validation
-from fbprophet.diagnostics import performance_metrics
-from fbprophet.plot import plot_cross_validation_metric
+from prophet import Prophet # type: ignore
+from prophet.diagnostics import cross_validation
+from prophet.diagnostics import performance_metrics
+from prophet.plot import plot_cross_validation_metric
 
 from .build_base import BuildBase
 
@@ -542,7 +542,7 @@ def plot_prophet(dft, forecastdf):
     return viz_df
 #################################
 from sklearn.metrics import mean_squared_error
-from fbprophet import Prophet
+from prophet import Prophet
 import time
 import pdb
 import copy
