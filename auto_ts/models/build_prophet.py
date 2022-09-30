@@ -29,7 +29,7 @@ from ..utils.logging import SuppressStdoutStderr
 
 #### Suppress INFO messages from FB Prophet!
 
-logging.getLogger('fbprophet').setLevel(logging.WARNING)
+logging.getLogger('prophet').setLevel(logging.WARNING)
 
 
 class BuildProphet(BuildBase):
@@ -542,7 +542,7 @@ def plot_prophet(dft, forecastdf):
     return viz_df
 #################################
 from sklearn.metrics import mean_squared_error
-from fbprophet import Prophet
+from prophet import Prophet
 import time
 import pdb
 import copy
