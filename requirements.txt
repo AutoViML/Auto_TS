@@ -30,3 +30,4 @@ statsmodels
 pmdarima
 
 # Facebook Prophet
+prophet
