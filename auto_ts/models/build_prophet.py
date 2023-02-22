@@ -542,7 +542,7 @@ def plot_prophet(dft, forecastdf):
     return viz_df
 #################################
 from sklearn.metrics import mean_squared_error
-from fbprophet import Prophet
+from prophet import Prophet
 import time
 import pdb
 import copy
