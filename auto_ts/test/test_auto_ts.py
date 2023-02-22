@@ -15,7 +15,7 @@ import pandas as pd # type: ignore
 
 from pandas.testing import assert_series_equal # type: ignore
 from pandas.testing import assert_frame_equal # type: ignore
-from fbprophet.forecaster import Prophet # type: ignore
+from prophet.forecaster import Prophet # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 from sklearn.base import BaseEstimator
 
