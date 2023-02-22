@@ -16,10 +16,10 @@ import dask.dataframe as dd
 
 import matplotlib.pyplot as plt # type: ignore
 
-from fbprophet import Prophet # type: ignore
-from fbprophet.diagnostics import cross_validation
-from fbprophet.diagnostics import performance_metrics
-from fbprophet.plot import plot_cross_validation_metric
+from prophet import Prophet # type: ignore
+from prophet.diagnostics import cross_validation
+from prophet.diagnostics import performance_metrics
+from prophet.plot import plot_cross_validation_metric
 
 from .build_base import BuildBase
 
@@ -29,7 +29,7 @@ from ..utils.logging import SuppressStdoutStderr
 
 #### Suppress INFO messages from FB Prophet!
 
-logging.getLogger('fbprophet').setLevel(logging.WARNING)
+logging.getLogger('prophet').setLevel(logging.WARNING)
 
 
 class BuildProphet(BuildBase):

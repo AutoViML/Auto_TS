@@ -15,7 +15,7 @@
 <p style="font-family:verdana">Automatically build multiple Time Series models using a Single Line of Code. Now updated with Dask.</p>
 <p>Auto_timeseries is a complex model building utility for time series data. Since it automates many
 Tasks involved in a complex endeavor, it assumes many intelligent defaults. But you can change them.
-Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA
+Auto_Timeseries will rapidly build predictive models based on Statsmodels ARIMA, Seasonal ARIMA, Prophet
 and Scikit-Learn ML. It will automatically select the best model which gives best score specified.
 </p>
 <p>New version 0.0.35 onwards has major updates: You can now load your file into Dask dataframes. Just provide the name of your file and if it is too large to fit into a pandas dataframe, Auto_TS will automatically detect and load it into a Dask dataframe. </p>
@@ -23,7 +23,7 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 <h2 id="introduction">Introduction</h2>
 <p>Auto_TimeSeries enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
 <p>Auto_TimeSeries is an Automated ML library for time series data. Auto_TimeSeries was initially conceived and developed by <a href="https://www.linkedin.com/in/ram-seshadri-nyc-nj/">Ram Seshadri</a> and was significantly expanded in functionality and scope and upgraded to its present status by <a href="https://github.com/ngupta23">Nikhil Gupta</a>.</p>
-<p>auto-ts.Auto_TimeSeries is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or FB prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
+<p>auto-ts.Auto_TimeSeries is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or Prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).</p>
 <h2 id="installation-instructions">INSTALLATION INSTRUCTIONS</h2>
 <ol>
 <li>Use “pip install auto-ts”</li>
@@ -31,9 +31,9 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 <li>pip install git+git://github.com/AutoViML/Auto_TS</li>
 </ol>
 <h4>Note for Windows Users</h4>
-<p>Windows users may experience difficulties with the fbprophet and pystan dependency installations.  Because of this, we recommend installing fbprophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> fbprophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via:
+<p>Windows users may experience difficulties with the Prophet and pystan dependency installations.  Because of this, we recommend installing Prophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> Prophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via:
 <ol>
-<li><p><code> conda install -c conda-forge fbprophet </code> </p></li>
+<li><p><code> conda install -c conda-forge prophet </code> </p></li>
 <li><p><code> pip install auto-ts </code> </p></li>
 </ol>
 
@@ -102,7 +102,7 @@ Type is integer</li>
 <li><b>model_type (default: 'stats'</b>: The type(s) of model to build. Default to building only statistical models
 Can be a string or a list of models. Allowed values are:
 'best', 'prophet', 'stats', 'ARIMA', 'SARIMAX', 'VAR', 'ML'.
-"prophet" will build a model using FB Prophet -> this means you must have FB Prophet installed
+"prophet" will build a model using Prophet -> this means you must have Prophet installed
 "stats" will build statsmodels based ARIMA, SARIMAX and VAR models
 "ML" will build a machine learning model using Random Forests provided explanatory vars are given
 'best' will try to build all models and pick the best one
@@ -147,7 +147,7 @@ Here are how the parameters are defined. You can choose to send either testdata 
 <h2 id="requirements">Requirements</h2>
 <p>dask</p>
 <p>scikit-learn</p>
-<p>FB Prophet</p>
+<p>Prophet</p>
 <p>statsmodels</p>
 <p>pmdarima</p>
 <p>XGBoost</p>
