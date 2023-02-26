@@ -33,7 +33,7 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 <h4>Note for Windows Users</h4>
 <p>Windows users may experience difficulties with the fbprophet and pystan dependency installations.  Because of this, we recommend installing fbprophet using instructions from the <a hreff="https://facebook.github.io/prophet/docs/installation.html"> fbprophet documentation page</a> prior to installing auto-ts.  For Anaconda users, this can be accomplished via:
 <ol>
-<li><p><code> conda install -c conda-forge fbprophet </code> </p></li>
+<li><p><code> conda install -c conda-forge prophet </code> </p></li>
 <li><p><code> pip install auto-ts </code> </p></li>
 </ol>
 
