@@ -103,6 +103,8 @@ def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line'
     y.plot(ax=hist_ax, kind='hist', bins=25, color=next(colors))
     hist_ax.set_title('Histogram for Original Series')
     try:
+        if len(y) < lags:
+            lags = int(len(y) - 1)
         smt.graphics.plot_acf(y, lags=lags, ax=acf_ax)
         acf_ax.set_title('ACF for Original Series')
     except:

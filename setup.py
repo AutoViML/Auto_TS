@@ -23,6 +23,7 @@ setuptools.setup(
         "pandas",
         "matplotlib",
         "seaborn",
+        "prophet",
         "scikit-learn>=0.24.0",
         "statsmodels",
         "xgboost>=1.5.1",

@@ -675,7 +675,7 @@ class BuildML(BuildBase):
         ##### Here is where you collect the forecasts #####
         # y_forecasted = np.array(y_forecasted)
         try:
-            res_frame = pd.DataFrame(y_forecasted, columns=self.transformed_target, index=ts_index)
+            res_frame = pd.DataFrame(y_forecasted, columns=['yhat'], index=ts_index)
         except:
             ### Sometimes the index doesn't match, so better to leave out index in that case ###
             res_frame = pd.DataFrame(y_forecasted, columns=self.transformed_target)
