@@ -544,7 +544,7 @@ class auto_timeseries:
             score_val = np.inf
             model_build: Optional[BuildBase] = None
             model = None
-            forecasts = None
+            forecast_df_folds = None
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
