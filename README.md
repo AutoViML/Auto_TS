@@ -6,6 +6,17 @@
 
 ![auto-ts](logo.png)
 
+<h1 id="mar-update">March 2023 Update:</h1>
+<p style="font-family:verdana">We have now upgraded FB Prophet to the latest version which is simply called prophet. <br>
+If you are using Colab or Kaggle kernel and want to install auto_ts, please use the following steps (otherwise error!):
+
+```
+!pip install auto-ts --no-deps --ignore-installed
+!pip install 'fsspec>=0.3.3'
+!pip install statsmodels --upgrade
+!pip install pmdarima
+```
+
 <h1 id="aug-update">Aug 2022 Update:</h1>
 <p style="font-family:verdana">You can now add FB Prophet arguments directly into Auto_TimeSeries using the kwargs argument. See example below:
 

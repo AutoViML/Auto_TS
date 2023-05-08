@@ -299,7 +299,7 @@ class BuildProphet(BuildBase):
             try:
                 print_ts_model_stats(extra_concatenated['original'], extra_concatenated['predicted'], "Prophet")
             except:
-                print('Error: Not able to plot Prophet CV results')
+                print('Not able to plot Prophet CV results. Continuing...')
 
             forecast_df_folds = extra_concatenated['predicted'].values
             #print("  End of Prophet Cross Validation")

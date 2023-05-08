@@ -544,7 +544,7 @@ class auto_timeseries:
             score_val = np.inf
             model_build: Optional[BuildBase] = None
             model = None
-            forecast_df_folds = None
+            forecasts = None
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
@@ -668,7 +668,7 @@ class auto_timeseries:
             self.ml_dict[name]['model_build'] = model_build
 
 
-        if self.__any_contained_in_list(what_list=['var','Var','VAR', 'stats', 'best'], in_list=self.model_type):
+        if self.__any_contained_in_list(what_list=['var','Var','VAR', 'best'], in_list=self.model_type):
             ########### Let's build a VAR Model - but first we have to shift the predictor vars ####
 
             if ts_df.shape[0] > 1000 and self.__any_contained_in_list(what_list=['stats', 'best'], in_list=self.model_type):
@@ -972,12 +972,12 @@ class auto_timeseries:
             if isinstance(testdata, pd.Series) or isinstance(testdata, pd.DataFrame):
                 # During training, we internally converted a column datetime index to the dataframe date time index
                 # We need to do the same while predicing for consistence
-                if (model == 'ML') or self.get_best_model_name() == 'ML' or (model == 'best' and self.get_best_model_name() == 'ML'):
+                if (model.lower() == 'ml') or self.get_best_model_name().lower() == 'ml' or (model.lower() == 'best' and self.get_best_model_name().lower() == 'ml'):
                     ### Now do the predictions using the final model asked to be predicted ###
                     predictions = bestmodel.predict(testdata,simple=simple, time_interval=time_interval)
                 elif model.lower() == 'prophet' or self.get_best_model_name() == 'Prophet':
                     predictions = bestmodel.predict(testdata,simple=simple)
-                elif self.get_best_model_name() == 'VAR':
+                elif self.get_best_model_name().lower() == 'var':
                     predictions = bestmodel.predict(testdata,simple=simple)
                 else:
                     predictions = bestmodel.predict(testdata,simple=simple)

@@ -26,6 +26,7 @@ def load_ts_data(filename, ts_column, sep, target, dask_xgboost_flag=0):
         dft: dask DataFrame
         filename: pandas DataFrame
     """
+    
     if isinstance(filename, str):
         filename = pd.read_csv(filename, sep=sep, parse_dates=[ts_column])
     ### If filename is not a string, it must be a dataframe and can be loaded

@@ -202,7 +202,10 @@ class BuildArimaBase(BuildBase):
 
             print(f"\nSARIMAX RMSE (all folds): {np.mean(rmse_folds):.4f}")
             print(f"SARIMAX Norm RMSE (all folds): {(np.mean(norm_rmse_folds2)*100):.0f}%\n")
-            print_ts_model_stats(extra_concatenated['original'],extra_concatenated['predicted'], "auto_SARIMAX")
+            try:
+                print_ts_model_stats(extra_concatenated['original'],extra_concatenated['predicted'], "auto_SARIMAX")
+            except:
+                print('Unable to print model stats. Continuing...')
 
         ###############################################
         #### Refit the model on the entire dataset ####
@@ -354,7 +357,7 @@ class BuildArimaBase(BuildBase):
                     print(e)
                     print("Model was trained with train dataframe. Please make sure you are passing a test data frame.")
                     return
-
+        
         res_frame = res.summary_frame()
         res_frame.rename(columns = {'mean':'yhat'}, inplace=True)
 

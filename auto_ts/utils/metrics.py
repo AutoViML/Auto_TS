@@ -3,7 +3,7 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import matplotlib.pyplot as plt # type: ignore
 from sklearn.metrics import mean_absolute_error, mean_squared_error # type: ignore
-
+import pdb
 
 def print_static_rmse(actual: np.array, predicted: np.array, start_from: int=0, verbose: int=0):
     """
@@ -51,7 +51,7 @@ def print_normalized_rmse(actuals: np.array, predicted: np.array, start_from: in
     return rmse, norm_rmse
 
 
-def print_rmse(y: np.array, y_hat: np.array) -> float:
+def print_rmse(y: np.array, y_hat: np.array):
     """
     Calculating Root Mean Square Error https://en.wikipedia.org/wiki/Root-mean-square_deviation
     """
@@ -59,7 +59,7 @@ def print_rmse(y: np.array, y_hat: np.array) -> float:
     return np.sqrt(mse)
 
 
-def print_mape(y: np.array, y_hat: np.array) -> float:
+def print_mape(y: np.array, y_hat: np.array):
     """
     Calculating Mean Absolute Percent Error https://en.wikipedia.org/wiki/Mean_absolute_percentage_error
     """
@@ -68,7 +68,8 @@ def print_mape(y: np.array, y_hat: np.array) -> float:
         return np.mean(abs(perc_err))
     except:
         return np.nan
-import pdb
+
+
 def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model"):
     """
     This program prints and returns MAE, RMSE, MAPE.
@@ -76,21 +77,27 @@ def print_ts_model_stats(actuals: np.array, predicted: np.array, title="Model"):
     in the input as "number_as_percentage" and it will return the MAE and RMSE as a
     ratio of that number. Returns MAE, MAE_as_percentage, and RMSE_as_percentage
     """
-    number_as_percentage = actuals.std()
-    plt.figure(figsize=(15,8))
-    dfplot = pd.DataFrame([actuals,predicted]).T
-    dfplot.columns = ['Actual','Forecast']
-    dfplot = dfplot.sort_index()
-    plt.plot(dfplot)
-    plt.legend(['actual','forecast'])
-    plt.title('%s: Actual vs Forecast in expanding (training) Window Cross Validation' %title, fontsize=20)
+    try:
+        number_as_percentage = actuals.std()
+        if (predicted.index == actuals.index).all():
+            dfplot = pd.DataFrame(actuals).join(pd.DataFrame(predicted))
+        else:
+            dfplot = pd.DataFrame([actuals.values, predicted.values]).T
+            dfplot.columns = ['Actual','Forecast']
+        dfplot = dfplot.sort_index()
+        plt.figure(figsize=(15,8))
+        plt.plot(dfplot)
+        plt.legend(['original','predicted'])
+        plt.title('%s: Actual vs Forecast in expanding (training) Window Cross Validation' %title, fontsize=20)
+    except:
+        pass
     print('\n-------------------------------------------')
     print('Model Cross Validation Results:')
     print('-------------------------------------------')
     mae = mean_absolute_error(actuals, predicted)
     mse = mean_squared_error(actuals, predicted)
     print('    MAE (Mean Absolute Error = %0.2f' %mae)
-    rmse = print_rmse(actuals, predicted)
+    rmse = np.sqrt(mean_squared_error(actuals,predicted))
     print('    MSE (Mean Squared Error = %0.2f' %mse)
     mape = print_mape(actuals, predicted)
     print("    MAPE (Mean Absolute Percent Error) = %0.0f%%" %(mape))
