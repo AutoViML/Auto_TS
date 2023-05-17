@@ -35,10 +35,10 @@ To know about the latest updates and features added to Auto_TS please go to this
 pip install auto-ts
 ```
 
-Use “pip3 install auto-ts” if the above doesn’t work
+Use `pip3 install auto-ts` if the above doesn’t work
 
 ```
-pip install git+git://github.com/AutoViML/Auto_TS
+pip install git+https://github.com/AutoViML/Auto_TS.git
 ```
 
 ### Installing on Colab 
