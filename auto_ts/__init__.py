@@ -570,6 +570,7 @@ class auto_timeseries:
                 print("Exception occurred while building Prophet model...")
                 print(e)
                 print('    FB Prophet may not be installed or Model is not running...')
+                forecast_df_folds = None
 
             self.ml_dict[name]['model'] = model
             self.ml_dict[name]['forecast'] = forecast_df_folds

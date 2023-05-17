@@ -87,7 +87,7 @@ class BuildProphet(BuildBase):
                 else:
                     key = value
         else:
-            self.kwargs = {'iter':1e2}
+            self.kwargs = {'iter':100}
         print('kwargs for Prophet model: %s' %self.kwargs)
         
     def fit(self, ts_df: pd.DataFrame, target_col: str, cv: Optional[int], time_col: str):
@@ -257,7 +257,7 @@ class BuildProphet(BuildBase):
                 #### Fit the model with train_fold data ####
                 ############################################
 
-                kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+                kwargs = {'iter':100} ## this limits iterations and hence speeds up prophet
                 model.fit(train_fold, **kwargs)
 
                 #################################################
@@ -569,7 +569,7 @@ def easy_cross_validation(train, target, initial, horizon, period):
         if len(test_fold) == 0:
             break
         model = Prophet(growth="linear")
-        kwargs = {'iter':1e2} ## this limits iterations and hence speeds up prophet
+        kwargs = {'iter':100} ## this limits iterations and hence speeds up prophet
         model.fit(train_fold, **kwargs)
         future_period = model.make_future_dataframe(freq="MS",periods=horizon)
         forecast_df = model.predict(future_period)
