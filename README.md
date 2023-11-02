@@ -11,6 +11,7 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 # Table of Contents
 <ul>
 <li><a href="#Latest">Latest updates</a></li>
+<li><a href="#Citation">Citation</a></li>
 <li><a href="#introduction">What is auto_ts</a></li>
 <li><a href="#install">How to install auto_ts</a></li>
 <li><a href="#usage">Usage</a></li>
@@ -22,10 +23,17 @@ and Scikit-Learn ML. It will automatically select the best model which gives bes
 </ul>
 
 ## Latest
-To know about the latest updates and features added to Auto_TS please go to this [page](updates.md).
+If you are looking for the latest and greatest updates about our library, check out our <a href="https://github.com/AutoViML/Auto_TS/blob/master/updates.md">updates page</a>.
+<br>
+
+## Citation
+If you use Auto_TS in your research project or paper, please use the following format for citations:
+<p>
+"Seshadri, Ram (2020). GitHub - AutoViML/Auto_TS: enables you to build and deploy multiple time series models using ML and statistical techniques with a single line of code. Source code: https://github.com/AutoViML/Auto_TS"
+<p>
 
 <h2 id="introduction">Introduction</h2>
-<p>Auto_TimeSeries enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
+<p>Auto_TS (Auto_TimeSeries) enables you to build and select multiple time series models using techniques such as ARIMA, SARIMAX, VAR, decomposable (trend+seasonality+holidays) models, and ensemble machine learning models.</p>
 <p>Auto_TimeSeries is an Automated ML library for time series data. Auto_TimeSeries was initially conceived and developed by <a href="https://www.linkedin.com/in/ram-seshadri-nyc-nj/">Ram Seshadri</a> and was significantly expanded in functionality and scope and upgraded to its present status by <a href="https://github.com/ngupta23">Nikhil Gupta</a>.</p>
 <p>auto-ts.Auto_TimeSeries is the main function that you will call with your train data. You can then choose what kind of models you want: stats, ml or Prophet based model. You can also tell it to automatically select the best model based on the scoring parameter you want it to be based on. It will return the best model and a dictionary containing predictions for the number of forecast_periods you mentioned (default=2).
 
