@@ -16,7 +16,7 @@ prettytable
 xgboost>=1.5.1
 dask>=2022.2.0
 distributed>=2022.2.0
-pyyaml
+pyyaml>=5.4.1
 
 # Viz libs
 matplotlib
