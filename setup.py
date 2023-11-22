@@ -29,7 +29,7 @@ setuptools.setup(
         "xgboost>=1.5.1",
         "prettytable",
         "dask>=2022.1.0",
-        "pyyaml",
+        "pyyaml>=5.4.1",
         "distributed>=2022.2.0",
     ],
     classifiers=[
