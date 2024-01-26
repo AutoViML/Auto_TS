@@ -1,20 +1,15 @@
-from itertools import cycle
 import numpy as np # type: ignore
-import pandas as pd # type: ignore
-import matplotlib.dates as mdates # type: ignore
-from itertools import cycle
-import matplotlib.pyplot as plt # type: ignore
-import seaborn as sns # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
+
 # This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 # get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)
 # TSA from Statsmodels
 import statsmodels.tsa.api as smt # type: ignore
-import pdb
-import copy
 import dask
-import dask.dataframe as dd
 from .colors import colorful
 def time_series_plot(y, lags=31, title='Original Time Series', chart_type='line',
                      chart_freq='years'):

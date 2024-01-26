@@ -2,14 +2,8 @@
 # coding: utf-8
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.compose import make_column_transformer
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import LabelEncoder, LabelBinarizer
-from sklearn.base import BaseEstimator, TransformerMixin #gives fit_transform method for free
+from sklearn.base import BaseEstimator  #gives fit_transform method for free
 import pdb
 from sklearn.base import TransformerMixin
 from collections import defaultdict

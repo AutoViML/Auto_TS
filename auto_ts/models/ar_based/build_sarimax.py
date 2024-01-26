@@ -1,20 +1,17 @@
+import matplotlib.pyplot as plt  # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
-from pandas.core.generic import NDFrame # type:ignore
-
-import matplotlib.pyplot as plt # type: ignore
-
-#from tscv import GapWalkForward # type: ignore
-
+from pandas.core.generic import NDFrame  # type:ignore
 # imported SARIMAX from statsmodels pkg
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 
-from ..build_base import BuildBase
 from .build_arima_base import BuildArimaBase
-
-# helper functions
-from ...utils import colorful, print_static_rmse, print_dynamic_rmse
 from ...models.ar_based.param_finder import find_best_pdq_or_PDQ
+# helper functions
+from ...utils import colorful
+
+
+# from tscv import GapWalkForward # type: ignore
 
 
 # class BuildSarimax(BuildBase):

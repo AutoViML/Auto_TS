@@ -1,7 +1,8 @@
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
-import matplotlib.pyplot as plt # type: ignore
-import seaborn as sns # type: ignore
+import matplotlib.pyplot as plt  # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
+
 # This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 # get_ipython().magic('matplotlib inline')
@@ -171,7 +172,6 @@ def ts_model_validation(model_results):
     print('\nTest for all AR roots outside unit circle (>1): {}'.format(arroots_outside_unit_circle))
     print('\nTest for all MA roots outside unit circle (>1): {}'.format(maroots_outside_unit_circle))
 ############################################################################################################
-import pdb
 def quick_ts_plot(y_true, y_pred, modelname='Prophet'):
     fig,ax = plt.subplots(figsize=(15,7))
     labels = ['actual','forecast']

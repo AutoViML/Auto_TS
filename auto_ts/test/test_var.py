@@ -9,15 +9,15 @@ Univariate, Multivariate: Simple Independent Test for Univariate (1)
 CV: Yes, No (2)
 """
 
-import sys
-import os
-import unittest
 import math
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
+import os
+import sys
+import unittest
 
-from pandas.testing import assert_series_equal # type: ignore
-from pandas.testing import assert_frame_equal # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from pandas.testing import assert_frame_equal  # type: ignore
+from pandas.testing import assert_series_equal  # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 sys.path.append(os.environ['DEV_AUTOTS'])
