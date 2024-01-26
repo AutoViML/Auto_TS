@@ -13,9 +13,10 @@ pandas
 xlrd
 scipy
 prettytable
-xgboost>=1.5.1
+xgboost>=2.0.0  # with GPU support
+GPUtil
 dask>=2022.2.0
-distributed>=2022.2.0
+distributed>=2022.2.0GPUtilGPUtil.getAvailable().getAvailable()
 pyyaml>=5.4.1
 
 # Viz libs
