@@ -1,7 +1,9 @@
-import numpy as np # type: ignore
-import pandas as pd  # type: ignore
 import itertools
 import operator
+
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+
 # helper functions
 from ..utils import print_static_rmse, print_dynamic_rmse
 

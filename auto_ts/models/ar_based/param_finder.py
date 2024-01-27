@@ -1,11 +1,13 @@
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
+import copy
 import itertools
 import operator
-import copy
-import matplotlib.pyplot as plt # type: ignore
-import seaborn as sns # type: ignore
-# This gives an error when running from a python script. 
+
+import matplotlib.pyplot as plt  # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
+
+# This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.
 # get_ipython().magic('matplotlib inline')
 sns.set(style="white", color_codes=True)

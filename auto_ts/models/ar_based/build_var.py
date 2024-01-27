@@ -1,20 +1,18 @@
 """Module to build a VAR model
 """
-import pdb
-from typing import Optional
-import warnings
+import copy
 import itertools
 import operator
-import copy
+import warnings
+from typing import Optional
 
-import numpy as np  # type: ignore
-import pandas as pd # type: ignore
-from pandas.core.generic import NDFrame # type:ignore
 import dask
-import dask.dataframe as dd
+import matplotlib.pyplot as plt  # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
+from pandas.core.generic import NDFrame  # type:ignore
 
-import matplotlib.pyplot as plt # type: ignore
-import seaborn as sns # type: ignore
 sns.set(style="white", color_codes=True)
 
 from statsmodels.tsa.statespace.varmax import VARMAX # type: ignore

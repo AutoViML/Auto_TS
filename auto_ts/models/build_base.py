@@ -1,7 +1,9 @@
-from typing import Optional, List
 from abc import ABC, abstractmethod
-import pandas as pd # type: ignore
-from pandas.core.generic import NDFrame # type:ignore
+from typing import Optional, List
+
+import pandas as pd  # type: ignore
+from pandas.core.generic import NDFrame  # type:ignore
+
 
 class BuildBase(ABC):
     """

@@ -6,18 +6,18 @@ like what has been done for auto_SARIMAX and change this module to
 focus purely on testing the AutoML flow
 """
 
-import sys
-import os
-import unittest
 import math
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
+import os
+import sys
+import unittest
 
-from pandas.testing import assert_series_equal # type: ignore
-from pandas.testing import assert_frame_equal # type: ignore
-from prophet.forecaster import Prophet # type: ignore
-from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from pandas.testing import assert_frame_equal  # type: ignore
+from pandas.testing import assert_series_equal  # type: ignore
+from prophet.forecaster import Prophet  # type: ignore
 from sklearn.base import BaseEstimator
+from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 sys.path.append(os.environ['DEV_AUTOTS'])
 from auto_ts import auto_timeseries as ATS

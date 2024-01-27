@@ -10,11 +10,11 @@ CV: Yes, No (2)
 """
 
 import unittest
-import numpy as np # type: ignore
-import pandas as pd # type: ignore
 
-from pandas.testing import assert_series_equal # type: ignore
-from pandas.testing import assert_frame_equal # type: ignore
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from pandas.testing import assert_frame_equal  # type: ignore
+from pandas.testing import assert_series_equal  # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper  # type: ignore
 
 
