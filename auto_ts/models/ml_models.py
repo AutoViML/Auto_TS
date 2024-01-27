@@ -9,6 +9,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import KFold, cross_val_score,StratifiedKFold
 import seaborn as sns
 import re
+import GPUtil
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.metrics import mean_squared_log_error, mean_squared_error,balanced_accuracy_score
 from scipy import stats
@@ -31,9 +32,10 @@ from sklearn.preprocessing import FunctionTransformer
 from ..utils import My_LabelEncoder, My_LabelEncoder_Pipe
 from ..utils import left_subtract
 #################################################################################
-def complex_XGBoost_model(X_train, y_train, X_test, log_y=False, GPU_flag=False,
-                                scaler = '', enc_method='label', n_splits=5, 
-                                num_boost_round=1000, verbose=-1):
+def complex_XGBoost_model(
+        X_train, y_train, X_test, log_y=False, GPU_flag=False,
+        scaler = '', enc_method='label', n_splits=5,
+        num_boost_round=1000, verbose=-1):
     """
     This model is called complex because it handle multi-label, mulit-class datasets which XGBoost ordinarily cant.
     Just send in X_train, y_train and what you want to predict, X_test
@@ -90,7 +92,7 @@ def complex_XGBoost_model(X_train, y_train, X_test, log_y=False, GPU_flag=False,
     #########     G P U     P R O C E S S I N G      B E G I N S    ############
     ###### This is where we set the CPU and GPU parameters for XGBoost
     if GPU_flag:
-        GPU_exists = check_if_GPU_exists()
+        GPU_exists = len(GPUtil.getAvailable()) > 0
     else:
         GPU_exists = False
     #####   Set the Scoring Parameters here based on each model and preferences of user ###
@@ -101,6 +103,7 @@ def complex_XGBoost_model(X_train, y_train, X_test, log_y=False, GPU_flag=False,
     cpu_params['updater'] = 'grow_colmaker'
     cpu_params['predictor'] = 'cpu_predictor'
     if GPU_exists:
+        param['device'] = "cuda"
         param['tree_method'] = 'gpu_hist'
         param['gpu_id'] = 0
         param['updater'] = 'grow_gpu_hist' #'prune'

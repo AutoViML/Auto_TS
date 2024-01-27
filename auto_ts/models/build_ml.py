@@ -85,7 +85,13 @@ class BuildML(BuildBase):
         self.train_df = pd.DataFrame()
 
 
-    def fit(self, ts_df: pd.DataFrame, target_col: str, ts_column:str, cv: Optional[int]=None, lags: int = 0):
+    def fit(self,
+            ts_df: pd.DataFrame,
+            target_col: str,
+            ts_column:str,
+            cv: Optional[int]=None,
+            lags: int = 0,
+            GPU_flag: bool = False):
         """
         Build a Time Series Model using Machine Learning models.
         Quickly builds and runs multiple models for a clean data set (only numerics).
@@ -306,8 +312,8 @@ class BuildML(BuildBase):
             
             model_name = 'XGBoost'
             print('### Number of booster rounds = %s for XGBoost which can be set during setup ####' %self.num_boost_rounds)
-            outputs = complex_XGBoost_model(X_train_fold,y_train_fold,
-                        X_test_fold, log_y=False, GPU_flag=False,
+            outputs = complex_XGBoost_model(X_train_fold, y_train_fold,
+                        X_test_fold, log_y=False, GPU_flag=GPU_flag,
                         scaler='', enc_method='', n_splits=cv_in, 
                         num_boost_round=self.num_boost_rounds, verbose=0)
             print('XGBoost model tuning completed')
