@@ -29,7 +29,7 @@ If you are looking for the latest and greatest updates about our library, check 
 ## Citation
 If you use Auto_TS in your research project or paper, please use the following format for citations:
 
-> "Seshadri, Ram (2020). GitHub - AutoViML/Auto_TS: enables you to build and deploy multiple time series models using ML and statistical techniques with a single line of code. Source code: https://github.com/AutoViML/Auto_TS"
+"Seshadri, Ram (2020). GitHub - AutoViML/Auto_TS: enables you to build and deploy multiple time series models using ML and statistical techniques with a single line of code. Source code: https://github.com/AutoViML/Auto_TS"
 
 <h2 id="introduction">Introduction</h2>
 
