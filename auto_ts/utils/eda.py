@@ -2,6 +2,8 @@ import numpy as np # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
+from itertools import cycle
+import matplotlib.pyplot as plt
 
 # This gives an error when running from a python script.
 # Maybe, this should be set in the jupyter notebook directly.

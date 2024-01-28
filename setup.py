@@ -26,10 +26,11 @@ setuptools.setup(
         "prophet",
         "scikit-learn>=0.24.0",
         "statsmodels",
-        "xgboost>=1.5.1",
+        "xgboost>=2.0",
         "prettytable",
         "dask>=2022.1.0",
         "pyyaml>=5.4.1",
+        "GPUtil>=1.4.0",
         "distributed>=2022.2.0",
     ],
     classifiers=[
