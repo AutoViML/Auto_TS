@@ -1,0 +1,29 @@
+include README.md
+include auto_ts/py.typed  # marker file for PEP 561
+
+include CHANGELOG.md
+include LICENSE
+include CITATION.cff
+include *.cff  # citation info
+
+include MANIFEST.in
+include pyproject.toml
+include setup.py
+include setup.cfg
+
+include requirements.txt
+
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude site *
+recursive-exclude example_datasets *
+recursive-exclude example_notebooks *
+recursive-exclude .github *
+
+exclude .flake8
+exclude .gitignore
+exclude .mypy.ini
+exclude .pre-commit-config.yaml
+exclude .pylintrc
+exclude Makefile
+exclude updates.md
