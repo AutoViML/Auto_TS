@@ -542,6 +542,7 @@ class auto_timeseries:
             model_build: Optional[BuildBase] = None
             model = None
             forecasts = None
+            forecasts_df_fold = None
             print(colorful.BOLD + '\nRunning Facebook Prophet Model...' + colorful.END)
             try:
                 #### If FB prophet needs to run, it needs to be installed. Check it here ###
